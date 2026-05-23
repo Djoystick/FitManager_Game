@@ -3,7 +3,7 @@
 import { useContext, useEffect, useState } from 'react';
 import { TelegramAuthContext } from '@/components/TelegramAuthProvider';
 import { WalletConnect } from '@/components/WalletConnect';
-import WebApp from '@twa-dev/sdk';
+import Link from 'next/link';
 
 interface UserData {
   balance_fancoins: number;
@@ -18,10 +18,18 @@ export default function DashboardPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
-  // Extract Telegram first name directly from the SDK, fallback for local browser testing
-  const firstName = typeof window !== 'undefined' && WebApp.initDataUnsafe?.user?.first_name 
-    ? WebApp.initDataUnsafe.user.first_name 
-    : 'Manager';
+  const [firstName, setFirstName] = useState('Manager');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      import('@twa-dev/sdk').then((module) => {
+        const WebApp = module.default;
+        if (WebApp.initDataUnsafe?.user?.first_name) {
+          setFirstName(WebApp.initDataUnsafe.user.first_name);
+        }
+      });
+    }
+  }, []);
 
   const fetchUserData = async (id: string) => {
     try {
@@ -142,6 +150,13 @@ export default function DashboardPage() {
             {userData?.balance_tp?.toLocaleString() || 0}
           </span>
         </div>
+      </section>
+
+      {/* NAVIGATION SECTION */}
+      <section className="flex gap-4 mt-2">
+        <Link href="/lineup" className="flex-1 py-3 bg-neon-cyan/10 border border-neon-cyan/50 text-neon-cyan text-center rounded-lg font-bold uppercase tracking-wider hover:bg-neon-cyan/20 transition-colors shadow-[0_0_10px_rgba(0,240,255,0.1)]">
+          Manage Tactics & Lineup
+        </Link>
       </section>
 
       {/* FITNESS SYNC WIDGET SECTION */}
