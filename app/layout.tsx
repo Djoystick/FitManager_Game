@@ -29,6 +29,7 @@ export const metadata: Metadata = {
 };
 
 import { TelegramAuthProvider } from "@/components/TelegramAuthProvider";
+import { TonProvider } from "@/components/TonProvider";
 
 export default function RootLayout({
   children,
@@ -42,13 +43,15 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col font-sans">
         <TelegramAuthProvider>
-          <main 
-            role="main"
-            aria-label="Main Application Content"
-            className="max-w-[480px] w-full mx-auto min-h-screen bg-space-dark text-white relative shadow-2xl overflow-hidden border-x border-gray-900/30"
-          >
-            {children}
-          </main>
+          <TonProvider>
+            <main 
+              role="main"
+              aria-label="Main Application Content"
+              className="max-w-[480px] w-full mx-auto min-h-screen bg-space-dark text-white relative shadow-2xl overflow-hidden border-x border-gray-900/30"
+            >
+              {children}
+            </main>
+          </TonProvider>
         </TelegramAuthProvider>
       </body>
     </html>

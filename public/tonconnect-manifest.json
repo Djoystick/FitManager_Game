@@ -1,0 +1,5 @@
+{
+  "url": "http://localhost:3000",
+  "name": "FitManager TMA",
+  "iconUrl": "https://raw.githubusercontent.com/ton-community/tutorials/main/03-client/test/public/tonconnect-manifest.json"
+}
