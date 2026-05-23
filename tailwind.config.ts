@@ -8,6 +8,11 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['var(--font-inter)', 'sans-serif'],
+        orbitron: ['var(--font-orbitron)', 'sans-serif'],
+        russo: ['var(--font-russo)', 'sans-serif'],
+      },
       colors: {
         'space-dark': '#0B0F19',
         'neon-cyan': '#00F0FF',

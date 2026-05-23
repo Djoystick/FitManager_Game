@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useEffect, useState, ReactNode, useContext } from 'react';
+import { LanguageContext } from '@/components/LanguageContext';
 
 interface TelegramAuthContextType {
   isAuthenticated: boolean;
@@ -22,6 +23,7 @@ export function TelegramAuthProvider({ children }: { children: ReactNode }) {
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { setLanguage } = useContext(LanguageContext);
 
   useEffect(() => {
     setIsMounted(true);
@@ -36,6 +38,11 @@ export function TelegramAuthProvider({ children }: { children: ReactNode }) {
 
           WebApp.ready();
           const initData = WebApp.initData;
+
+          const lang = WebApp.initDataUnsafe?.user?.language_code;
+          if (lang && lang.startsWith('ru')) {
+            setLanguage('ru');
+          }
 
           // Fallback for local browser testing outside of the Telegram Web App container
           if (!initData) {

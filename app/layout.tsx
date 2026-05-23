@@ -1,10 +1,23 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Orbitron, Russo_One } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
+});
+
+const orbitron = Orbitron({
+  variable: "--font-orbitron",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const russoOne = Russo_One({
+  weight: "400",
+  variable: "--font-russo",
+  subsets: ["latin", "cyrillic"],
   display: "swap",
 });
 
@@ -30,6 +43,7 @@ export const metadata: Metadata = {
 
 import { TelegramAuthProvider } from "@/components/TelegramAuthProvider";
 import { TonProvider } from "@/components/TonProvider";
+import { LanguageProvider } from "@/components/LanguageContext";
 
 export default function RootLayout({
   children,
@@ -39,20 +53,22 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} h-full antialiased`}
+      className={`${inter.variable} ${orbitron.variable} ${russoOne.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
-        <TelegramAuthProvider>
-          <TonProvider>
-            <main 
-              role="main"
-              aria-label="Main Application Content"
-              className="max-w-[480px] w-full mx-auto min-h-screen bg-space-dark text-white relative shadow-2xl overflow-hidden border-x border-gray-900/30"
-            >
-              {children}
-            </main>
-          </TonProvider>
-        </TelegramAuthProvider>
+        <LanguageProvider>
+          <TelegramAuthProvider>
+            <TonProvider>
+              <main 
+                role="main"
+                aria-label="Main Application Content"
+                className="max-w-[480px] w-full mx-auto min-h-screen bg-space-dark text-white relative shadow-2xl overflow-hidden border-x border-gray-900/30"
+              >
+                {children}
+              </main>
+            </TonProvider>
+          </TelegramAuthProvider>
+        </LanguageProvider>
       </body>
     </html>
   );
