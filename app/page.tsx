@@ -153,10 +153,18 @@ export default function DashboardPage() {
       </section>
 
       {/* NAVIGATION SECTION */}
-      <section className="flex gap-4 mt-2">
-        <Link href="/lineup" className="flex-1 py-3 bg-neon-cyan/10 border border-neon-cyan/50 text-neon-cyan text-center rounded-lg font-bold uppercase tracking-wider hover:bg-neon-cyan/20 transition-colors shadow-[0_0_10px_rgba(0,240,255,0.1)]">
+      <section className="flex flex-col gap-3 mt-2">
+        <Link href="/lineup" className="w-full py-3 bg-neon-cyan/10 border border-neon-cyan/50 text-neon-cyan text-center rounded-lg font-bold uppercase tracking-wider hover:bg-neon-cyan/20 transition-colors shadow-[0_0_10px_rgba(0,240,255,0.1)]">
           Manage Tactics & Lineup
         </Link>
+        <div className="flex gap-3">
+          <Link href="/market" className="flex-1 py-3 bg-gray-900 border border-gray-700 text-gray-300 text-center rounded-lg font-bold uppercase tracking-wider hover:border-neon-cyan hover:text-neon-cyan transition-colors">
+            Transfer Market
+          </Link>
+          <Link href="/journal" className="flex-1 py-3 bg-gray-900 border border-gray-700 text-gray-300 text-center rounded-lg font-bold uppercase tracking-wider hover:border-neon-green hover:text-neon-green transition-colors">
+            Match Journal
+          </Link>
+        </div>
       </section>
 
       {/* FITNESS SYNC WIDGET SECTION */}
