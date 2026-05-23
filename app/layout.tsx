@@ -28,13 +28,8 @@ export const metadata: Metadata = {
   },
 };
 
-import dynamic from "next/dynamic";
+import { TelegramAuthProvider } from "@/components/TelegramAuthProvider";
 import { TonProvider } from "@/components/TonProvider";
-
-const TelegramAuthProvider = dynamic(
-  () => import("@/components/TelegramAuthProvider").then(mod => mod.TelegramAuthProvider),
-  { ssr: false }
-);
 
 export default function RootLayout({
   children,
