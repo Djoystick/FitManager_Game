@@ -47,6 +47,51 @@ export async function POST(req: Request) {
     // Ensure we don't grant negative TP on weird payloads
     earnedTp = Math.max(0, earnedTp);
 
+    // 2.5 ANTI-CHEAT MECHANICS
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: recentLogs, error: logsError } = await supabase
+      .from('fitness_logs')
+      .select('activity_type, earned_tp')
+      .eq('user_id', userId)
+      .gte('created_at', oneDayAgo);
+
+    if (logsError) {
+      return NextResponse.json(
+        { error: 'Failed to verify anti-cheat daily limits', details: logsError.message },
+        { status: 500 }
+      );
+    }
+
+    let sameActivityCount = 0;
+    let dailyTotalTp = 0;
+
+    if (recentLogs) {
+      for (const log of recentLogs) {
+        dailyTotalTp += log.earned_tp;
+        if (log.activity_type.toLowerCase() === activityType.toLowerCase()) {
+          sameActivityCount++;
+        }
+      }
+    }
+
+    // Mechanic 1: Diminishing Returns (10% penalty per previous same activity, max 50%)
+    const diminishingPenalty = Math.min(sameActivityCount * 10, 50);
+    if (diminishingPenalty > 0) {
+      earnedTp = Math.floor(earnedTp * (1 - diminishingPenalty / 100));
+    }
+
+    // Mechanic 2: Daily Hard Cap
+    const MAX_DAILY_TP = 500;
+    let dailyLimitReached = false;
+
+    if (dailyTotalTp >= MAX_DAILY_TP) {
+      earnedTp = 0;
+      dailyLimitReached = true;
+    } else if (dailyTotalTp + earnedTp > MAX_DAILY_TP) {
+      earnedTp = MAX_DAILY_TP - dailyTotalTp;
+      dailyLimitReached = true;
+    }
+
     // 3. Database operations
     // Fetch current user TP securely
     const { data: user, error: userError } = await supabase
@@ -94,6 +139,10 @@ export async function POST(req: Request) {
       success: true,
       earned_tp: earnedTp,
       balance_tp: newBalanceTp,
+      meta: {
+        dailyLimitReached,
+        diminishingPenalty,
+      }
     });
 
   } catch (error: any) {
