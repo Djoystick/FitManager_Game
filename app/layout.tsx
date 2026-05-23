@@ -28,6 +28,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { TelegramAuthProvider } from "@/components/TelegramAuthProvider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -39,13 +41,15 @@ export default function RootLayout({
       className={`${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
-        <main 
-          role="main"
-          aria-label="Main Application Content"
-          className="max-w-[480px] w-full mx-auto min-h-screen bg-space-dark text-white relative shadow-2xl overflow-hidden border-x border-gray-900/30"
-        >
-          {children}
-        </main>
+        <TelegramAuthProvider>
+          <main 
+            role="main"
+            aria-label="Main Application Content"
+            className="max-w-[480px] w-full mx-auto min-h-screen bg-space-dark text-white relative shadow-2xl overflow-hidden border-x border-gray-900/30"
+          >
+            {children}
+          </main>
+        </TelegramAuthProvider>
       </body>
     </html>
   );
