@@ -39,3 +39,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# Старый код для контекста ИИ (не пушить!)
+_legacy_source/
