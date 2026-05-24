@@ -1,0 +1,23 @@
+---
+title: "Output"
+weight: 10
+description: "Track AI-generated code volume and model usage"
+---
+
+# Output
+
+The Output page shows your **Code Output** -- how much code your AI assistants have generated.
+
+> **Note:** A Token Usage tab exists but is temporarily hidden while we verify that reported numbers align with GitHub's billing data.
+
+## Code Output
+
+![Code Output](/screenshots/screen-output.png)
+
+The Code Output tab measures how much code your AI assistants have generated:
+
+- **AI-Generated LoC** -- Total estimated lines of code across all sessions
+
+The **Daily Production** chart shows lines of code per day as a bar chart. Below it, breakdowns show production split **by language** (TypeScript, CSS, Python, etc.), **by workspace**, **by model**, and **by harness**.
+
+Time range selectors let you view the last 7 days, 4 weeks, 3 months, 6 months, or all time.
