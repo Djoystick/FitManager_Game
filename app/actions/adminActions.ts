@@ -17,7 +17,8 @@ const POSITIONS = ['GK', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'MID',
 export async function seedBotLeague(): Promise<AdminActionResult> {
   try {
     const cookieStore = await cookies();
-    const tgUserId = cookieStore.get('tg_user_id')?.value;
+    const tgCookie = cookieStore.get('tg_user_id');
+    const tgUserId = tgCookie?.value;
 
     if (!tgUserId) {
       return { success: false, error: 'Unauthorized: Valid Telegram session required for Admin Actions.' };

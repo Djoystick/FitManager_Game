@@ -5,7 +5,8 @@ import { cookies } from 'next/headers';
 
 export default async function AdminDashboard() {
   const cookieStore = await cookies();
-  const tgUserId = cookieStore.get('tg_user_id')?.value;
+  const tgCookie = cookieStore.get('tg_user_id');
+  const tgUserId = tgCookie?.value;
 
   // 1. Check Authentication
   if (!tgUserId) {
