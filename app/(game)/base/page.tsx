@@ -31,7 +31,7 @@ export default function BaseDashboard() {
               <Zap className="text-neon-pink" size={28} />
             </div>
             <div className="flex-1">
-              <h2 className="text-lg font-bold text-white font-orbitron uppercase tracking-widest mb-1">{t.medical_center_new || t.medical_center}</h2>
+              <h2 className="text-lg font-bold text-white font-orbitron uppercase tracking-widest mb-1">{t.medical_center}</h2>
               <p className="text-sm text-gray-400 mb-4">
                 {t.med_desc}
               </p>
