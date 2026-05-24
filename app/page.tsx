@@ -8,6 +8,7 @@ import { dict } from '@/lib/dictionaries';
 import { LanguageContext } from '@/components/LanguageContext';
 import { OnboardingFlow } from '@/components/OnboardingFlow';
 import { FitnessSyncWidget } from '@/components/FitnessSyncWidget';
+import { Users, Trophy, ShoppingCart, Building2, User, BookOpen } from 'lucide-react';
 
 interface UserData {
   wallet_address: string | null;
@@ -117,24 +118,66 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* NAVIGATION SECTION */}
-      <section className="flex flex-col gap-3 mt-2">
-        <Link href="/lineup" className={`w-full py-3 bg-neon-cyan/10 border border-neon-cyan/50 text-neon-cyan text-center rounded-lg font-bold uppercase tracking-wider hover:bg-neon-cyan/20 transition-colors shadow-[0_0_10px_rgba(0,240,255,0.1)] ${buttonFontClass}`}>
-          {t.manage_tactics}
+      {/* CONTROL CENTER */}
+      <section className="grid grid-cols-2 gap-4 mt-2">
+        {/* Squad Card */}
+        <Link 
+          href="/lineup" 
+          className="relative overflow-hidden group p-4 rounded-xl shadow-[0_4px_15px_rgba(0,240,255,0.1)] border border-neon-cyan/40 bg-gradient-to-br from-blue-900/40 to-black/80 hover:border-neon-cyan transition-all active:scale-95"
+        >
+          <div className="absolute top-0 right-0 w-16 h-16 bg-neon-cyan/20 rounded-full blur-xl group-hover:bg-neon-cyan/40 transition-all" />
+          <Users className="text-neon-cyan w-8 h-8 mb-3" />
+          <h3 className={`text-white font-bold uppercase tracking-wider ${buttonFontClass}`}>
+            ⚽ Squad
+          </h3>
+          <p className="text-xs text-gray-400 mt-1">Manage Tactics</p>
         </Link>
-        <div className="flex gap-3">
-          <Link href="/market" className={`flex-1 py-3 bg-gray-900 border border-gray-700 text-gray-300 text-center rounded-lg font-bold uppercase tracking-wider hover:border-neon-cyan hover:text-neon-cyan transition-colors ${buttonFontClass}`}>
-            {t.transfer_market}
-          </Link>
-          <Link href="/journal" className={`flex-1 py-3 bg-gray-900 border border-gray-700 text-gray-300 text-center rounded-lg font-bold uppercase tracking-wider hover:border-neon-green hover:text-neon-green transition-colors ${buttonFontClass}`}>
-            {t.match_journal}
-          </Link>
+
+        {/* League Card */}
+        <Link 
+          href="/league" 
+          className="relative overflow-hidden group p-4 rounded-xl shadow-[0_4px_15px_rgba(188,19,254,0.15)] border border-neon-purple/40 bg-gradient-to-br from-purple-900/40 to-black/80 hover:border-neon-purple transition-all active:scale-95"
+        >
+          <div className="absolute top-0 right-0 w-16 h-16 bg-neon-purple/20 rounded-full blur-xl group-hover:bg-neon-purple/40 transition-all" />
+          <Trophy className="text-neon-purple w-8 h-8 mb-3 drop-shadow-[0_0_8px_rgba(188,19,254,0.6)]" />
+          <h3 className={`text-white font-bold uppercase tracking-wider ${buttonFontClass}`}>
+            🏆 League
+          </h3>
+          <p className="text-xs text-gray-400 mt-1">Pro Standings</p>
+        </Link>
+
+        {/* Market Card */}
+        <Link 
+          href="/market" 
+          className="relative overflow-hidden group p-4 rounded-xl shadow-[0_4px_15px_rgba(57,255,20,0.1)] border border-neon-green/40 bg-gradient-to-br from-green-900/40 to-black/80 hover:border-neon-green transition-all active:scale-95"
+        >
+          <div className="absolute top-0 right-0 w-16 h-16 bg-neon-green/20 rounded-full blur-xl group-hover:bg-neon-green/40 transition-all" />
+          <ShoppingCart className="text-neon-green w-8 h-8 mb-3" />
+          <h3 className={`text-white font-bold uppercase tracking-wider ${buttonFontClass}`}>
+            🛒 Market
+          </h3>
+          <p className="text-xs text-gray-400 mt-1">Transfers</p>
+        </Link>
+
+        {/* Base Card (Coming Soon) */}
+        <div className="relative overflow-hidden p-4 rounded-xl shadow-md border border-gray-700 bg-gray-900/40 opacity-60 cursor-not-allowed">
+          <Building2 className="text-gray-500 w-8 h-8 mb-3" />
+          <h3 className={`text-gray-400 font-bold uppercase tracking-wider ${buttonFontClass}`}>
+            🏗️ Base
+          </h3>
+          <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold text-neon-pink/70">Coming Soon</p>
         </div>
-        <Link href="/base" className={`w-full py-3 bg-gray-900 border border-gray-700 text-gray-300 text-center rounded-lg font-bold uppercase tracking-wider hover:border-neon-cyan hover:text-neon-cyan transition-colors ${buttonFontClass}`}>
-          {t.club_base}
+      </section>
+
+      {/* Secondary Actions */}
+      <section className="grid grid-cols-2 gap-4 mt-1">
+        <Link href="/journal" className="flex items-center justify-center gap-2 p-3 rounded-lg border border-gray-800 bg-black/40 hover:bg-gray-900 hover:border-gray-700 transition-colors active:scale-95 text-gray-400 hover:text-white">
+          <BookOpen size={16} />
+          <span className={`text-xs uppercase font-bold tracking-widest ${buttonFontClass}`}>Journal</span>
         </Link>
-        <Link href="/profile" className={`w-full py-3 bg-gray-900 border border-gray-700 text-gray-300 text-center rounded-lg font-bold uppercase tracking-wider hover:border-neon-pink hover:text-neon-pink transition-colors ${buttonFontClass}`}>
-          {t.profile}
+        <Link href="/profile" className="flex items-center justify-center gap-2 p-3 rounded-lg border border-gray-800 bg-black/40 hover:bg-gray-900 hover:border-gray-700 transition-colors active:scale-95 text-gray-400 hover:text-white">
+          <User size={16} />
+          <span className={`text-xs uppercase font-bold tracking-widest ${buttonFontClass}`}>Profile</span>
         </Link>
       </section>
 
