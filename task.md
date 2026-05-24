@@ -1,0 +1,9 @@
+- `[/]` 1. Match Engine (SQL RPC)
+  - `[ ]` Create `00018_match_engine.sql` migration
+  - `[ ]` Implement `conduct_match` with OVR comparison, RNG luck factor, and stamina drain
+- `[ ]` 2. Telegram Notification Bridge
+  - `[ ]` Create `app/api/cron/process-matches/route.ts`
+  - `[ ]` Loop scheduled matches and call `sendMessage` via Telegram Bot API
+- `[ ]` 3. Reporting
+  - `[ ]` Create `report_match_engine.md`
+  - `[ ]` Update `walkthrough.md`
