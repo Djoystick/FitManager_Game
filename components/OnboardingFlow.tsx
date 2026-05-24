@@ -6,10 +6,10 @@ import { dict } from '@/lib/dictionaries';
 
 interface OnboardingFlowProps {
   userId: string;
-  onComplete: () => void;
+  onSuccess: () => void;
 }
 
-export function OnboardingFlow({ userId, onComplete }: OnboardingFlowProps) {
+export function OnboardingFlow({ userId, onSuccess }: OnboardingFlowProps) {
   const [step, setStep] = useState<1 | 2>(1);
   const { language } = useContext(LanguageContext);
   const t = dict[language as keyof typeof dict];
@@ -34,7 +34,7 @@ export function OnboardingFlow({ userId, onComplete }: OnboardingFlowProps) {
       });
       
       if (res.ok) {
-        onComplete();
+        onSuccess();
       } else {
         const err = await res.json();
         setErrorMsg(err.error || 'Failed to create team');

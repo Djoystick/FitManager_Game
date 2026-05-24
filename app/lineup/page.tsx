@@ -2,6 +2,7 @@
 
 import { useContext, useEffect, useState } from 'react';
 import { TelegramAuthContext } from '@/components/TelegramAuthProvider';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PlayerTrainingModal } from '@/components/PlayerTrainingModal';
 
@@ -43,6 +44,7 @@ export default function LineupPage() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [trainingPlayer, setTrainingPlayer] = useState<Player | null>(null);
   const [submitMessage, setSubmitMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchTeamData = async () => {
@@ -69,6 +71,13 @@ export default function LineupPage() {
       setIsLoading(false);
     }
   }, [isAuthenticated, userId, isAuthLoading]);
+
+  // Strict Redirect if no franchise
+  useEffect(() => {
+    if (!isLoading && !isAuthLoading && !team) {
+      router.push('/');
+    }
+  }, [isLoading, isAuthLoading, team, router]);
 
   // Segment active players vs retired NFT coaches
   const activePlayers = players.filter(p => !p.is_nft_coach);
@@ -226,22 +235,10 @@ export default function LineupPage() {
     }
   };
 
-  if (isAuthLoading || isLoading) {
+  if (isAuthLoading || isLoading || !team) {
     return (
       <div className="flex-1 flex items-center justify-center min-h-screen bg-space-dark">
         <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(0,240,255,0.5)]"></div>
-      </div>
-    );
-  }
-
-  if (!team) {
-    return (
-      <div className="flex-1 p-6 flex flex-col items-center justify-center text-center gap-4 bg-space-dark">
-        <p className="text-neon-pink text-xl font-bold">No Franchise Detected</p>
-        <p className="text-gray-400 text-sm">You need to establish a team before managing a tactical lineup.</p>
-        <Link href="/" className="px-5 py-3 bg-neon-cyan text-black font-black rounded mt-4 hover:bg-white transition-colors">
-          Return to Dashboard
-        </Link>
       </div>
     );
   }

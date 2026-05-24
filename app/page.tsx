@@ -131,7 +131,7 @@ export default function DashboardPage() {
   }
 
   if (hasTeam === false && userId) {
-    return <OnboardingFlow userId={userId} onComplete={() => fetchUserData(userId)} />;
+    return <OnboardingFlow userId={userId} onSuccess={() => fetchUserData(userId)} />;
   }
 
   return (
