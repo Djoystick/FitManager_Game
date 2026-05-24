@@ -18,16 +18,22 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
   try {
     const cookieStore = await cookies();
     const tgCookie = cookieStore.get('tg_user_id');
-    const tgUserId = tgCookie?.value;
+    const sessionUuid = tgCookie?.value;
 
-    if (!tgUserId) {
+    if (!sessionUuid) {
       return { success: false, error: 'Unauthorized: Valid Telegram session required for Admin Actions.' };
     }
 
     // 0. Check Authorization (RBAC)
+    const { data: user } = await supabase
+      .from('users')
+      .select('telegram_id')
+      .eq('id', sessionUuid)
+      .single();
+
     const rawAdminIds = process.env.ADMIN_TG_IDS || '';
     const adminIdsArray = rawAdminIds.split(',').map(id => id.trim().toString());
-    const currentUserIdStr = String(tgUserId || '').trim();
+    const currentUserIdStr = user?.telegram_id ? String(user.telegram_id).trim() : '';
     
     if (!currentUserIdStr || !adminIdsArray.includes(currentUserIdStr)) {
       return { success: false, error: 'Forbidden: Admin access required.' };

@@ -2,14 +2,15 @@ import React from 'react';
 import { SeedLeagueButton } from '@/components/admin/SeedLeagueButton';
 import { ShieldAlert, DatabaseBackup, Lock, AlertOctagon } from 'lucide-react';
 import { cookies } from 'next/headers';
+import { supabase } from '@/lib/supabase';
 
 export default async function AdminDashboard() {
   const cookieStore = await cookies();
   const tgCookie = cookieStore.get('tg_user_id');
-  const tgUserId = tgCookie?.value;
+  const sessionUuid = tgCookie?.value;
 
   // 1. Check Authentication
-  if (!tgUserId) {
+  if (!sessionUuid) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center p-6 h-full text-center bg-space-dark">
         <Lock className="text-gray-500 w-16 h-16 mb-4" />
@@ -22,9 +23,15 @@ export default async function AdminDashboard() {
   }
 
   // 2. Check Authorization (RBAC)
+  const { data: user } = await supabase
+    .from('users')
+    .select('telegram_id')
+    .eq('id', sessionUuid)
+    .single();
+
   const rawAdminIds = process.env.ADMIN_TG_IDS || '';
   const adminIdsArray = rawAdminIds.split(',').map(id => id.trim().toString());
-  const currentUserIdStr = String(tgUserId || '').trim();
+  const currentUserIdStr = user?.telegram_id ? String(user.telegram_id).trim() : '';
   
   if (!currentUserIdStr || !adminIdsArray.includes(currentUserIdStr)) {
     return (
