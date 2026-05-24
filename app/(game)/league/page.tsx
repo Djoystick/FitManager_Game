@@ -6,6 +6,9 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { BackButton } from '@/components/ui/BackButton';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function LeagueDashboard() {
   const cookieStore = await cookies();
   const tgUserId = cookieStore.get('tg_user_id')?.value;
@@ -36,16 +39,19 @@ export default async function LeagueDashboard() {
         .single();
 
       if (!existingStanding) {
-        await supabaseAdmin.from('league_standings').insert({
+        const { error: insertError } = await supabaseAdmin.from('league_standings').insert({
           team_id: userTeamData.id,
           matches_played: 0,
           wins: 0,
           draws: 0,
           losses: 0,
-          points: 0,
           goals_for: 0,
-          goals_against: 0
+          goals_against: 0,
+          points: 0
         });
+        if (insertError) {
+          console.error("CRITICAL LEAGUE INSERT ERROR:", insertError);
+        }
       }
     }
   }
