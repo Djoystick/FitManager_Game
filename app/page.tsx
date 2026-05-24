@@ -21,9 +21,13 @@ export default function DashboardPage() {
   const buttonFontClass = language === 'ru' ? 'font-russo' : 'font-orbitron';
 
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [hasTeam, setHasTeam] = useState<boolean | null>(null);
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+
+  const [teamNameInput, setTeamNameInput] = useState('');
+  const [isCreatingTeam, setIsCreatingTeam] = useState(false);
 
   const [firstName, setFirstName] = useState('Manager');
 
@@ -40,13 +44,26 @@ export default function DashboardPage() {
 
   const fetchUserData = async (id: string) => {
     try {
-      const res = await fetch(`/api/user/me?userId=${id}`);
-      if (res.ok) {
-        const json = await res.json();
+      const [userRes, teamRes] = await Promise.all([
+        fetch(`/api/user/me?userId=${id}`),
+        fetch(`/api/team/my-team?userId=${id}`)
+      ]);
+
+      if (userRes.ok) {
+        const json = await userRes.json();
         setUserData(json.user);
+      }
+
+      if (teamRes.ok) {
+        setHasTeam(true);
+      } else if (teamRes.status === 404) {
+        setHasTeam(false);
+      } else {
+        setHasTeam(true); // Fallback to allow dashboard to render, or could handle error
       }
     } catch (error) {
       console.error("Failed to fetch user data", error);
+      setHasTeam(true); // Fallback
     } finally {
       setIsDataLoading(false);
     }
@@ -58,8 +75,34 @@ export default function DashboardPage() {
     } else if (!isAuthLoading && !isAuthenticated) {
       // Allow the loading state to resolve if running outside Telegram
       setIsDataLoading(false); 
+      setHasTeam(true); // mock having team outside telegram
     }
   }, [isAuthenticated, userId, isAuthLoading]);
+
+  const handleCreateTeam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId || !teamNameInput.trim()) return;
+    
+    setIsCreatingTeam(true);
+    try {
+      const res = await fetch('/api/team/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, teamName: teamNameInput.trim() }),
+      });
+      
+      if (res.ok) {
+        await fetchUserData(userId);
+      } else {
+        const err = await res.json();
+        console.error("Failed to create team:", err);
+      }
+    } catch (error) {
+      console.error("Failed to create team:", error);
+    } finally {
+      setIsCreatingTeam(false);
+    }
+  };
 
   const handleSimulateRun = async () => {
     if (!userId) return;
@@ -106,10 +149,48 @@ export default function DashboardPage() {
     return `${address.slice(0, 4)}...${address.slice(-4)}`;
   };
 
-  if (isAuthLoading || isDataLoading) {
+  if (isAuthLoading || isDataLoading || hasTeam === null) {
     return (
       <div className="flex-1 flex items-center justify-center min-h-screen bg-space-dark">
         <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(0,240,255,0.5)]"></div>
+      </div>
+    );
+  }
+
+  if (hasTeam === false) {
+    return (
+      <div className="flex flex-col flex-1 p-6 gap-8 justify-center min-h-screen bg-space-dark">
+        <div className="bg-black/60 backdrop-blur-md p-8 rounded-2xl border border-neon-pink/50 shadow-[0_0_30px_rgba(255,0,60,0.2)]">
+          <h1 className={`text-3xl font-bold text-white mb-2 text-center ${headerFontClass}`}>Create Your Franchise</h1>
+          <p className="text-gray-400 text-center mb-8 text-sm">Draft your initial squad and begin your journey to the top of the league.</p>
+          
+          <form onSubmit={handleCreateTeam} className="flex flex-col gap-5">
+            <div>
+              <label className="text-xs text-neon-cyan uppercase tracking-widest font-bold mb-2 block">Franchise Name</label>
+              <input 
+                type="text" 
+                value={teamNameInput}
+                onChange={(e) => setTeamNameInput(e.target.value)}
+                placeholder="e.g. Cyber Punks FC"
+                required
+                maxLength={30}
+                className="w-full bg-black/50 border border-gray-700 text-white rounded-lg p-3 focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan transition-all"
+              />
+            </div>
+            
+            <button 
+              type="submit"
+              disabled={isCreatingTeam || !teamNameInput.trim()}
+              className={`w-full py-4 rounded-lg font-bold text-black uppercase tracking-wider transition-all duration-300 mt-2 ${buttonFontClass} ${
+                isCreatingTeam || !teamNameInput.trim()
+                  ? 'bg-gray-600 cursor-not-allowed opacity-70'
+                  : 'bg-neon-cyan hover:bg-white hover:text-neon-cyan hover:shadow-[0_0_20px_rgba(0,240,255,0.6)] shadow-[0_0_10px_rgba(0,240,255,0.4)]'
+              }`}
+            >
+              {isCreatingTeam ? 'Drafting Players...' : 'Found Club'}
+            </button>
+          </form>
+        </div>
       </div>
     );
   }
