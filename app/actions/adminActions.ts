@@ -25,7 +25,7 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
 
     // 1. Generate 13 Bot Users
     const numBots = 13;
-    const usersToInsert = [];
+    const usersToInsert: any[] = [];
     for (let i = 0; i < numBots; i++) {
       usersToInsert.push({
         id: crypto.randomUUID(),
@@ -67,7 +67,7 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
     }
 
     // 3. Generate 11 Players for each of the 13 teams (143 players total)
-    const playersToInsert = [];
+    const playersToInsert: any[] = [];
     
     // First Names and Last Names for players
     const pFirst = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Charles', 'Daniel', 'Matthew'];
