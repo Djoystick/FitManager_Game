@@ -100,6 +100,9 @@ export async function POST(req: Request) {
     // 5. Initialize league standings
     await supabase.from('league_standings').insert({ team_id: newTeam.id });
 
+    // 6. Initialize infrastructure
+    await supabase.from('infrastructure').insert({ team_id: newTeam.id });
+
     return NextResponse.json({
       success: true,
       team: newTeam,

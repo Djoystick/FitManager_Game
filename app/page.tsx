@@ -192,6 +192,9 @@ export default function DashboardPage() {
             {t.match_journal}
           </Link>
         </div>
+        <Link href="/base" className={`w-full py-3 bg-gray-900 border border-gray-700 text-gray-300 text-center rounded-lg font-bold uppercase tracking-wider hover:border-neon-cyan hover:text-neon-cyan transition-colors ${buttonFontClass}`}>
+          {t.club_base}
+        </Link>
         <Link href="/profile" className={`w-full py-3 bg-gray-900 border border-gray-700 text-gray-300 text-center rounded-lg font-bold uppercase tracking-wider hover:border-neon-pink hover:text-neon-pink transition-colors ${buttonFontClass}`}>
           {t.profile}
         </Link>

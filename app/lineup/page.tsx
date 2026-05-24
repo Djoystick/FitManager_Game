@@ -86,7 +86,7 @@ export default function LineupPage() {
       
       {/* Stats Grid */}
       {player.stats && (
-         <div className="grid grid-cols-2 gap-x-1 gap-y-0 w-full p-1 bg-gray-900/80 text-[7px] font-orbitron text-gray-400">
+         <div className="grid grid-cols-2 gap-x-1 gap-y-0 w-full p-1 bg-gray-900/80 text-[9px] font-orbitron text-gray-400">
            <div className="flex justify-between"><span>PAC</span><span className="text-neon-green font-bold">{player.stats.pace}</span></div>
            <div className="flex justify-between"><span>SHO</span><span className="text-neon-green font-bold">{player.stats.shooting}</span></div>
            <div className="flex justify-between"><span>PAS</span><span className="text-neon-green font-bold">{player.stats.passing}</span></div>
