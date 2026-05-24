@@ -19,11 +19,11 @@ interface Player {
   name: string;
   age: number;
   ovr: number;
-  is_nft_coach: boolean;
+  is_nft_coach?: boolean;
   potential_limit: number;
   position: string;
   stats: PlayerStats;
-  perks: any;
+  perks?: any;
   stamina: number;
   lineup_status: string;
 }
@@ -32,6 +32,7 @@ interface Team {
   id: string;
   name: string;
   is_ready_for_match: boolean;
+  formation?: string;
 }
 
 export default function LineupPage() {
@@ -41,29 +42,31 @@ export default function LineupPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
+  const [isFormationLoading, setIsFormationLoading] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [trainingPlayer, setTrainingPlayer] = useState<Player | null>(null);
   const [submitMessage, setSubmitMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchTeamData = async () => {
-      if (!userId) return;
-      try {
-        const res = await fetch(`/api/team/my-team?userId=${userId}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success) {
-            setTeam(data.team);
-            setPlayers(data.players);
-          }
+  const fetchTeamData = async () => {
+    if (!userId) return;
+    try {
+      const res = await fetch(`/api/team/my-team?userId=${userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setTeam(data.team);
+          setPlayers(data.players);
         }
-      } catch (error) {
-        console.error("Failed to fetch team data", error);
-      } finally {
-        setIsLoading(false);
       }
-    };
+    } catch (error) {
+      console.error("Failed to fetch team data", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
 
     if (isAuthenticated && userId) {
       fetchTeamData();
@@ -146,6 +149,30 @@ export default function LineupPage() {
     } finally {
       setIsSwapping(false);
       setSelectedPlayerId(null);
+    }
+  };
+
+  const handleFormationChange = async (newFormation: string) => {
+    if (!userId || !team || team.is_ready_for_match || team.formation === newFormation) return;
+    
+    setIsFormationLoading(true);
+    setSubmitMessage(null);
+    try {
+      const res = await fetch('/api/lineup/formation', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, formation: newFormation })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        await fetchTeamData();
+      } else {
+        setSubmitMessage({ text: data.error || 'Failed to change formation', type: 'error' });
+      }
+    } catch (err) {
+      setSubmitMessage({ text: 'Network error during formation change.', type: 'error' });
+    } finally {
+      setIsFormationLoading(false);
     }
   };
 
@@ -280,7 +307,24 @@ export default function LineupPage() {
       </div>
 
       {/* TACTICAL PITCH UI */}
-      <div className="relative w-full aspect-[3/4] bg-green-950/30 border-2 border-neon-green/40 rounded-lg overflow-hidden shadow-[inset_0_0_40px_rgba(57,255,20,0.05)] flex flex-col items-center justify-around">
+      <div className="flex justify-center gap-2 mb-[-10px] z-20">
+        {['4-4-2', '4-3-3', '3-5-2'].map(f => (
+          <button
+            key={f}
+            onClick={() => handleFormationChange(f)}
+            disabled={isFormationLoading || team.is_ready_for_match}
+            className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider transition-colors border ${
+              team.formation === f || (!team.formation && f === '4-4-2')
+                ? 'bg-neon-cyan text-black border-neon-cyan shadow-[0_0_10px_rgba(0,240,255,0.5)]'
+                : 'bg-black/50 text-gray-400 border-gray-700 hover:border-neon-cyan/50'
+            } ${isFormationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
+      <div className={`relative w-full aspect-[3/4] bg-green-950/30 border-2 border-neon-green/40 rounded-lg overflow-hidden shadow-[inset_0_0_40px_rgba(57,255,20,0.05)] flex flex-col items-center justify-around transition-opacity duration-300 ${isFormationLoading ? 'opacity-50 blur-sm' : 'opacity-100'}`}>
         {/* Abstract Pitch Markings */}
         <div className="absolute top-0 w-1/2 h-16 border-2 border-t-0 border-neon-green/20 rounded-b-md"></div>
         <div className="absolute bottom-0 w-1/2 h-16 border-2 border-b-0 border-neon-green/20 rounded-t-md"></div>
