@@ -1,7 +1,7 @@
 import React from 'react';
 import { supabase } from '@/lib/supabase';
 import { LogSessionButton } from '@/components/training/LogSessionButton';
-import { AlertTriangle, CheckCircle2, XCircle, Zap } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, XCircle, Zap } from 'lucide-react';
 
 export default async function TrainingDashboard({ searchParams }: { searchParams: Promise<{ userId?: string }> | { userId?: string } }) {
   const resolvedParams = await searchParams;
