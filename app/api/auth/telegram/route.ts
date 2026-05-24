@@ -54,7 +54,8 @@ export async function POST(req: Request) {
     }
 
     // 3. Set a secure HTTP-Only Cookie to protect subsequent Server Actions
-    cookies().set({
+    const cookieStore = await cookies();
+    cookieStore.set({
       name: 'tg_user_id',
       value: internalUserId,
       httpOnly: true,
