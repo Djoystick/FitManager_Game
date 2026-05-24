@@ -1,6 +1,7 @@
 'use server';
 
 import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
 
@@ -39,6 +40,10 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
       return { success: false, error: 'Forbidden: Admin access required.' };
     }
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
     // 1. Generate 13 Bot Users
     const numBots = 13;
     const usersToInsert: any[] = [];
@@ -50,7 +55,7 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
       });
     }
 
-    const { data: insertedUsers, error: usersError } = await supabase
+    const { data: insertedUsers, error: usersError } = await supabaseAdmin
       .from('users')
       .insert(usersToInsert)
       .select('id');
@@ -72,7 +77,7 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
       };
     });
 
-    const { data: insertedTeams, error: teamsError } = await supabase
+    const { data: insertedTeams, error: teamsError } = await supabaseAdmin
       .from('teams')
       .insert(teamsToInsert)
       .select('id');
@@ -121,7 +126,7 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
 
     // Chunk the inserts just to be safe, though 143 is generally fine for Supabase, 
     // it's good practice for bulk operations.
-    const { error: playersError } = await supabase
+    const { error: playersError } = await supabaseAdmin
       .from('players')
       .insert(playersToInsert);
 
@@ -140,7 +145,7 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
       points: 0
     }));
 
-    const { error: standingsError } = await supabase
+    const { error: standingsError } = await supabaseAdmin
       .from('league_standings')
       .insert(standingsToInsert);
 
