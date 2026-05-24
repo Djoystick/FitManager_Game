@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     // 2. Fetch all players (active and coaches) belonging to this team
     const { data: players, error: playersError } = await supabase
       .from('players')
-      .select('id, name, age, ovr, is_nft_coach, perks, position, stats')
+      .select('id, name, age, ovr, is_nft_coach, perks, position, stats, stamina, lineup_status')
       .eq('team_id', team.id);
 
     if (playersError) {

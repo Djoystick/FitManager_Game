@@ -21,6 +21,8 @@ interface Player {
   position: string;
   stats: PlayerStats;
   perks: any;
+  stamina: number;
+  lineup_status: string;
 }
 
 interface Team {
@@ -35,6 +37,8 @@ export default function LineupPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSwapping, setIsSwapping] = useState(false);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [submitMessage, setSubmitMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
@@ -67,41 +71,117 @@ export default function LineupPage() {
   const activePlayers = players.filter(p => !p.is_nft_coach);
   const coaches = players.filter(p => p.is_nft_coach);
   
-  // Categorize by position
-  const fwds = activePlayers.filter(p => p.position === 'FWD');
-  const mids = activePlayers.filter(p => p.position === 'MID');
-  const defs = activePlayers.filter(p => p.position === 'DEF');
-  const gks = activePlayers.filter(p => p.position === 'GK');
+  const startingPlayers = activePlayers.filter(p => p.lineup_status === 'starting');
+  const benchPlayers = activePlayers.filter(p => p.lineup_status === 'bench');
 
-  const renderPlayerCard = (player: Player) => (
-    <div key={player.id} className="flex-1 max-w-[85px] mx-0.5 bg-black/80 backdrop-blur-md border border-neon-cyan/50 rounded-md flex flex-col items-center shadow-[0_0_10px_rgba(0,240,255,0.15)] overflow-hidden">
-      {/* Header */}
-      <div className="w-full bg-gradient-to-b from-neon-cyan/30 to-transparent p-1 flex justify-between items-center border-b border-neon-cyan/20">
-         <span className="text-[8px] font-black bg-neon-cyan text-black px-1 rounded-sm uppercase tracking-tighter shadow-[0_0_5px_rgba(0,240,255,0.8)]">{player.position}</span>
-         <span className="text-[11px] font-black text-white drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]">{player.ovr}</span>
+  // Categorize by position
+  const fwds = startingPlayers.filter(p => p.position === 'FWD');
+  const mids = startingPlayers.filter(p => p.position === 'MID');
+  const defs = startingPlayers.filter(p => p.position === 'DEF');
+  const gks = startingPlayers.filter(p => p.position === 'GK');
+
+  const handlePlayerClick = async (player: Player) => {
+    if (team?.is_ready_for_match) return; // Locked
+
+    if (!selectedPlayerId) {
+      setSelectedPlayerId(player.id);
+      return;
+    }
+
+    if (selectedPlayerId === player.id) {
+      setSelectedPlayerId(null);
+      return;
+    }
+
+    const player1 = activePlayers.find(p => p.id === selectedPlayerId);
+    const player2 = player;
+
+    if (!player1 || !player2) {
+      setSelectedPlayerId(null);
+      return;
+    }
+
+    if (player1.lineup_status === player2.lineup_status) {
+      setSelectedPlayerId(player.id);
+      return;
+    }
+
+    setIsSwapping(true);
+    setSubmitMessage(null);
+    try {
+      const res = await fetch('/api/lineup/swap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          playerOutId: player1.lineup_status === 'starting' ? player1.id : player2.id,
+          playerInId: player1.lineup_status === 'bench' ? player1.id : player2.id,
+        })
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setPlayers(prev => prev.map(p => {
+          if (p.id === player1.id) return { ...p, lineup_status: player2.lineup_status };
+          if (p.id === player2.id) return { ...p, lineup_status: player1.lineup_status };
+          return p;
+        }));
+      } else {
+        setSubmitMessage({ text: json.error || 'Swap failed', type: 'error' });
+      }
+    } catch (err) {
+      setSubmitMessage({ text: 'Network error during swap.', type: 'error' });
+    } finally {
+      setIsSwapping(false);
+      setSelectedPlayerId(null);
+    }
+  };
+
+  const renderPlayerCard = (player: Player) => {
+    const isSelected = selectedPlayerId === player.id;
+    return (
+      <div 
+        key={player.id} 
+        onClick={() => handlePlayerClick(player)}
+        className={`flex-1 max-w-[85px] mx-0.5 bg-black/80 backdrop-blur-md border rounded-md flex flex-col items-center shadow-lg overflow-hidden cursor-pointer transition-all ${
+          isSelected 
+            ? 'border-neon-pink shadow-[0_0_15px_rgba(255,0,60,0.6)] scale-105 z-10' 
+            : 'border-neon-cyan/50 hover:border-white'
+        }`}
+      >
+        {/* Header */}
+        <div className="w-full bg-gradient-to-b from-neon-cyan/30 to-transparent p-1 flex justify-between items-center border-b border-neon-cyan/20">
+           <span className="text-[8px] font-black bg-neon-cyan text-black px-1 rounded-sm uppercase tracking-tighter shadow-[0_0_5px_rgba(0,240,255,0.8)]">{player.position}</span>
+           <span className="text-[11px] font-black text-white drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]">{player.ovr}</span>
+        </div>
+        
+        {/* Name */}
+        <span className="text-[9px] font-bold text-white truncate w-full text-center py-0.5 px-1">{player.name.split(' ').pop()}</span>
+        
+        {/* Stamina & Stats Grid */}
+        {player.stats && (
+           <div className="w-full">
+             <div className="bg-gray-800/80 text-[7px] text-center font-bold text-neon-green border-y border-gray-700 py-0.5">
+               ⚡ {player.stamina}
+             </div>
+             <div className="grid grid-cols-2 gap-x-1 gap-y-0 p-1 bg-gray-900/80 text-[9px] font-orbitron text-gray-400">
+               <div className="flex justify-between"><span>PAC</span><span className="text-neon-green font-bold">{player.stats.pace}</span></div>
+               <div className="flex justify-between"><span>SHO</span><span className="text-neon-green font-bold">{player.stats.shooting}</span></div>
+               <div className="flex justify-between"><span>PAS</span><span className="text-neon-green font-bold">{player.stats.passing}</span></div>
+               <div className="flex justify-between"><span>DEF</span><span className="text-neon-green font-bold">{player.stats.defending}</span></div>
+               <div className="col-span-2 flex justify-center gap-1 border-t border-gray-700 pt-[1px] mt-[1px]"><span>PHY</span><span className="text-neon-green font-bold">{player.stats.physical}</span></div>
+             </div>
+           </div>
+        )}
       </div>
-      
-      {/* Name */}
-      <span className="text-[9px] font-bold text-white truncate w-full text-center py-0.5 px-1">{player.name.split(' ').pop()}</span>
-      
-      {/* Stats Grid */}
-      {player.stats && (
-         <div className="grid grid-cols-2 gap-x-1 gap-y-0 w-full p-1 bg-gray-900/80 text-[9px] font-orbitron text-gray-400">
-           <div className="flex justify-between"><span>PAC</span><span className="text-neon-green font-bold">{player.stats.pace}</span></div>
-           <div className="flex justify-between"><span>SHO</span><span className="text-neon-green font-bold">{player.stats.shooting}</span></div>
-           <div className="flex justify-between"><span>PAS</span><span className="text-neon-green font-bold">{player.stats.passing}</span></div>
-           <div className="flex justify-between"><span>DEF</span><span className="text-neon-green font-bold">{player.stats.defending}</span></div>
-           <div className="col-span-2 flex justify-center gap-1 border-t border-gray-700 pt-[1px] mt-[1px]"><span>PHY</span><span className="text-neon-green font-bold">{player.stats.physical}</span></div>
-         </div>
-      )}
-    </div>
-  );
+    );
+  };
   
-  // Calculate Average OVR exclusively for the active pitch lineup
+  // Calculate Average OVR exclusively for the starting pitch lineup
   let averageOvr = 50;
-  if (activePlayers.length > 0) {
-    const sum = activePlayers.reduce((acc, p) => acc + p.ovr, 0);
-    averageOvr = Math.round(sum / activePlayers.length);
+  if (startingPlayers.length > 0) {
+    const sum = startingPlayers.reduce((acc, p) => acc + p.ovr, 0);
+    averageOvr = Math.round(sum / startingPlayers.length);
   }
 
   // Calculate projected Luxury Tax
@@ -222,11 +302,23 @@ export default function LineupPage() {
              {gks.map(renderPlayerCard)}
           </div>
           
-          {activePlayers.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center text-sm text-neon-cyan/60 font-mono">No active players on roster</div>
+          {startingPlayers.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center text-sm text-neon-cyan/60 font-mono">No starting players on roster</div>
           )}
         </div>
       </div>
+
+      {/* BENCH / SUBSTITUTES */}
+      {benchPlayers.length > 0 && (
+        <div className="mt-2">
+          <h3 className="text-xs font-bold text-white mb-2 uppercase tracking-widest border-b border-gray-800 pb-1">
+            Substitutes Bench
+          </h3>
+          <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+            {benchPlayers.map(renderPlayerCard)}
+          </div>
+        </div>
+      )}
 
       {/* STAFF / EVOLVED COACHES */}
       {coaches.length > 0 && (
@@ -256,11 +348,11 @@ export default function LineupPage() {
 
         <button 
           onClick={handleSubmitLineup}
-          disabled={isSubmitting || team.is_ready_for_match || activePlayers.length === 0}
+          disabled={isSubmitting || isSwapping || team.is_ready_for_match || startingPlayers.length === 0}
           className={`w-full py-4 rounded-lg font-black uppercase tracking-widest transition-all duration-300 ${
             team.is_ready_for_match
               ? 'bg-neon-green text-black cursor-not-allowed shadow-[0_0_20px_rgba(57,255,20,0.4)] opacity-90'
-              : isSubmitting || activePlayers.length === 0
+              : isSubmitting || isSwapping || startingPlayers.length === 0
                 ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
                 : 'bg-neon-cyan text-black hover:bg-white hover:text-neon-cyan shadow-[0_0_20px_rgba(0,240,255,0.4)]'
           }`}
@@ -269,7 +361,9 @@ export default function LineupPage() {
             ? 'Match Ready / Locked' 
             : isSubmitting 
               ? 'Processing Transaction...' 
-              : 'Submit Lineup'}
+              : isSwapping
+                ? 'Swapping...'
+                : 'Submit Lineup'}
         </button>
       </div>
     </div>
