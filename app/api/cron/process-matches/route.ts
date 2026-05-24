@@ -74,16 +74,22 @@ export async function GET(req: Request) {
       const a_name = match.away_team?.name || 'Away';
 
       // 4. Send messages
-      if (homeUserData?.users?.telegram_id) {
+      const homeUser: any = Array.isArray(homeUserData) ? homeUserData[0] : homeUserData;
+      const homeTelegramId = homeUser?.users?.telegram_id || (Array.isArray(homeUser?.users) ? homeUser?.users[0]?.telegram_id : null);
+      
+      if (homeTelegramId) {
         const resultText = h_score > a_score ? '🏆 *Victory!*' : h_score < a_score ? '❌ *Defeat*' : '🤝 *Draw*';
         const msg = `${resultText}\nYour team *${h_name}* played against *${a_name}*.\n\nFinal Score: *${h_score} - ${a_score}*.\n\n⚠️ Your starting 11 lost ${result.stamina_drained} Stamina.`;
-        await sendTelegramMessage(homeUserData.users.telegram_id, msg);
+        await sendTelegramMessage(homeTelegramId, msg);
       }
 
-      if (awayUserData?.users?.telegram_id) {
+      const awayUser: any = Array.isArray(awayUserData) ? awayUserData[0] : awayUserData;
+      const awayTelegramId = awayUser?.users?.telegram_id || (Array.isArray(awayUser?.users) ? awayUser?.users[0]?.telegram_id : null);
+
+      if (awayTelegramId) {
         const resultText = a_score > h_score ? '🏆 *Victory!*' : a_score < h_score ? '❌ *Defeat*' : '🤝 *Draw*';
         const msg = `${resultText}\nYour team *${a_name}* played against *${h_name}*.\n\nFinal Score: *${a_score} - ${h_score}*.\n\n⚠️ Your starting 11 lost ${result.stamina_drained} Stamina.`;
-        await sendTelegramMessage(awayUserData.users.telegram_id, msg);
+        await sendTelegramMessage(awayTelegramId, msg);
       }
     }
 
