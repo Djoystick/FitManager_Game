@@ -4,6 +4,7 @@ import { useContext, useEffect, useState } from 'react';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { BackButton } from '@/components/ui/BackButton';
 import { PlayerTrainingModal } from '@/components/PlayerTrainingModal';
 
 interface PlayerStats {
@@ -275,7 +276,7 @@ export default function LineupPage() {
       {/* HEADER */}
       <header className="flex justify-between items-end border-b border-gray-800 pb-2">
         <div>
-          <Link href="/" className="text-xs text-neon-cyan hover:underline mb-1 inline-block">&larr; Dashboard</Link>
+          <BackButton />
           <h1 className="text-2xl font-black text-white tracking-tight uppercase">Tactics</h1>
           <p className="text-xs text-gray-400 font-mono tracking-widest">{team.name}</p>
         </div>

@@ -159,22 +159,22 @@ export default function DashboardPage() {
           <p className="text-xs text-gray-400 mt-1">Transfers</p>
         </Link>
 
-        {/* Base Card (Coming Soon) */}
-        <div className="relative overflow-hidden p-4 rounded-xl shadow-md border border-gray-700 bg-gray-900/40 opacity-60 cursor-not-allowed">
-          <Building2 className="text-gray-500 w-8 h-8 mb-3" />
-          <h3 className={`text-gray-400 font-bold uppercase tracking-wider ${buttonFontClass}`}>
-            🏗️ Base
+        {/* Fixtures Card */}
+        <Link 
+          href="/journal" 
+          className="relative overflow-hidden group p-4 rounded-xl shadow-[0_4px_15px_rgba(255,0,100,0.1)] border border-neon-pink/40 bg-gradient-to-br from-pink-900/40 to-black/80 hover:border-neon-pink transition-all active:scale-95"
+        >
+          <div className="absolute top-0 right-0 w-16 h-16 bg-neon-pink/20 rounded-full blur-xl group-hover:bg-neon-pink/40 transition-all" />
+          <BookOpen className="text-neon-pink w-8 h-8 mb-3" />
+          <h3 className={`text-white font-bold uppercase tracking-wider ${buttonFontClass}`}>
+            🗓️ Fixtures
           </h3>
-          <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold text-neon-pink/70">Coming Soon</p>
-        </div>
+          <p className="text-xs text-gray-400 mt-1">Match Center</p>
+        </Link>
       </section>
 
       {/* Secondary Actions */}
-      <section className="grid grid-cols-2 gap-4 mt-1">
-        <Link href="/journal" className="flex items-center justify-center gap-2 p-3 rounded-lg border border-gray-800 bg-black/40 hover:bg-gray-900 hover:border-gray-700 transition-colors active:scale-95 text-gray-400 hover:text-white">
-          <BookOpen size={16} />
-          <span className={`text-xs uppercase font-bold tracking-widest ${buttonFontClass}`}>Journal</span>
-        </Link>
+      <section className="flex flex-col gap-4 mt-1">
         <Link href="/profile" className="flex items-center justify-center gap-2 p-3 rounded-lg border border-gray-800 bg-black/40 hover:bg-gray-900 hover:border-gray-700 transition-colors active:scale-95 text-gray-400 hover:text-white">
           <User size={16} />
           <span className={`text-xs uppercase font-bold tracking-widest ${buttonFontClass}`}>Profile</span>

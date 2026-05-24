@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { BackButton } from '@/components/ui/BackButton';
 
 interface MarketListing {
   id: string;
@@ -53,8 +54,8 @@ export default function TransferMarketPage() {
     <div className="flex flex-col flex-1 p-4 gap-6 min-h-screen bg-space-dark text-white">
       {/* HEADER */}
       <header className="border-b border-gray-800 pb-4">
-        <Link href="/" className="text-xs text-neon-cyan hover:underline mb-2 inline-block">&larr; Dashboard</Link>
-        <h1 className="text-3xl font-black uppercase tracking-tighter">P2P <span className="text-neon-cyan">Market</span></h1>
+        <BackButton />
+        <h1 className="text-3xl font-black uppercase tracking-tighter mt-1">P2P <span className="text-neon-cyan">Market</span></h1>
         <p className="text-sm text-gray-400 mt-1">Acquire elite athletes directly via The Open Network.</p>
       </header>
 

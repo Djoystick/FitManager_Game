@@ -1,10 +1,9 @@
 import React from 'react';
 import { supabase } from '@/lib/supabase';
-import { PlayMatchButton } from '@/components/league/PlayMatchButton';
-import { NextOpponentCard } from '@/components/league/NextOpponentCard';
 import { Trophy, Medal, Target } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { BackButton } from '@/components/ui/BackButton';
 
 export default async function LeagueDashboard() {
   const cookieStore = await cookies();
@@ -41,114 +40,24 @@ export default async function LeagueDashboard() {
   // Take top 20
   standings = standings.slice(0, 20);
 
-  // Fetch recent matches
-  const { data: matchesData } = await supabase
-    .from('matches')
-    .select(`
-      id, 
-      home_score, 
-      away_score, 
-      match_date,
-      home_team:teams!home_team_id (id, name),
-      away_team:teams!away_team_id (id, name)
-    `)
-    .order('match_date', { ascending: false })
-    .limit(20);
-
-  const matches = matchesData || [];
-
-  // Identify Current User's Team
+  // Identify Current User's Team (for highlighting in the table)
   const currentUserTeam = standings.find((s: any) => s.teams?.user_id === tgUserId)?.teams;
-
-  // Next Opponent Logic
-  let nextOpponent = null;
-  let opponentPlayers: any[] = [];
-  let avgOvr = 0;
-
-  if (standings.length > 1) {
-    // Pick a random team that is NOT the current user's team
-    const possibleOpponents = standings.filter((s: any) => s.teams?.id !== currentUserTeam?.id);
-    if (possibleOpponents.length > 0) {
-      const randIdx = Math.floor(Math.random() * possibleOpponents.length);
-      nextOpponent = possibleOpponents[randIdx]?.teams;
-
-      if (nextOpponent) {
-        const { data: playersData } = await supabase
-          .from('players')
-          .select('name, position, ovr')
-          .eq('team_id', nextOpponent.id)
-          .eq('lineup_status', 'starting')
-          .limit(11);
-
-        if (playersData && playersData.length > 0) {
-          opponentPlayers = playersData;
-          const totalOvr = playersData.reduce((sum, p) => sum + p.ovr, 0);
-          avgOvr = Math.round(totalOvr / playersData.length);
-        }
-      }
-    }
-  }
 
   return (
     <div className="flex flex-col flex-1 p-4 gap-6 pb-24 h-full overflow-y-auto custom-scrollbar">
       {/* Header */}
       <header className="flex flex-col gap-1 border-b border-gray-800 pb-4">
+        <BackButton />
         <h1 className="text-2xl font-bold font-orbitron text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] uppercase tracking-wider flex items-center gap-2">
           <Trophy className="text-neon-purple" /> 
-          Pro League
+          Pro League Standings
         </h1>
         <p className="text-sm text-gray-400">Compete against global managers and climb the ranks.</p>
       </header>
 
-      {/* Next Opponent Block */}
-      {nextOpponent && (
-        <NextOpponentCard 
-          opponentTeamName={nextOpponent.name}
-          opponentLogoUrl={nextOpponent.logo_url}
-          averageOvr={avgOvr}
-          starting11={opponentPlayers}
-        />
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 min-h-[500px]">
-        {/* Left Column: Match History */}
-        <section className="flex flex-col gap-3 h-[40vh] md:h-full">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-neon-pink drop-shadow-[0_0_5px_rgba(255,0,60,0.5)]">Recent Matches</h2>
-          <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-3 pr-2">
-            {matches.map(match => {
-              const isHomeWin = match.home_score > match.away_score;
-              const isAwayWin = match.away_score > match.home_score;
-              const isDraw = match.home_score === match.away_score;
-              
-              return (
-                <div key={match.id} className="bg-black/40 backdrop-blur-md border border-gray-800 rounded-lg p-3 flex flex-col gap-2 shadow-[0_5px_15px_rgba(0,0,0,0.5)]">
-                  <span className="text-[10px] text-gray-500 font-mono">{new Date(match.match_date).toLocaleString()}</span>
-                  <div className="flex justify-between items-center">
-                    <div className={`flex-1 text-xs font-bold truncate ${(match.home_team as any)?.id === tgUserId ? 'text-neon-purple' : isHomeWin ? 'text-neon-green' : isDraw ? 'text-gray-300' : 'text-gray-500'}`}>
-                      {(match.home_team as any)?.name || 'Unknown'}
-                    </div>
-                    <div className="px-3 py-1 bg-gray-900 border border-gray-700 rounded font-orbitron text-sm font-black text-white flex gap-2">
-                      <span className={isHomeWin ? 'text-neon-green drop-shadow-[0_0_5px_rgba(57,255,20,0.8)]' : ''}>{match.home_score}</span>
-                      <span className="text-gray-500">-</span>
-                      <span className={isAwayWin ? 'text-neon-green drop-shadow-[0_0_5px_rgba(57,255,20,0.8)]' : ''}>{match.away_score}</span>
-                    </div>
-                    <div className={`flex-1 text-xs font-bold truncate text-right ${(match.away_team as any)?.id === tgUserId ? 'text-neon-purple' : isAwayWin ? 'text-neon-green' : isDraw ? 'text-gray-300' : 'text-gray-500'}`}>
-                      {(match.away_team as any)?.name || 'Unknown'}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-            {matches.length === 0 && (
-              <div className="text-center p-8 bg-black/20 border border-dashed border-gray-800 rounded-lg text-sm text-gray-500 mt-2">
-                No recent matches found.
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Right Column: Standings Table */}
-        <section className="flex flex-col gap-3 h-[50vh] md:h-full bg-black/40 border border-gray-800 rounded-xl overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.5)] p-4">
+      <div className="flex flex-col gap-6 flex-1 min-h-[500px]">
+        {/* Full-width Standings Table */}
+        <section className="flex flex-col gap-3 h-auto bg-black/40 border border-gray-800 rounded-xl overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.5)] p-4">
           <h2 className="text-sm font-bold uppercase tracking-widest text-neon-cyan drop-shadow-[0_0_5px_rgba(0,240,255,0.5)] mb-2">League Standings</h2>
           <div className="overflow-x-auto flex-1 custom-scrollbar">
             <table className="w-full text-left text-sm text-gray-300">
