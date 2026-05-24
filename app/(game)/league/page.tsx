@@ -20,7 +20,37 @@ export default async function LeagueDashboard() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Fetch all standings, sorted by points (descending)
+  // 1. AUTO-REGISTER CURRENT USER TO STANDINGS
+  if (tgUserId) {
+    const { data: userTeamData } = await supabaseAdmin
+      .from('teams')
+      .select('id')
+      .eq('user_id', tgUserId)
+      .single();
+
+    if (userTeamData?.id) {
+      const { data: existingStanding } = await supabaseAdmin
+        .from('league_standings')
+        .select('id')
+        .eq('team_id', userTeamData.id)
+        .single();
+
+      if (!existingStanding) {
+        await supabaseAdmin.from('league_standings').insert({
+          team_id: userTeamData.id,
+          matches_played: 0,
+          wins: 0,
+          draws: 0,
+          losses: 0,
+          points: 0,
+          goals_for: 0,
+          goals_against: 0
+        });
+      }
+    }
+  }
+
+  // 2. Fetch all standings, sorted by points (descending)
   const { data: standingsData, error } = await supabaseAdmin
     .from('league_standings')
     .select(`
@@ -91,8 +121,10 @@ export default async function LeagueDashboard() {
                       <tr 
                         key={row.id} 
                         className={`
-                          border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors
-                          ${isCurrentUser ? 'bg-neon-purple/10 border-l-4 border-l-neon-purple shadow-[inset_0_0_15px_rgba(188,19,254,0.1)]' : 'border-l-4 border-l-transparent'}
+                          transition-colors
+                          ${isCurrentUser 
+                            ? 'bg-white/10 border border-neon-cyan/50 text-white font-bold shadow-[inset_0_0_15px_rgba(0,240,255,0.15)] relative z-10' 
+                            : 'border-b border-gray-800/50 hover:bg-gray-800/30'}
                         `}
                       >
                         <td className="px-4 py-3 text-center">
@@ -106,23 +138,23 @@ export default async function LeagueDashboard() {
                             <span className="text-gray-500 font-mono">{rank}</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 font-bold text-white flex items-center gap-2">
-                          <span className={`truncate max-w-[120px] ${isCurrentUser ? 'text-neon-purple' : ''}`}>
+                        <td className={`px-4 py-3 font-bold flex items-center gap-2 ${isCurrentUser ? 'text-neon-cyan' : 'text-white'}`}>
+                          <span className="truncate max-w-[120px]">
                             {row.teams?.name || 'Unknown Team'}
                           </span>
                           {isCurrentUser && (
-                            <span className="text-[10px] bg-neon-purple text-white px-2 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0">
+                            <span className="text-[10px] bg-neon-cyan text-black font-black px-2 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0">
                               You
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-center text-gray-500 font-mono">{row.matches_played}</td>
-                        <td className="px-4 py-3 text-center text-neon-green/80 font-mono">{row.wins}</td>
-                        <td className="px-4 py-3 text-center text-gray-500 font-mono">{row.draws}</td>
-                        <td className="px-4 py-3 text-center text-red-500/80 font-mono">{row.losses}</td>
-                        <td className="px-4 py-3 text-center text-neon-green font-mono">{row.goals_for || 0}</td>
-                        <td className="px-4 py-3 text-center text-red-400 font-mono">{row.goals_against || 0}</td>
-                        <td className="px-4 py-3 text-center font-black text-white font-orbitron bg-gray-900/50">{row.points}</td>
+                        <td className={`px-4 py-3 text-center font-mono ${isCurrentUser ? 'text-white' : 'text-gray-500'}`}>{row.matches_played}</td>
+                        <td className={`px-4 py-3 text-center font-mono ${isCurrentUser ? 'text-neon-green' : 'text-neon-green/80'}`}>{row.wins}</td>
+                        <td className={`px-4 py-3 text-center font-mono ${isCurrentUser ? 'text-white' : 'text-gray-500'}`}>{row.draws}</td>
+                        <td className={`px-4 py-3 text-center font-mono ${isCurrentUser ? 'text-red-400' : 'text-red-500/80'}`}>{row.losses}</td>
+                        <td className={`px-4 py-3 text-center font-mono ${isCurrentUser ? 'text-neon-green font-bold' : 'text-neon-green'}`}>{row.goals_for || 0}</td>
+                        <td className={`px-4 py-3 text-center font-mono ${isCurrentUser ? 'text-red-400 font-bold' : 'text-red-400'}`}>{row.goals_against || 0}</td>
+                        <td className={`px-4 py-3 text-center font-black font-orbitron ${isCurrentUser ? 'text-neon-cyan bg-neon-cyan/10' : 'text-white bg-gray-900/50'}`}>{row.points}</td>
                       </tr>
                     );
                   })
