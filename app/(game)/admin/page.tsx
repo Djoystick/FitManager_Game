@@ -21,8 +21,11 @@ export default async function AdminDashboard() {
   }
 
   // 2. Check Authorization (RBAC)
-  const adminIds = (process.env.ADMIN_TG_IDS || '').split(',').map(id => id.trim());
-  if (!adminIds.includes(tgUserId)) {
+  const rawAdminIds = process.env.ADMIN_TG_IDS || '';
+  const adminIdsArray = rawAdminIds.split(',').map(id => id.trim().toString());
+  const currentUserIdStr = String(tgUserId || '').trim();
+  
+  if (!currentUserIdStr || !adminIdsArray.includes(currentUserIdStr)) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center p-6 h-full text-center bg-space-dark">
         <AlertOctagon className="text-red-500 w-16 h-16 mb-4 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]" />

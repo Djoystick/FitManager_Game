@@ -24,8 +24,11 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
     }
 
     // 0. Check Authorization (RBAC)
-    const adminIds = (process.env.ADMIN_TG_IDS || '').split(',').map(id => id.trim());
-    if (!adminIds.includes(tgUserId)) {
+    const rawAdminIds = process.env.ADMIN_TG_IDS || '';
+    const adminIdsArray = rawAdminIds.split(',').map(id => id.trim().toString());
+    const currentUserIdStr = String(tgUserId || '').trim();
+    
+    if (!currentUserIdStr || !adminIdsArray.includes(currentUserIdStr)) {
       return { success: false, error: 'Forbidden: Admin access required.' };
     }
 

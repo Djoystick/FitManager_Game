@@ -6,8 +6,11 @@ export default async function ProfilePage() {
   const cookieStore = await cookies();
   const tgUserId = cookieStore.get('tg_user_id')?.value;
   
-  const adminIds = (process.env.ADMIN_TG_IDS || '').split(',').map(id => id.trim());
-  const isAdmin = !!tgUserId && adminIds.includes(tgUserId);
+  const rawAdminIds = process.env.ADMIN_TG_IDS || '';
+  const adminIdsArray = rawAdminIds.split(',').map(id => id.trim().toString());
+  const currentUserIdStr = String(tgUserId || '').trim();
+  
+  const isAdmin = !!currentUserIdStr && adminIdsArray.includes(currentUserIdStr);
 
   return <ProfileClient isAdmin={isAdmin} />;
 }
