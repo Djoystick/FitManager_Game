@@ -129,12 +129,12 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <BookOpen className="text-neon-pink w-5 h-5" />
-              <span className={`text-neon-pink text-xs uppercase tracking-widest font-bold ${buttonFontClass}`}>Next Fixture</span>
+              <span className={`text-neon-pink text-xs uppercase tracking-widest font-bold ${buttonFontClass}`}>{t.next_fixture}</span>
             </div>
             <h3 className={`text-white text-xl font-bold uppercase tracking-wider ${buttonFontClass}`}>
-              Match Center
+              {t.match_journal}
             </h3>
-            <p className="text-sm text-gray-400 mt-1">Simulate your next match</p>
+            <p className="text-sm text-gray-400 mt-1">{t.simulate_next_match}</p>
           </div>
           <div className="bg-neon-pink/10 p-3 rounded-full border border-neon-pink/30 group-hover:bg-neon-pink group-hover:text-black transition-colors text-neon-pink shadow-[0_0_10px_rgba(255,0,100,0.3)] relative z-10">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
@@ -150,14 +150,14 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Users className="text-neon-cyan w-5 h-5" />
-              <span className={`text-neon-cyan text-xs uppercase tracking-widest font-bold ${buttonFontClass}`}>Team Status</span>
+              <span className={`text-neon-cyan text-xs uppercase tracking-widest font-bold ${buttonFontClass}`}>{t.team_status}</span>
             </div>
             <h3 className={`text-white text-xl font-bold uppercase tracking-wider ${buttonFontClass}`}>
-              Training Base
+              {t.training_base}
             </h3>
             <p className="text-sm text-gray-400 mt-1 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span>
-              Watch player stamina
+              {t.watch_stamina}
             </p>
           </div>
           <div className="bg-neon-cyan/10 p-3 rounded-full border border-neon-cyan/30 group-hover:bg-neon-cyan group-hover:text-black transition-colors text-neon-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)] relative z-10">
@@ -176,9 +176,9 @@ export default function DashboardPage() {
             </div>
             <div>
               <h3 className={`text-white font-bold uppercase tracking-wider text-sm ${buttonFontClass}`}>
-                League Standings
+                {t.league_standings}
               </h3>
-              <p className="text-xs text-gray-500">View global rankings</p>
+              <p className="text-xs text-gray-500">{t.view_global_rankings}</p>
             </div>
           </div>
           <span className="text-gray-500 group-hover:text-neon-purple transition-colors relative z-10">

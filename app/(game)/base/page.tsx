@@ -1,8 +1,14 @@
-import React from 'react';
+'use client';
+
+import React, { useContext } from 'react';
 import { Hospital, Dumbbell, Zap, TrendingUp } from 'lucide-react';
 import { BackButton } from '@/components/ui/BackButton';
+import { LanguageContext } from '@/components/LanguageContext';
+import { dict } from '@/lib/dictionaries';
 
 export default function BaseDashboard() {
+  const { language } = useContext(LanguageContext);
+  const t = dict[language as keyof typeof dict];
   return (
     <div className="flex flex-col flex-1 p-4 gap-6 pb-24 h-full overflow-y-auto custom-scrollbar bg-space-dark">
       {/* Header */}
@@ -10,9 +16,9 @@ export default function BaseDashboard() {
         <BackButton />
         <h1 className="text-2xl font-bold font-orbitron text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] uppercase tracking-wider flex items-center gap-2">
           <Hospital className="text-neon-cyan" /> 
-          Training Base
+          {t.training_base}
         </h1>
-        <p className="text-sm text-gray-400">Upgrade your facilities to improve your team's performance.</p>
+        <p className="text-sm text-gray-400">{t.base_desc}</p>
       </header>
 
       <div className="flex flex-col gap-6">
@@ -25,15 +31,15 @@ export default function BaseDashboard() {
               <Zap className="text-neon-pink" size={28} />
             </div>
             <div className="flex-1">
-              <h2 className="text-lg font-bold text-white font-orbitron uppercase tracking-widest mb-1">Medical Center</h2>
+              <h2 className="text-lg font-bold text-white font-orbitron uppercase tracking-widest mb-1">{t.medical_center_new || t.medical_center}</h2>
               <p className="text-sm text-gray-400 mb-4">
-                Accelerate stamina recovery and treat player injuries. Upgrading this facility allows for faster recuperation between matches.
+                {t.med_desc}
               </p>
               
               <div className="flex items-center justify-between mt-auto">
-                <span className="text-xs font-mono text-gray-500">Level 1</span>
+                <span className="text-xs font-mono text-gray-500">{t.level} 1</span>
                 <button className="text-xs bg-gray-800 text-gray-300 px-4 py-2 rounded uppercase font-bold tracking-widest border border-gray-700 cursor-not-allowed">
-                  Upgrade (Coming Soon)
+                  {t.upgrade_coming_soon}
                 </button>
               </div>
             </div>
@@ -49,15 +55,15 @@ export default function BaseDashboard() {
               <Dumbbell className="text-neon-cyan" size={28} />
             </div>
             <div className="flex-1">
-              <h2 className="text-lg font-bold text-white font-orbitron uppercase tracking-widest mb-1">Training Center</h2>
+              <h2 className="text-lg font-bold text-white font-orbitron uppercase tracking-widest mb-1">{t.training_center}</h2>
               <p className="text-sm text-gray-400 mb-4">
-                Push your squad to their limits. Allocate training sessions to permanently increase player Overall Rating (OVR).
+                {t.train_desc}
               </p>
               
               <div className="flex items-center justify-between mt-auto">
-                <span className="text-xs font-mono text-gray-500">Level 1</span>
+                <span className="text-xs font-mono text-gray-500">{t.level} 1</span>
                 <button className="text-xs bg-neon-cyan/10 text-neon-cyan px-4 py-2 rounded uppercase font-bold tracking-widest border border-neon-cyan/30 hover:bg-neon-cyan hover:text-black transition-colors shadow-[0_0_10px_rgba(0,240,255,0.2)]">
-                  Enter Facility
+                  {t.enter_facility}
                 </button>
               </div>
             </div>

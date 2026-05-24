@@ -3,19 +3,24 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Users, Hospital, Trophy, ShoppingCart } from 'lucide-react';
+import { useContext } from 'react';
+import { LanguageContext } from '@/components/LanguageContext';
+import { dict } from '@/lib/dictionaries';
 
 export function BottomTabBar() {
   const pathname = usePathname();
+  const { language } = useContext(LanguageContext);
+  const t = dict[language as keyof typeof dict];
 
   // Exclude routes where tab bar shouldn't be visible if necessary, like Auth or Admin
   // For now, it will be visible globally as per request.
 
   const navItems = [
-    { name: 'Home', href: '/', icon: Home },
-    { name: 'Squad', href: '/lineup', icon: Users },
-    { name: 'Base', href: '/base', icon: Hospital },
-    { name: 'League', href: '/league', icon: Trophy },
-    { name: 'Market', href: '/market', icon: ShoppingCart },
+    { name: t.nav_home, href: '/', icon: Home },
+    { name: t.nav_squad, href: '/lineup', icon: Users },
+    { name: t.nav_base, href: '/base', icon: Hospital },
+    { name: t.nav_league, href: '/league', icon: Trophy },
+    { name: t.nav_market, href: '/market', icon: ShoppingCart },
   ];
 
   return (
