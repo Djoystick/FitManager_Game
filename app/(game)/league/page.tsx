@@ -1,5 +1,6 @@
 import React from 'react';
 import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { Trophy, Medal, Target } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -13,8 +14,14 @@ export default async function LeagueDashboard() {
     redirect('/profile'); // Fallback if no auth
   }
 
+  // Initialize Admin client to completely bypass RLS
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
   // Fetch all standings, sorted by points (descending)
-  const { data: standingsData, error } = await supabase
+  const { data: standingsData, error } = await supabaseAdmin
     .from('league_standings')
     .select(`
       *,
@@ -121,10 +128,9 @@ export default async function LeagueDashboard() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500 bg-black/20">
+                    <td colSpan={9} className="px-4 py-8 text-center text-gray-500 bg-black/20">
                       <Target className="mx-auto mb-2 opacity-50" size={32} />
-                      <p className="font-bold">No Data Available</p>
-                      <p className="text-xs">Play your first match to initialize the league standings.</p>
+                      <p className="font-bold text-neon-pink drop-shadow-[0_0_5px_rgba(255,0,60,0.5)]">League is empty. Seed bots.</p>
                     </td>
                   </tr>
                 )}
