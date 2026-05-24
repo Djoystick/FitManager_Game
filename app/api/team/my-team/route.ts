@@ -18,7 +18,7 @@ export async function GET(req: Request) {
       .single();
 
     if (teamError || !team) {
-      return NextResponse.json({ error: 'Team not found for this user' }, { status: 404 });
+      return NextResponse.json({ success: true, team: null, players: [] }, { status: 200 });
     }
 
     // 2. Fetch all players (active and coaches) belonging to this team

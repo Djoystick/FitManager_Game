@@ -50,9 +50,12 @@ export default function DashboardPage() {
       }
 
       if (teamRes.ok) {
-        setHasTeam(true);
-      } else if (teamRes.status === 404) {
-        setHasTeam(false);
+        const teamJson = await teamRes.json();
+        if (!teamJson.team) {
+          setHasTeam(false);
+        } else {
+          setHasTeam(true);
+        }
       } else {
         setHasTeam(true); // Fallback to allow dashboard to render, or could handle error
       }
