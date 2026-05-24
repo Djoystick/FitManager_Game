@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useOptimistic, useTransition, useState } from 'react';
+import React, { useOptimistic, useTransition, useState, DragEvent } from 'react';
 import { PlayerCard } from '@/components/squad/PlayerCard';
 import { updateLineupStatus } from '@/app/actions/squadActions';
 
@@ -37,17 +37,17 @@ export function SquadManager({ initialPlayers, teamId }: SquadManagerProps) {
   const bench = optimisticPlayers.filter(p => p.lineup_status === 'bench');
 
   // Drag Handlers
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, playerId: string) => {
+  const handleDragStart = (e: DragEvent<HTMLDivElement>, playerId: string) => {
     e.dataTransfer.setData('playerId', playerId);
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDrop = async (e: React.DragEvent<HTMLDivElement>, targetZone: 'starting' | 'bench') => {
+  const handleDrop = async (e: DragEvent<HTMLDivElement>, targetZone: 'starting' | 'bench') => {
     e.preventDefault();
     const playerId = e.dataTransfer.getData('playerId');
     if (!playerId) return;
@@ -84,7 +84,7 @@ export function SquadManager({ initialPlayers, teamId }: SquadManagerProps) {
       )}
 
       {/* Starting 11 Zone */}
-      <section 
+      <div 
         className="flex flex-col gap-4 p-4 rounded-xl border border-dashed border-transparent transition-all duration-300 hover:border-neon-green/30"
         onDragOver={handleDragOver}
         onDrop={(e) => handleDrop(e, 'starting')}
@@ -116,10 +116,10 @@ export function SquadManager({ initialPlayers, teamId }: SquadManagerProps) {
             Drag players here to add to starting lineup.
           </div>
         )}
-      </section>
+      </div>
 
       {/* Bench Zone */}
-      <section 
+      <div 
         className="flex flex-col gap-4 p-4 rounded-xl border border-dashed border-transparent transition-all duration-300 hover:border-gray-600"
         onDragOver={handleDragOver}
         onDrop={(e) => handleDrop(e, 'bench')}
@@ -149,7 +149,7 @@ export function SquadManager({ initialPlayers, teamId }: SquadManagerProps) {
             Drag players here to move them to the bench.
           </div>
         )}
-      </section>
+      </div>
     </div>
   );
 }
