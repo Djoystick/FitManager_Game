@@ -41,7 +41,7 @@ export const metadata: Metadata = {
   },
 };
 
-import { TelegramAuthProvider } from "@/components/TelegramAuthProvider";
+import { TelegramAuthProvider } from "@/components/providers/TelegramAuthProvider";
 import { TonProvider } from "@/components/TonProvider";
 import { LanguageProvider } from "@/components/LanguageContext";
 import { GlobalHeader } from "@/components/GlobalHeader";

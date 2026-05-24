@@ -2,9 +2,28 @@
 
 import { supabase } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
 
 export async function updateLineupStatus(playerId: string, teamId: string, newStatus: 'starting' | 'bench') {
   try {
+    const cookieStore = cookies();
+    const tgUserId = cookieStore.get('tg_user_id')?.value;
+    
+    if (!tgUserId) {
+      return { success: false, error: 'Unauthorized: Valid Telegram session required.' };
+    }
+
+    // Security: Verify the team belongs to the authenticated user
+    const { data: teamAuth, error: teamAuthError } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('id', teamId)
+      .eq('user_id', tgUserId)
+      .single();
+
+    if (teamAuthError || !teamAuth) {
+      return { success: false, error: 'Forbidden: You do not own this team.' };
+    }
     if (newStatus === 'starting') {
       // Check the current count of starting players for this team
       const { data: startingPlayers, error: countError } = await supabase

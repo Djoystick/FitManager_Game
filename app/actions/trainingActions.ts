@@ -3,9 +3,20 @@
 import { supabase } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
 import { matchService } from '@/services/matchService';
+import { cookies } from 'next/headers';
 
 export async function logTrainingSession(userId: string, durationMinutes: number, steps: number) {
   try {
+    const cookieStore = cookies();
+    const tgUserId = cookieStore.get('tg_user_id')?.value;
+    
+    if (!tgUserId) {
+      return { success: false, error: 'Unauthorized: Valid Telegram session required.' };
+    }
+
+    if (userId !== tgUserId) {
+      return { success: false, error: 'Forbidden: User ID mismatch.' };
+    }
     if (!userId) {
       return { success: false, error: 'User ID is required.' };
     }

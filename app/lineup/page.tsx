@@ -1,7 +1,7 @@
 'use client';
 
 import { useContext, useEffect, useState } from 'react';
-import { TelegramAuthContext } from '@/components/TelegramAuthProvider';
+import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PlayerTrainingModal } from '@/components/PlayerTrainingModal';

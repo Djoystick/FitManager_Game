@@ -12,6 +12,7 @@
     "@supabase/supabase-js": "^2.106.1",
     "@tonconnect/ui-react": "^2.4.4",
     "@twa-dev/sdk": "^8.0.2",
+    "lucide-react": "^1.16.0",
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",

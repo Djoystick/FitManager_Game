@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useContext, useEffect } from 'react';
-import { TelegramAuthContext } from '@/components/TelegramAuthProvider';
+import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
 import { supabase } from '@/lib/supabase';

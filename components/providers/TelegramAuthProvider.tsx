@@ -2,6 +2,7 @@
 
 import { createContext, useEffect, useState, ReactNode, useContext } from 'react';
 import { LanguageContext } from '@/components/LanguageContext';
+import { Loader2 } from 'lucide-react';
 
 interface TelegramAuthContextType {
   isAuthenticated: boolean;
@@ -30,9 +31,7 @@ export function TelegramAuthProvider({ children }: { children: ReactNode }) {
 
     const authenticate = async () => {
       try {
-        // Ensure we are strictly executing within a browser environment
         if (typeof window !== 'undefined') {
-          // Dynamically import the SDK only on the client to avoid SSR crashes
           const twaModule = await import('@twa-dev/sdk');
           const WebApp = twaModule.default;
 
@@ -44,13 +43,13 @@ export function TelegramAuthProvider({ children }: { children: ReactNode }) {
             setLanguage('ru');
           }
 
-          // Fallback for local browser testing outside of the Telegram Web App container
           if (!initData) {
             console.warn("No Telegram initData found. Running outside of Telegram environment.");
             setIsLoading(false);
             return;
           }
 
+          // Send initData to our secure API route to validate signature and set HttpOnly cookie
           const response = await fetch('/api/auth/telegram', {
             method: 'POST',
             headers: {
@@ -76,19 +75,40 @@ export function TelegramAuthProvider({ children }: { children: ReactNode }) {
     };
 
     authenticate();
-  }, []);
+  }, [setLanguage]);
 
-  // Prevent server-client hydration mismatches by returning null/loading state until the component safely mounts on the client
-  if (!isMounted) {
+  if (!isMounted || isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen bg-space-dark">
-        <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(0,240,255,0.5)]"></div>
+      <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-space-dark">
+        <Loader2 className="w-12 h-12 text-neon-cyan animate-spin drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]" />
+        <h2 className="mt-4 text-sm font-bold tracking-widest uppercase text-neon-cyan drop-shadow-[0_0_5px_rgba(0,240,255,0.5)]">
+          Authenticating
+        </h2>
+        <p className="text-xs text-gray-500 mt-2">Connecting to Telegram Secure Gateway...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-space-dark p-6 text-center">
+        <div className="w-16 h-16 mb-4 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+          <span className="text-red-500 text-2xl font-black">!</span>
+        </div>
+        <h2 className="text-lg font-bold text-red-500 mb-2">Access Denied</h2>
+        <p className="text-sm text-gray-400 mb-4">{error}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="px-6 py-2 bg-gray-900 border border-gray-700 rounded text-sm text-gray-300 hover:text-white hover:border-gray-500 transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }
 
   return (
-    <TelegramAuthContext.Provider value={{ isAuthenticated, userId, isLoading, error }}>
+    <TelegramAuthContext.Provider value={{ isAuthenticated, userId, isLoading: false, error: null }}>
       {children}
     </TelegramAuthContext.Provider>
   );
