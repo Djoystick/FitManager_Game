@@ -2,7 +2,7 @@
 
 import { useEffect, useContext, useRef } from 'react';
 import { TonConnectButton, useTonWallet } from '@tonconnect/ui-react';
-import { TelegramAuthContext } from './TelegramAuthProvider';
+import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 
 export function WalletConnect() {
   const wallet = useTonWallet();
