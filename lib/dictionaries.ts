@@ -62,6 +62,10 @@ export const dict = {
     train_desc: "Push your squad to their limits. Allocate training sessions to permanently increase player Overall Rating (OVR).",
     upgrade_coming_soon: "Upgrade (Coming Soon)",
     enter_facility: "Enter Facility",
+    all_healthy: "All players are healthy",
+    injured_players: "Injured Players",
+    heal_button: "Heal (500 FC)",
+    heal_success: "Player healed successfully!",
   },
   ru: {
     welcome: "Добро пожаловать",
@@ -126,5 +130,9 @@ export const dict = {
     train_desc: "Тренируйте команду для увеличения общего рейтинга (OVR).",
     upgrade_coming_soon: "Улучшить (Скоро)",
     enter_facility: "Войти в центр",
+    all_healthy: "Все игроки здоровы",
+    injured_players: "Травмированные игроки",
+    heal_button: "Вылечить (500 FC)",
+    heal_success: "Игрок успешно вылечен!",
   }
 };

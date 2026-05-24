@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useContext } from 'react';
-import { Hospital, Dumbbell, Zap, TrendingUp } from 'lucide-react';
+import React, { useContext, useEffect, useState } from 'react';
+import { Hospital, Dumbbell, Zap, TrendingUp, AlertTriangle } from 'lucide-react';
 import { BackButton } from '@/components/ui/BackButton';
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
+import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
+import { getInjuredPlayers, healPlayer } from '@/app/actions/baseActions';
 
 export default function BaseDashboard() {
   const { language } = useContext(LanguageContext);
@@ -38,12 +40,12 @@ export default function BaseDashboard() {
               
               <div className="flex items-center justify-between mt-auto">
                 <span className="text-xs font-mono text-gray-500">{t.level} 1</span>
-                <button className="text-xs bg-gray-800 text-gray-300 px-4 py-2 rounded uppercase font-bold tracking-widest border border-gray-700 cursor-not-allowed">
-                  {t.upgrade_coming_soon}
-                </button>
+                {/* Upgrade button removed in favor of MedicalWard logic for now, or just kept disabled */}
               </div>
             </div>
           </div>
+          
+          <MedicalWard />
         </div>
 
         {/* Training Center Card */}
@@ -70,6 +72,89 @@ export default function BaseDashboard() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function MedicalWard() {
+  const { language } = useContext(LanguageContext);
+  const t = dict[language as keyof typeof dict];
+  const { userId, isAuthenticated } = useContext(TelegramAuthContext);
+  
+  const [injuredPlayers, setInjuredPlayers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [healingId, setHealingId] = useState<string | null>(null);
+
+  const fetchInjured = async () => {
+    if (!userId) return;
+    setIsLoading(true);
+    const res = await getInjuredPlayers(userId);
+    if (res.success) {
+      setInjuredPlayers(res.players || []);
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && userId) {
+      fetchInjured();
+    }
+  }, [isAuthenticated, userId]);
+
+  const handleHeal = async (playerId: string) => {
+    if (!userId) return;
+    setHealingId(playerId);
+    
+    const res = await healPlayer(userId, playerId);
+    if (res.success) {
+      // Remove player from local state
+      setInjuredPlayers(prev => prev.filter(p => p.id !== playerId));
+      // Optionally show a success toast here
+    } else {
+      alert(res.error || "Failed to heal");
+    }
+    
+    setHealingId(null);
+  };
+
+  if (isLoading) {
+    return <div className="mt-4 pt-4 border-t border-gray-800 text-center text-sm text-gray-500">Loading...</div>;
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-gray-800">
+      <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+        <AlertTriangle className="text-neon-pink w-4 h-4" />
+        {t.injured_players}
+      </h3>
+      
+      {injuredPlayers.length === 0 ? (
+        <div className="bg-green-900/20 border border-neon-green/30 rounded p-3 text-center">
+          <p className="text-neon-green text-xs font-bold uppercase tracking-widest">{t.all_healthy}</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {injuredPlayers.map(player => (
+            <div key={player.id} className="flex items-center justify-between bg-black/60 p-3 rounded border border-gray-800">
+              <div>
+                <p className="text-sm font-bold text-white">{player.name}</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-widest">{player.position} • OVR {player.overall_rating}</p>
+              </div>
+              <button 
+                onClick={() => handleHeal(player.id)}
+                disabled={healingId === player.id}
+                className={`text-xs px-3 py-1.5 rounded uppercase font-bold tracking-widest transition-colors ${
+                  healingId === player.id 
+                    ? 'bg-gray-800 text-gray-500 cursor-wait' 
+                    : 'bg-neon-pink/10 text-neon-pink border border-neon-pink/30 hover:bg-neon-pink hover:text-black shadow-[0_0_10px_rgba(255,0,100,0.2)]'
+                }`}
+              >
+                {healingId === player.id ? '...' : t.heal_button}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

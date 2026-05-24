@@ -142,9 +142,28 @@ export async function simulateNextRound() {
         h.draws++; h.pts += 1;
         a.draws++; a.pts += 1;
       }
+
+      // INJURY MECHANIC: 15% chance per match to injure a random player
+      if (Math.random() < 0.15) {
+        // Pick a team randomly
+        const injuredTeamId = Math.random() < 0.5 ? match.home_team_id : match.away_team_id;
+        // Query a random player from that team who is not already injured
+        // We will fetch up to 15 players and pick one randomly to minimize complex SQL
+        const { data: teamPlayers } = await supabaseAdmin
+          .from('players')
+          .select('id')
+          .eq('team_id', injuredTeamId)
+          .eq('is_injured', false)
+          .limit(15);
+        
+        if (teamPlayers && teamPlayers.length > 0) {
+          const randomPlayer = teamPlayers[Math.floor(Math.random() * teamPlayers.length)];
+          updates.push(supabaseAdmin.from('players').update({ is_injured: true }).eq('id', randomPlayer.id));
+        }
+      }
     }
 
-    // Await all match updates
+    // Await all match and injury updates
     await Promise.all(updates);
 
     // Batch update standings
