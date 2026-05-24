@@ -1,6 +1,7 @@
 import React from 'react';
 import { SeedLeagueButton } from '@/components/admin/SeedLeagueButton';
-import { ShieldAlert, DatabaseBackup, Lock, AlertOctagon } from 'lucide-react';
+import { ScheduleButtons } from '@/components/admin/ScheduleButtons';
+import { ShieldAlert, DatabaseBackup, Lock, AlertOctagon, CalendarSync } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
 
@@ -70,6 +71,22 @@ export default async function AdminDashboard() {
               their standings in the global league. Use this to simulate a populated environment for testing the Match Engine.
             </p>
             <SeedLeagueButton />
+          </div>
+        </div>
+      </section>
+
+      {/* Match Engine Section */}
+      <section className="bg-black/40 border border-gray-800 rounded-xl p-6 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex flex-col gap-6 max-w-2xl">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 bg-neon-purple/10 rounded-full flex items-center justify-center border border-neon-purple/30 flex-shrink-0">
+            <CalendarSync className="text-neon-purple" size={24} />
+          </div>
+          <div className="flex-1">
+            <h2 className="font-bold text-white mb-2 text-lg">Live Match Engine</h2>
+            <p className="text-sm text-gray-400 mb-6">
+              Generate the global <strong className="text-white">Round-Robin Schedule</strong> and manually fast-forward time to simulate matches round-by-round.
+            </p>
+            <ScheduleButtons />
           </div>
         </div>
       </section>
