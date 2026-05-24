@@ -6,7 +6,7 @@ import { cookies } from 'next/headers';
 
 export async function updateLineupStatus(playerId: string, teamId: string, newStatus: 'starting' | 'bench') {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const tgUserId = cookieStore.get('tg_user_id')?.value;
     
     if (!tgUserId) {
