@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- 00019_training_sessions_anticheat.sql
 -- Proof-of-Effort anti-cheat: training_sessions table + overtraining penalty trigger
 
@@ -106,3 +108,5 @@ BEGIN
     RETURN QUERY SELECT final_tp, penalty_factor, v_status;
 END;
 $$ LANGUAGE plpgsql;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+

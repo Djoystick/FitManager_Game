@@ -1,6 +1,7 @@
 import React from 'react';
 import { supabase } from '@/lib/supabase';
 import { PlayMatchButton } from '@/components/league/PlayMatchButton';
+import { NextOpponentCard } from '@/components/league/NextOpponentCard';
 import { Trophy, Medal, Target } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -13,8 +14,7 @@ export default async function LeagueDashboard() {
     redirect('/profile'); // Fallback if no auth
   }
 
-  // Fetch all standings, sorted by points (descending), then by goal difference or wins (for simplicity, we sort by points and wins)
-  // We use the teams table to get the names and logos
+  // Fetch all standings, sorted by points (descending)
   const { data: standingsData, error } = await supabase
     .from('league_standings')
     .select(`
@@ -22,12 +22,24 @@ export default async function LeagueDashboard() {
       teams (
         id,
         name,
-        user_id
+        user_id,
+        logo_url
       )
     `)
-    .order('points', { ascending: false })
-    .order('wins', { ascending: false })
-    .limit(20);
+    .order('points', { ascending: false });
+
+  let standings = standingsData || [];
+  
+  // Custom sorting: Points DESC, then Goal Difference (GF - GA) DESC
+  standings.sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    const diffA = (a.goals_for || 0) - (a.goals_against || 0);
+    const diffB = (b.goals_for || 0) - (b.goals_against || 0);
+    return diffB - diffA;
+  });
+
+  // Take top 20
+  standings = standings.slice(0, 20);
 
   // Fetch recent matches
   const { data: matchesData } = await supabase
@@ -43,24 +55,60 @@ export default async function LeagueDashboard() {
     .order('match_date', { ascending: false })
     .limit(20);
 
-  const standings = standingsData || [];
   const matches = matchesData || [];
+
+  // Identify Current User's Team
+  const currentUserTeam = standings.find((s: any) => s.teams?.user_id === tgUserId)?.teams;
+
+  // Next Opponent Logic
+  let nextOpponent = null;
+  let opponentPlayers: any[] = [];
+  let avgOvr = 0;
+
+  if (standings.length > 1) {
+    // Pick a random team that is NOT the current user's team
+    const possibleOpponents = standings.filter((s: any) => s.teams?.id !== currentUserTeam?.id);
+    if (possibleOpponents.length > 0) {
+      const randIdx = Math.floor(Math.random() * possibleOpponents.length);
+      nextOpponent = possibleOpponents[randIdx]?.teams;
+
+      if (nextOpponent) {
+        const { data: playersData } = await supabase
+          .from('players')
+          .select('name, position, ovr')
+          .eq('team_id', nextOpponent.id)
+          .eq('lineup_status', 'starting')
+          .limit(11);
+
+        if (playersData && playersData.length > 0) {
+          opponentPlayers = playersData;
+          const totalOvr = playersData.reduce((sum, p) => sum + p.ovr, 0);
+          avgOvr = Math.round(totalOvr / playersData.length);
+        }
+      }
+    }
+  }
 
   return (
     <div className="flex flex-col flex-1 p-4 gap-6 pb-24 h-full overflow-y-auto custom-scrollbar">
       {/* Header */}
-      <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-gray-800 pb-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold font-orbitron text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] uppercase tracking-wider flex items-center gap-2">
-            <Trophy className="text-neon-purple" /> 
-            Pro League
-          </h1>
-          <p className="text-sm text-gray-400">Compete against global managers and climb the ranks.</p>
-        </div>
-        
-        {/* Play Match CTA */}
-        <PlayMatchButton />
+      <header className="flex flex-col gap-1 border-b border-gray-800 pb-4">
+        <h1 className="text-2xl font-bold font-orbitron text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] uppercase tracking-wider flex items-center gap-2">
+          <Trophy className="text-neon-purple" /> 
+          Pro League
+        </h1>
+        <p className="text-sm text-gray-400">Compete against global managers and climb the ranks.</p>
       </header>
+
+      {/* Next Opponent Block */}
+      {nextOpponent && (
+        <NextOpponentCard 
+          opponentTeamName={nextOpponent.name}
+          opponentLogoUrl={nextOpponent.logo_url}
+          averageOvr={avgOvr}
+          starting11={opponentPlayers}
+        />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 min-h-[500px]">
         {/* Left Column: Match History */}
@@ -112,6 +160,8 @@ export default async function LeagueDashboard() {
                   <th scope="col" className="px-4 py-4 text-center">W</th>
                   <th scope="col" className="px-4 py-4 text-center">D</th>
                   <th scope="col" className="px-4 py-4 text-center">L</th>
+                  <th scope="col" className="px-4 py-4 text-center text-neon-green" title="Goals For">GF</th>
+                  <th scope="col" className="px-4 py-4 text-center text-red-400" title="Goals Against">GA</th>
                   <th scope="col" className="px-4 py-4 text-center font-black text-white">PTS</th>
                 </tr>
               </thead>
@@ -154,6 +204,8 @@ export default async function LeagueDashboard() {
                         <td className="px-4 py-3 text-center text-neon-green/80 font-mono">{row.wins}</td>
                         <td className="px-4 py-3 text-center text-gray-500 font-mono">{row.draws}</td>
                         <td className="px-4 py-3 text-center text-red-500/80 font-mono">{row.losses}</td>
+                        <td className="px-4 py-3 text-center text-neon-green font-mono">{row.goals_for || 0}</td>
+                        <td className="px-4 py-3 text-center text-red-400 font-mono">{row.goals_against || 0}</td>
                         <td className="px-4 py-3 text-center font-black text-white font-orbitron bg-gray-900/50">{row.points}</td>
                       </tr>
                     );
