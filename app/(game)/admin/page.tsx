@@ -4,6 +4,7 @@ import { ScheduleButtons } from '@/components/admin/ScheduleButtons';
 import { ShieldAlert, DatabaseBackup, Lock, AlertOctagon, CalendarSync } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
+import { BackButton } from '@/components/ui/BackButton';
 
 export default async function AdminDashboard() {
   const cookieStore = await cookies();
@@ -50,6 +51,7 @@ export default async function AdminDashboard() {
     <div className="flex flex-col flex-1 p-4 gap-6 pb-24 h-full overflow-y-auto custom-scrollbar bg-space-dark">
       {/* Header */}
       <header className="flex flex-col gap-2 border-b border-gray-800 pb-4 mt-4">
+        <BackButton />
         <h1 className="text-2xl font-bold font-orbitron text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)] uppercase tracking-wider flex items-center gap-3">
           <ShieldAlert className="text-red-500" size={28} /> 
           Developer Console
