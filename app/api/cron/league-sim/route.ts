@@ -14,7 +14,7 @@ export async function GET(req: Request) {
     // 2. Fetch all teams
     const { data: teams, error: teamsError } = await supabase
       .from("teams")
-      .select("id, name");
+      .select("id, name, user_id");
 
     if (teamsError) throw new Error(`Failed to fetch teams: ${teamsError.message}`);
 
@@ -23,7 +23,6 @@ export async function GET(req: Request) {
     }
 
     // 3. Pair teams up (Simple sequential pairing for MVP)
-    // If there's an odd number, the last team rests this round.
     const matches = [];
     for (let i = 0; i < teams.length - 1; i += 2) {
       matches.push({
@@ -36,72 +35,54 @@ export async function GET(req: Request) {
 
     // 4. Process each match pair
     for (const match of matches) {
-      // Fetch average OVR from players for home team
-      const { data: homePlayers, error: homeErr } = await supabase
-        .from("players")
-        .select("ovr")
-        .eq("team_id", match.homeTeam.id);
-      
-      if (homeErr) throw new Error(`Failed to fetch home players: ${homeErr.message}`);
+      // Fetch starting players
+      const [homePlayersRes, awayPlayersRes] = await Promise.all([
+        supabase.from("players").select("*").eq("team_id", match.homeTeam.id).eq("lineup_status", "starting"),
+        supabase.from("players").select("*").eq("team_id", match.awayTeam.id).eq("lineup_status", "starting")
+      ]);
 
-      // Fetch average OVR from players for away team
-      const { data: awayPlayers, error: awayErr } = await supabase
-        .from("players")
-        .select("ovr")
-        .eq("team_id", match.awayTeam.id);
-      
-      if (awayErr) throw new Error(`Failed to fetch away players: ${awayErr.message}`);
+      const homePlayers = homePlayersRes.data || [];
+      const awayPlayers = awayPlayersRes.data || [];
 
-      const calculateOvr = (players: { ovr: number }[] | null) => {
-        if (!players || players.length === 0) return 50; // Fallback OVR
-        const sum = players.reduce((acc, p) => acc + p.ovr, 0);
-        return Math.round(sum / players.length);
+      // Calculate Attack & Defense
+      const calculatePower = (players: any[]) => {
+        let attack = 0;
+        let defense = 0;
+        players.forEach(p => {
+          let modifier = p.stamina < 50 ? 0.8 : 1.0; // 20% penalty if stamina < 50
+          if (p.position === 'FWD') {
+            attack += ((p.stats?.shooting || 0) + (p.stats?.pace || 0)) * modifier;
+          } else if (p.position === 'MID') {
+            attack += (p.stats?.passing || 0) * modifier;
+            defense += ((p.stats?.passing || 0) * 0.5) * modifier;
+          } else if (p.position === 'DEF') {
+            defense += ((p.stats?.defending || 0) + (p.stats?.physical || 0)) * modifier;
+          } else if (p.position === 'GK') {
+            defense += ((p.stats?.defending || p.ovr) || 0) * modifier;
+          }
+        });
+        return { attack, defense };
       };
 
-      const homeOvr = calculateOvr(homePlayers);
-      const awayOvr = calculateOvr(awayPlayers);
+      const homePower = calculatePower(homePlayers);
+      const awayPower = calculatePower(awayPlayers);
 
-      // 5. Run simulation math (from Phase 3)
-      const totalOvr = homeOvr + awayOvr;
-      const homePossessionProb = homeOvr / totalOvr;
-      const goalChance = 0.05;
+      // Score logic based on difference + RNG
+      const calcGoals = (atk: number, def: number) => {
+        const diff = atk - def;
+        const luck = (Math.random() * 0.3) - 0.15; // +/- 15%
+        const adjustedDiff = diff * (1 + luck);
+        if (adjustedDiff > 100) return 3 + Math.floor(Math.random() * 3);
+        if (adjustedDiff > 50) return 2 + Math.floor(Math.random() * 2);
+        if (adjustedDiff > 10) return 1 + Math.floor(Math.random() * 2);
+        if (adjustedDiff > -20 && Math.random() > 0.5) return 1;
+        return 0;
+      };
 
-      let homeScore = 0;
-      let awayScore = 0;
-      let currentPossession = Math.random() > 0.5 ? match.homeTeam.id : match.awayTeam.id;
+      const homeScore = calcGoals(homePower.attack, awayPower.defense);
+      const awayScore = calcGoals(awayPower.attack, homePower.defense);
 
-      for (let minute = 1; minute <= 90; minute++) {
-        if (minute === 45) {
-          currentPossession = currentPossession === match.homeTeam.id ? match.awayTeam.id : match.homeTeam.id;
-        }
-
-        const randomRoll = Math.random();
-        let keepsPossession = false;
-
-        if (currentPossession === match.homeTeam.id) {
-          keepsPossession = randomRoll < (homePossessionProb + 0.1);
-        } else {
-          keepsPossession = randomRoll < ((1.0 - homePossessionProb) + 0.1);
-        }
-
-        if (!keepsPossession) {
-          currentPossession = currentPossession === match.homeTeam.id ? match.awayTeam.id : match.homeTeam.id;
-        }
-
-        if (Math.random() < goalChance) {
-          if (Math.random() < 0.3) {
-            if (currentPossession === match.homeTeam.id) {
-              homeScore++;
-              currentPossession = match.awayTeam.id;
-            } else {
-              awayScore++;
-              currentPossession = match.homeTeam.id;
-            }
-          }
-        }
-      }
-
-      // 6. Insert match result into the database
+      // 6. Insert match result
       const { error: matchInsertError } = await supabase
         .from("matches")
         .insert({
@@ -115,69 +96,70 @@ export async function GET(req: Request) {
 
       if (matchInsertError) throw new Error(`Failed to insert match: ${matchInsertError.message}`);
 
-      // 7. Calculate league points
+      // 7. Calculate league points & Distribute Rewards
       let homePoints = 0, awayPoints = 0;
       let homeWins = 0, homeDraws = 0, homeLosses = 0;
       let awayWins = 0, awayDraws = 0, awayLosses = 0;
 
+      const grantReward = async (team: any, resultType: 'win' | 'draw' | 'loss') => {
+        const { data: infra } = await supabase.from('infrastructure').select('stadium_level').eq('team_id', team.id).maybeSingle();
+        const level = infra ? infra.stadium_level : 1;
+        
+        let reward = 0;
+        if (resultType === 'win') {
+          reward = 500 + (level * 100);
+        } else if (resultType === 'draw') {
+          reward = 150 + (level * 30);
+        } else {
+          reward = 50 + (level * 10);
+        }
+        
+        await supabase.rpc('increment_fancoins', { u_id: team.user_id, amount: reward });
+      };
+
       if (homeScore > awayScore) {
-        homePoints = 3;
-        homeWins = 1;
-        awayLosses = 1;
+        homePoints = 3; homeWins = 1; awayLosses = 1;
+        await grantReward(match.homeTeam, 'win');
+        await grantReward(match.awayTeam, 'loss');
       } else if (awayScore > homeScore) {
-        awayPoints = 3;
-        awayWins = 1;
-        homeLosses = 1;
+        awayPoints = 3; awayWins = 1; homeLosses = 1;
+        await grantReward(match.awayTeam, 'win');
+        await grantReward(match.homeTeam, 'loss');
       } else {
-        homePoints = 1;
-        awayPoints = 1;
-        homeDraws = 1;
-        awayDraws = 1;
+        homePoints = 1; awayPoints = 1; homeDraws = 1; awayDraws = 1;
+        await grantReward(match.homeTeam, 'draw');
+        await grantReward(match.awayTeam, 'draw');
       }
 
       // Helper to update standings
-      const updateStanding = async (
-        teamId: string,
-        points: number,
-        wins: number,
-        draws: number,
-        losses: number
-      ) => {
-        const { data: current } = await supabase
-          .from("league_standings")
-          .select("*")
-          .eq("team_id", teamId)
-          .single();
-
+      const updateStanding = async (teamId: string, points: number, wins: number, draws: number, losses: number) => {
+        const { data: current } = await supabase.from("league_standings").select("*").eq("team_id", teamId).maybeSingle();
         if (current) {
-          const { error: updateError } = await supabase
-            .from("league_standings")
-            .update({
-              matches_played: current.matches_played + 1,
-              wins: current.wins + wins,
-              draws: current.draws + draws,
-              losses: current.losses + losses,
-              points: current.points + points,
-            })
-            .eq("team_id", teamId);
-          if (updateError) throw new Error(`Failed to update standing: ${updateError.message}`);
+          await supabase.from("league_standings").update({
+            matches_played: current.matches_played + 1,
+            wins: current.wins + wins, draws: current.draws + draws, losses: current.losses + losses, points: current.points + points,
+          }).eq("team_id", teamId);
         } else {
-          const { error: insertError } = await supabase
-            .from("league_standings")
-            .insert({
-              team_id: teamId,
-              matches_played: 1,
-              wins,
-              draws,
-              losses,
-              points,
-            });
-          if (insertError) throw new Error(`Failed to insert standing: ${insertError.message}`);
+          await supabase.from("league_standings").insert({
+            team_id: teamId, matches_played: 1, wins, draws, losses, points,
+          });
         }
       };
 
       await updateStanding(match.homeTeam.id, homePoints, homeWins, homeDraws, homeLosses);
       await updateStanding(match.awayTeam.id, awayPoints, awayWins, awayDraws, awayLosses);
+
+      // Stamina Depletion
+      const deductStamina = async (players: any[]) => {
+        for (const p of players) {
+           const drop = Math.floor(Math.random() * 11) + 15; // 15 to 25
+           const newStamina = Math.max(0, p.stamina - drop);
+           await supabase.from('players').update({ stamina: newStamina }).eq('id', p.id);
+        }
+      };
+
+      await deductStamina(homePlayers);
+      await deductStamina(awayPlayers);
 
       results.push({
         homeTeam: match.homeTeam.name,
