@@ -3,6 +3,7 @@
 import { useContext, useEffect, useState } from 'react';
 import { TelegramAuthContext } from '@/components/TelegramAuthProvider';
 import Link from 'next/link';
+import { PlayerTrainingModal } from '@/components/PlayerTrainingModal';
 
 interface PlayerStats {
   pace: number;
@@ -18,6 +19,7 @@ interface Player {
   age: number;
   ovr: number;
   is_nft_coach: boolean;
+  potential_limit: number;
   position: string;
   stats: PlayerStats;
   perks: any;
@@ -39,6 +41,7 @@ export default function LineupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [trainingPlayer, setTrainingPlayer] = useState<Player | null>(null);
   const [submitMessage, setSubmitMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
@@ -143,16 +146,24 @@ export default function LineupPage() {
       <div 
         key={player.id} 
         onClick={() => handlePlayerClick(player)}
-        className={`flex-1 max-w-[85px] mx-0.5 bg-black/80 backdrop-blur-md border rounded-md flex flex-col items-center shadow-lg overflow-hidden cursor-pointer transition-all ${
+        className={`flex-1 max-w-[85px] mx-0.5 bg-black/80 backdrop-blur-md border rounded-md flex flex-col items-center shadow-lg overflow-hidden cursor-pointer transition-all relative ${
           isSelected 
             ? 'border-neon-pink shadow-[0_0_15px_rgba(255,0,60,0.6)] scale-105 z-10' 
             : 'border-neon-cyan/50 hover:border-white'
         }`}
       >
+        {/* Train Button */}
+        <button 
+          onClick={(e) => { e.stopPropagation(); setTrainingPlayer(player); }}
+          className="absolute top-0 right-0 bg-neon-pink/80 text-white text-[8px] font-black px-1.5 py-0.5 rounded-bl hover:bg-neon-pink z-20"
+        >
+          +
+        </button>
+
         {/* Header */}
         <div className="w-full bg-gradient-to-b from-neon-cyan/30 to-transparent p-1 flex justify-between items-center border-b border-neon-cyan/20">
            <span className="text-[8px] font-black bg-neon-cyan text-black px-1 rounded-sm uppercase tracking-tighter shadow-[0_0_5px_rgba(0,240,255,0.8)]">{player.position}</span>
-           <span className="text-[11px] font-black text-white drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]">{player.ovr}</span>
+           <span className="text-[11px] font-black text-white drop-shadow-[0_0_2px_rgba(255,255,255,0.8)] pr-2">{player.ovr}</span>
         </div>
         
         {/* Name */}
@@ -366,6 +377,19 @@ export default function LineupPage() {
                 : 'Submit Lineup'}
         </button>
       </div>
+
+      {/* TRAINING MODAL */}
+      {trainingPlayer && userId && (
+        <PlayerTrainingModal 
+          player={trainingPlayer} 
+          userId={userId} 
+          onClose={() => setTrainingPlayer(null)}
+          onTrainSuccess={(updatedPlayer) => {
+            setPlayers(prev => prev.map(p => p.id === updatedPlayer.id ? { ...p, ...updatedPlayer } : p));
+            setTrainingPlayer(updatedPlayer); // Update modal view instantly
+          }}
+        />
+      )}
     </div>
   );
 }
