@@ -1,19 +1,38 @@
 import React from 'react';
 import { SeedLeagueButton } from '@/components/admin/SeedLeagueButton';
-import { ShieldAlert, DatabaseBackup } from 'lucide-react';
+import { ShieldAlert, DatabaseBackup, Lock, AlertOctagon } from 'lucide-react';
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
 
 export default async function AdminDashboard() {
   const cookieStore = await cookies();
   const tgUserId = cookieStore.get('tg_user_id')?.value;
 
+  // 1. Check Authentication
   if (!tgUserId) {
-    redirect('/profile'); // Fallback if no auth
+    return (
+      <div className="flex flex-col flex-1 items-center justify-center p-6 h-full text-center bg-space-dark">
+        <Lock className="text-gray-500 w-16 h-16 mb-4" />
+        <h1 className="text-xl font-bold text-white mb-2 font-orbitron">Access Denied</h1>
+        <p className="text-sm text-gray-400 max-w-sm">
+          Please open the app inside Telegram to establish a secure session.
+        </p>
+      </div>
+    );
   }
 
-  // Ideally, add an admin check here against a predefined list of Admin telegram IDs.
-  // For the sake of this prototype, we'll allow access but hide it behind the unlinked /admin route.
+  // 2. Check Authorization (RBAC)
+  const adminIds = (process.env.ADMIN_TG_IDS || '').split(',').map(id => id.trim());
+  if (!adminIds.includes(tgUserId)) {
+    return (
+      <div className="flex flex-col flex-1 items-center justify-center p-6 h-full text-center bg-space-dark">
+        <AlertOctagon className="text-red-500 w-16 h-16 mb-4 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]" />
+        <h1 className="text-xl font-bold text-red-500 mb-2 font-orbitron">Forbidden</h1>
+        <p className="text-sm text-gray-400 max-w-sm">
+          Your Telegram account does not have Admin privileges.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col flex-1 p-4 gap-6 pb-24 h-full overflow-y-auto custom-scrollbar bg-space-dark">

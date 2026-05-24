@@ -23,6 +23,12 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
       return { success: false, error: 'Unauthorized: Valid Telegram session required for Admin Actions.' };
     }
 
+    // 0. Check Authorization (RBAC)
+    const adminIds = (process.env.ADMIN_TG_IDS || '').split(',').map(id => id.trim());
+    if (!adminIds.includes(tgUserId)) {
+      return { success: false, error: 'Forbidden: Admin access required.' };
+    }
+
     // 1. Generate 13 Bot Users
     const numBots = 13;
     const usersToInsert: any[] = [];
