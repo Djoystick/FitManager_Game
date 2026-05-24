@@ -45,6 +45,7 @@ import { TelegramAuthProvider } from "@/components/providers/TelegramAuthProvide
 import { TonProvider } from "@/components/TonProvider";
 import { LanguageProvider } from "@/components/LanguageContext";
 import { GlobalHeader } from "@/components/GlobalHeader";
+import { BottomTabBar } from "@/components/ui/BottomTabBar";
 
 export default function RootLayout({
   children,
@@ -66,9 +67,10 @@ export default function RootLayout({
                 className="max-w-[480px] w-full mx-auto min-h-screen bg-space-dark text-white relative shadow-2xl overflow-hidden border-x border-gray-900/30 flex flex-col"
               >
                 <GlobalHeader />
-                <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar relative">
+                <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar relative pb-24">
                   {children}
                 </div>
+                <BottomTabBar />
               </main>
             </TonProvider>
           </TelegramAuthProvider>
