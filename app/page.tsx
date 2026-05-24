@@ -6,6 +6,7 @@ import { WalletConnect } from '@/components/WalletConnect';
 import Link from 'next/link';
 import { dict } from '@/lib/dictionaries';
 import { LanguageContext } from '@/components/LanguageContext';
+import { OnboardingFlow } from '@/components/OnboardingFlow';
 
 interface UserData {
   balance_fancoins: number;
@@ -25,9 +26,6 @@ export default function DashboardPage() {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
-
-  const [teamNameInput, setTeamNameInput] = useState('');
-  const [isCreatingTeam, setIsCreatingTeam] = useState(false);
 
   const [firstName, setFirstName] = useState('Manager');
 
@@ -78,31 +76,6 @@ export default function DashboardPage() {
       setHasTeam(true); // mock having team outside telegram
     }
   }, [isAuthenticated, userId, isAuthLoading]);
-
-  const handleCreateTeam = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userId || !teamNameInput.trim()) return;
-    
-    setIsCreatingTeam(true);
-    try {
-      const res = await fetch('/api/team/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, teamName: teamNameInput.trim() }),
-      });
-      
-      if (res.ok) {
-        await fetchUserData(userId);
-      } else {
-        const err = await res.json();
-        console.error("Failed to create team:", err);
-      }
-    } catch (error) {
-      console.error("Failed to create team:", error);
-    } finally {
-      setIsCreatingTeam(false);
-    }
-  };
 
   const handleSimulateRun = async () => {
     if (!userId) return;
@@ -157,42 +130,8 @@ export default function DashboardPage() {
     );
   }
 
-  if (hasTeam === false) {
-    return (
-      <div className="flex flex-col flex-1 p-6 gap-8 justify-center min-h-screen bg-space-dark">
-        <div className="bg-black/60 backdrop-blur-md p-8 rounded-2xl border border-neon-pink/50 shadow-[0_0_30px_rgba(255,0,60,0.2)]">
-          <h1 className={`text-3xl font-bold text-white mb-2 text-center ${headerFontClass}`}>Create Your Franchise</h1>
-          <p className="text-gray-400 text-center mb-8 text-sm">Draft your initial squad and begin your journey to the top of the league.</p>
-          
-          <form onSubmit={handleCreateTeam} className="flex flex-col gap-5">
-            <div>
-              <label className="text-xs text-neon-cyan uppercase tracking-widest font-bold mb-2 block">Franchise Name</label>
-              <input 
-                type="text" 
-                value={teamNameInput}
-                onChange={(e) => setTeamNameInput(e.target.value)}
-                placeholder="e.g. Cyber Punks FC"
-                required
-                maxLength={30}
-                className="w-full bg-black/50 border border-gray-700 text-white rounded-lg p-3 focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan transition-all"
-              />
-            </div>
-            
-            <button 
-              type="submit"
-              disabled={isCreatingTeam || !teamNameInput.trim()}
-              className={`w-full py-4 rounded-lg font-bold text-black uppercase tracking-wider transition-all duration-300 mt-2 ${buttonFontClass} ${
-                isCreatingTeam || !teamNameInput.trim()
-                  ? 'bg-gray-600 cursor-not-allowed opacity-70'
-                  : 'bg-neon-cyan hover:bg-white hover:text-neon-cyan hover:shadow-[0_0_20px_rgba(0,240,255,0.6)] shadow-[0_0_10px_rgba(0,240,255,0.4)]'
-              }`}
-            >
-              {isCreatingTeam ? 'Drafting Players...' : 'Found Club'}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
+  if (hasTeam === false && userId) {
+    return <OnboardingFlow userId={userId} onComplete={() => fetchUserData(userId)} />;
   }
 
   return (

@@ -25,6 +25,14 @@ export const dict = {
     back_to_dashboard: "Back to Dashboard",
     english: "English",
     russian: "Russian",
+    onboarding_welcome: "Welcome to FitManager. Sync your real-world runs to earn Training Points. Upgrade your Cyber-Squad. Dominate the Web3 League.",
+    onboarding_next: "Next",
+    onboarding_create_title: "Create Your Franchise",
+    onboarding_create_desc: "Draft your initial squad and begin your journey to the top of the league.",
+    onboarding_franchise_name: "Franchise Name",
+    onboarding_placeholder: "e.g. Cyber Punks FC",
+    onboarding_drafting: "Drafting Players...",
+    onboarding_submit: "Found Club & Draft Squad",
   },
   ru: {
     welcome: "Добро пожаловать",
@@ -52,5 +60,13 @@ export const dict = {
     back_to_dashboard: "На главную",
     english: "Английский",
     russian: "Русский",
+    onboarding_welcome: "Добро пожаловать в FitManager. Синхронизируйте свои пробежки, чтобы зарабатывать Очки Тренировок. Прокачивайте свой Кибер-Состав. Доминируйте в Web3 Лиге.",
+    onboarding_next: "Далее",
+    onboarding_create_title: "Создание Франшизы",
+    onboarding_create_desc: "Соберите стартовый состав и начните свой путь к вершине лиги.",
+    onboarding_franchise_name: "Название Франшизы",
+    onboarding_placeholder: "напр. Cyber Punks FC",
+    onboarding_drafting: "Подбор Игроков...",
+    onboarding_submit: "Основать Клуб и Собрать Состав",
   }
 };
