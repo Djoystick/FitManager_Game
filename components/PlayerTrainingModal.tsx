@@ -32,8 +32,10 @@ interface PlayerTrainingModalProps {
 export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }: PlayerTrainingModalProps) {
   const [trainingLevel, setTrainingLevel] = useState<number>(1);
   const [fancoins, setFancoins] = useState<number>(0);
+  const [tpBalance, setTpBalance] = useState<number>(0);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isTraining, setIsTraining] = useState<string | null>(null);
+  const [isHealing, setIsHealing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,6 +51,7 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
           const userData = await userRes.json();
           setTrainingLevel(infraData.infrastructure?.training_camp_level || 1);
           setFancoins(userData.user.balance_fancoins);
+          setTpBalance(userData.user.balance_tp);
         }
       } catch (err) {
         console.error('Failed to fetch data for training modal');
@@ -91,6 +94,42 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
       setErrorMsg('Network error occurred.');
     } finally {
       setIsTraining(null);
+    }
+  };
+
+  const handleHeal = async () => {
+    if (tpBalance < 50) {
+      setErrorMsg('Insufficient Training Points');
+      return;
+    }
+
+    setIsHealing(true);
+    setErrorMsg(null);
+
+    try {
+      const res = await fetch('/api/players/heal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, playerId: player.id })
+      });
+
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        setTpBalance(prev => prev - 50);
+        window.dispatchEvent(new Event('balanceUpdated')); // Trigger global header update
+        
+        // Optimistically update player in parent component
+        const updatedPlayer = { ...player, stamina: 100 };
+        // We pass fancoins since it didn't change
+        onTrainSuccess(updatedPlayer, fancoins);
+      } else {
+        setErrorMsg(data.error || 'Healing failed');
+      }
+    } catch (err) {
+      setErrorMsg('Network error occurred.');
+    } finally {
+      setIsHealing(false);
     }
   };
 
@@ -140,6 +179,37 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
           {errorMsg && (
             <div className="text-xs text-center font-bold text-neon-pink bg-red-900/20 p-2 rounded border border-neon-pink/30">
               {errorMsg}
+            </div>
+          )}
+
+          {/* Medical Center / Healing */}
+          {player.stamina < 100 && (
+            <div className="flex flex-col gap-2 mb-2">
+              <h3 className="text-[10px] text-gray-500 uppercase tracking-widest mb-1 border-b border-gray-800 pb-1">Medical Center</h3>
+              <div className="flex justify-between items-center bg-black/50 p-2 rounded border border-gray-800">
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase text-gray-400 font-bold">Stamina</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 h-1.5 bg-gray-900 rounded-full overflow-hidden border border-gray-700">
+                      <div className="h-full bg-orange-500 transition-all" style={{ width: `${player.stamina}%` }}></div>
+                    </div>
+                    <span className="text-xs font-mono text-orange-400">{player.stamina}/100</span>
+                  </div>
+                </div>
+                <button
+                  onClick={handleHeal}
+                  disabled={tpBalance < 50 || isHealing}
+                  className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                    isHealing 
+                      ? 'bg-transparent text-neon-green border-neon-green/50 opacity-50' 
+                      : tpBalance >= 50 
+                        ? 'bg-neon-green/10 text-neon-green border-neon-green hover:bg-neon-green hover:text-black shadow-[0_0_10px_rgba(57,255,20,0.3)]'
+                        : 'bg-gray-800 text-gray-500 border-gray-700 cursor-not-allowed'
+                  }`}
+                >
+                  {isHealing ? '...' : 'Heal (50 TP)'}
+                </button>
+              </div>
             </div>
           )}
 

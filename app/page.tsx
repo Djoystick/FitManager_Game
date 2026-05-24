@@ -7,10 +7,9 @@ import Link from 'next/link';
 import { dict } from '@/lib/dictionaries';
 import { LanguageContext } from '@/components/LanguageContext';
 import { OnboardingFlow } from '@/components/OnboardingFlow';
+import { FitnessSyncWidget } from '@/components/FitnessSyncWidget';
 
 interface UserData {
-  balance_fancoins: number;
-  balance_tp: number;
   wallet_address: string | null;
 }
 
@@ -24,8 +23,6 @@ export default function DashboardPage() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [hasTeam, setHasTeam] = useState<boolean | null>(null);
   const [isDataLoading, setIsDataLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   const [firstName, setFirstName] = useState('Manager');
 
@@ -77,47 +74,6 @@ export default function DashboardPage() {
     }
   }, [isAuthenticated, userId, isAuthLoading]);
 
-  const handleSimulateRun = async () => {
-    if (!userId) return;
-    setIsSyncing(true);
-    setSyncMessage(null);
-
-    try {
-      const res = await fetch('/api/fitness/log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          activityType: 'Running',
-          durationMinutes: 30,
-          calories: 350,
-        }),
-      });
-
-      const json = await res.json();
-
-      if (res.ok && json.success) {
-        // Optimistically update the local TP balance
-        setUserData(prev => prev ? { ...prev, balance_tp: json.balance_tp } : prev);
-        
-        // Render anti-cheat feedback elegantly
-        if (json.meta?.dailyLimitReached) {
-          setSyncMessage(t.synced_daily_limit.replace('{tp}', json.earned_tp));
-        } else if (json.meta?.diminishingPenalty > 0) {
-          setSyncMessage(t.synced_penalty.replace('{tp}', json.earned_tp).replace('{penalty}', json.meta.diminishingPenalty));
-        } else {
-          setSyncMessage(t.synced_earned.replace('{tp}', json.earned_tp));
-        }
-      } else {
-        setSyncMessage(t.sync_error.replace('{error}', json.error || 'Failed to sync activity'));
-      }
-    } catch (error) {
-      setSyncMessage(t.failed_connect);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
   const shortenAddress = (address: string) => {
     return `${address.slice(0, 4)}...${address.slice(-4)}`;
   };
@@ -158,27 +114,6 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* ECONOMY GRID SECTION */}
-      <section className="grid grid-cols-2 gap-4">
-        {/* FanCoins Card */}
-        <div className="relative p-5 rounded-xl border border-neon-cyan/30 bg-black/40 backdrop-blur-md overflow-hidden flex flex-col justify-center items-center shadow-[0_0_15px_rgba(0,240,255,0.05)] hover:shadow-[0_0_25px_rgba(0,240,255,0.2)] transition-shadow">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-neon-cyan/10 rounded-bl-full blur-xl"></div>
-          <span className="text-xs uppercase tracking-widest text-gray-400 font-semibold mb-1">{t.fancoins}</span>
-          <span className="text-3xl font-black text-neon-cyan drop-shadow-[0_0_8px_rgba(0,240,255,0.8)] font-orbitron">
-            {userData?.balance_fancoins?.toLocaleString() || 0}
-          </span>
-        </div>
-
-        {/* Training Points Card */}
-        <div className="relative p-5 rounded-xl border border-neon-green/30 bg-black/40 backdrop-blur-md overflow-hidden flex flex-col justify-center items-center shadow-[0_0_15px_rgba(57,255,20,0.05)] hover:shadow-[0_0_25px_rgba(57,255,20,0.2)] transition-shadow">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-neon-green/10 rounded-bl-full blur-xl"></div>
-          <span className="text-xs uppercase tracking-widest text-gray-400 font-semibold mb-1">{t.training_pts}</span>
-          <span className="text-3xl font-black text-neon-green drop-shadow-[0_0_8px_rgba(57,255,20,0.8)] font-orbitron">
-            {userData?.balance_tp?.toLocaleString() || 0}
-          </span>
-        </div>
-      </section>
-
       {/* NAVIGATION SECTION */}
       <section className="flex flex-col gap-3 mt-2">
         <Link href="/lineup" className={`w-full py-3 bg-neon-cyan/10 border border-neon-cyan/50 text-neon-cyan text-center rounded-lg font-bold uppercase tracking-wider hover:bg-neon-cyan/20 transition-colors shadow-[0_0_10px_rgba(0,240,255,0.1)] ${buttonFontClass}`}>
@@ -201,34 +136,8 @@ export default function DashboardPage() {
       </section>
 
       {/* FITNESS SYNC WIDGET SECTION */}
-      <section className="mt-2 flex flex-col gap-4">
-        <h2 className={`text-lg font-bold text-white border-b border-gray-800 pb-2 ${headerFontClass}`}>{t.activity_sync}</h2>
-        
-        <div className="bg-gradient-to-br from-gray-900 to-black p-5 rounded-xl border border-gray-800 shadow-lg flex flex-col gap-5 relative overflow-hidden">
-          <div className="absolute bottom-0 right-0 w-32 h-32 bg-neon-pink/5 rounded-tl-full blur-2xl"></div>
-          
-          <p className="text-sm text-gray-400 relative z-10">
-            {t.sync_desc}
-          </p>
-          
-          <button 
-            onClick={handleSimulateRun}
-            disabled={isSyncing || !isAuthenticated}
-            className={`relative z-10 w-full py-3.5 rounded-lg font-bold text-black uppercase tracking-wider transition-all duration-300 ${buttonFontClass} ${
-              isSyncing || !isAuthenticated
-                ? 'bg-gray-600 cursor-not-allowed opacity-70'
-                : 'bg-neon-pink hover:bg-white hover:text-neon-pink hover:shadow-[0_0_20px_rgba(255,0,60,0.6)] shadow-[0_0_10px_rgba(255,0,60,0.4)]'
-            }`}
-          >
-            {isSyncing ? t.syncing_hardware : t.simulate_run}
-          </button>
-
-          {syncMessage && (
-            <div className={`relative z-10 p-3 rounded bg-black/50 text-sm text-center border font-medium ${syncMessage.includes('Error') ? 'text-red-400 border-red-900/50' : 'text-neon-green border-neon-green/30'}`}>
-              {syncMessage}
-            </div>
-          )}
-        </div>
+      <section className="mt-2 w-full">
+        <FitnessSyncWidget />
       </section>
     </div>
   );
