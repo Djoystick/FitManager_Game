@@ -8,6 +8,7 @@ import { dict } from '@/lib/dictionaries';
 import { LanguageContext } from '@/components/LanguageContext';
 import { OnboardingFlow } from '@/components/OnboardingFlow';
 import { FitnessSyncWidget } from '@/components/FitnessSyncWidget';
+import { MatchHistoryWidget } from '@/components/MatchHistoryWidget';
 import { Users, Trophy, ShoppingCart, Building2, User, BookOpen } from 'lucide-react';
 
 interface UserData {
@@ -127,26 +128,8 @@ export default function DashboardPage() {
 
       {/* MANAGER DASHBOARD */}
       <section className="flex flex-col gap-4 mt-2">
-        {/* Next Fixture Card */}
-        <Link 
-          href="/journal" 
-          className="relative overflow-hidden group p-5 rounded-xl shadow-[0_4px_20px_rgba(255,0,100,0.15)] border border-neon-pink/40 bg-gradient-to-r from-pink-900/40 to-black/80 hover:border-neon-pink transition-all active:scale-95 flex items-center justify-between"
-        >
-          <div className="absolute top-0 right-0 w-24 h-24 bg-neon-pink/20 rounded-full blur-2xl group-hover:bg-neon-pink/40 transition-all -mr-10 -mt-10" />
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <BookOpen className="text-neon-pink w-5 h-5" />
-              <span className={`text-neon-pink text-xs uppercase tracking-widest font-bold ${buttonFontClass}`}>{t.next_fixture}</span>
-            </div>
-            <h3 className={`text-white text-xl font-bold uppercase tracking-wider ${buttonFontClass}`}>
-              {t.match_journal}
-            </h3>
-            <p className="text-sm text-gray-400 mt-1">{t.simulate_next_match}</p>
-          </div>
-          <div className="bg-neon-pink/10 p-3 rounded-full border border-neon-pink/30 group-hover:bg-neon-pink group-hover:text-black transition-colors text-neon-pink shadow-[0_0_10px_rgba(255,0,100,0.3)] relative z-10">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-          </div>
-        </Link>
+        {/* Match History Widget */}
+        {userId && <MatchHistoryWidget userId={userId} teamName={teamName} />}
 
         {/* Team Status Card */}
         <Link 

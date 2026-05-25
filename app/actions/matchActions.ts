@@ -3,6 +3,13 @@
 import { supabase } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { MatchReport } from '@/components/MatchReportModal';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export interface MatchResult {
   success: boolean;
@@ -167,5 +174,73 @@ export async function simulateMatch(): Promise<MatchResult> {
   } catch (error: any) {
     console.error('Match simulation error:', error);
     return { success: false, error: error.message || 'An unexpected error occurred during simulation.' };
+  }
+}
+
+export async function getMatchHistory(userId: string): Promise<{ success: boolean; data?: MatchReport[]; error?: string }> {
+  try {
+    const { data: teamData, error: teamError } = await supabaseAdmin
+      .from('teams')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    if (teamError || !teamData) {
+      return { success: false, error: 'Team not found for user.' };
+    }
+
+    const teamId = teamData.id;
+
+    const { data: matches, error: matchesError } = await supabaseAdmin
+      .from('league_matches')
+      .select('*')
+      .eq('is_played', true)
+      .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+      .order('round_number', { ascending: false })
+      .limit(10);
+
+    if (matchesError) {
+      console.error("Error fetching matches:", matchesError);
+      return { success: false, error: 'Failed to fetch match history.' };
+    }
+
+    if (!matches || matches.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    const teamIds = new Set<string>();
+    matches.forEach(m => {
+      teamIds.add(m.home_team_id);
+      teamIds.add(m.away_team_id);
+    });
+
+    const { data: teamsData, error: teamsError } = await supabaseAdmin
+      .from('teams')
+      .select('id, name')
+      .in('id', Array.from(teamIds));
+
+    const teamNames: Record<string, string> = {};
+    if (teamsData) {
+      teamsData.forEach(t => {
+        teamNames[t.id] = t.name;
+      });
+    }
+
+    const history: MatchReport[] = matches.map(match => ({
+      match_id: match.id,
+      home_team_id: match.home_team_id,
+      home_team_name: teamNames[match.home_team_id] || 'Unknown Home Team',
+      away_team_id: match.away_team_id,
+      away_team_name: teamNames[match.away_team_id] || 'Unknown Away Team',
+      home_score: match.home_score || 0,
+      away_score: match.away_score || 0,
+      is_knockout: match.is_knockout || false,
+      events: match.match_events || []
+    }));
+
+    return { success: true, data: history };
+  } catch (err: any) {
+    console.error("Match history error:", err);
+    return { success: false, error: err.message || 'Unknown server error.' };
   }
 }

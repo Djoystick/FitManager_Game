@@ -15,7 +15,9 @@ export interface MatchEvent {
 export interface MatchReport {
   match_id: string;
   home_team_id: string;
+  home_team_name: string;
   away_team_id: string;
+  away_team_name: string;
   home_score: number;
   away_score: number;
   is_knockout: boolean;
@@ -74,17 +76,21 @@ export function MatchReportModal({ report, userTeamId, onClose }: MatchReportMod
             {resultText}
           </div>
           
-          <div className="flex justify-center items-center gap-6">
-            <div className={`text-2xl font-black ${isHome ? 'text-neon-cyan' : 'text-gray-500'}`}>HOME</div>
-            <div className="flex flex-col items-center">
-              <div className="text-5xl font-black text-white tracking-tighter">
+          <div className="flex justify-between items-center px-4">
+            <div className={`flex-1 text-right text-lg font-black uppercase truncate pr-4 ${isHome ? 'text-neon-cyan' : 'text-gray-400'}`}>
+              {report.home_team_name}
+            </div>
+            <div className="flex flex-col items-center shrink-0 w-24">
+              <div className="text-4xl font-black text-white tracking-tighter">
                 {report.home_score} - {report.away_score}
               </div>
               {penaltyResult && (
-                <div className="text-xs font-bold text-neon-pink mt-1 animate-pulse">{penaltyResult}</div>
+                <div className="text-[10px] font-bold text-neon-pink mt-1 animate-pulse whitespace-nowrap">{penaltyResult}</div>
               )}
             </div>
-            <div className={`text-2xl font-black ${!isHome ? 'text-neon-cyan' : 'text-gray-500'}`}>AWAY</div>
+            <div className={`flex-1 text-left text-lg font-black uppercase truncate pl-4 ${!isHome ? 'text-neon-cyan' : 'text-gray-400'}`}>
+              {report.away_team_name}
+            </div>
           </div>
         </div>
 
@@ -97,20 +103,57 @@ export function MatchReportModal({ report, userTeamId, onClose }: MatchReportMod
           {report.events.length === 0 ? (
             <div className="text-center text-sm text-gray-600 font-mono py-8">No significant events</div>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2 relative">
+              {/* Center Line */}
+              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-800 -translate-x-1/2" />
+              
               {report.events.filter(e => e.type !== 'penalty_shootout').map((ev, idx) => {
+                const isHomeEvent = ev.team_id === report.home_team_id;
                 const isUserTeam = ev.team_id === userTeamId;
+                
                 return (
-                  <div key={idx} className={`flex items-center gap-3 p-2 rounded-lg border ${isUserTeam ? 'bg-neon-cyan/5 border-neon-cyan/20' : 'bg-gray-800/30 border-gray-800'}`}>
-                    <div className="w-8 text-right text-xs font-orbitron text-gray-400">{ev.minute}'</div>
-                    <div className="text-xl drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]">{getEventIcon(ev.type)}</div>
-                    <div className="flex flex-col">
-                      <span className={`text-sm font-bold ${isUserTeam ? 'text-white' : 'text-gray-400'}`}>
-                        {ev.player_name || 'Unknown Player'}
-                      </span>
-                      <span className="text-[10px] text-gray-500 uppercase">
-                        {ev.type.replace('_', ' ')}
-                      </span>
+                  <div key={idx} className="flex items-center w-full relative z-10 my-1">
+                    {/* Left Column (Home) */}
+                    <div className="flex-1 pr-4 flex justify-end items-center">
+                      {isHomeEvent && (
+                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border max-w-[95%] ${isUserTeam ? 'bg-neon-cyan/10 border-neon-cyan/30 shadow-[0_0_10px_rgba(0,240,255,0.1)]' : 'bg-gray-800/80 border-gray-700'}`}>
+                          <div className="flex flex-col text-right truncate">
+                            <span className={`text-xs font-bold truncate ${isUserTeam ? 'text-white' : 'text-gray-300'}`}>
+                              {ev.player_name || 'Unknown'}
+                            </span>
+                            <span className="text-[9px] text-gray-500 uppercase">
+                              {ev.type.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <div className="text-base drop-shadow-[0_0_3px_rgba(255,255,255,0.5)] flex-shrink-0">
+                            {getEventIcon(ev.type)}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Center (Minute) */}
+                    <div className="w-8 h-8 rounded-full bg-black border border-gray-700 flex items-center justify-center shrink-0 z-20 shadow-[0_0_10px_rgba(0,0,0,0.5)]">
+                      <span className="text-[10px] font-orbitron font-bold text-neon-cyan">{ev.minute}'</span>
+                    </div>
+                    
+                    {/* Right Column (Away) */}
+                    <div className="flex-1 pl-4 flex justify-start items-center">
+                      {!isHomeEvent && (
+                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border max-w-[95%] ${isUserTeam ? 'bg-neon-cyan/10 border-neon-cyan/30 shadow-[0_0_10px_rgba(0,240,255,0.1)]' : 'bg-gray-800/80 border-gray-700'}`}>
+                          <div className="text-base drop-shadow-[0_0_3px_rgba(255,255,255,0.5)] flex-shrink-0">
+                            {getEventIcon(ev.type)}
+                          </div>
+                          <div className="flex flex-col text-left truncate">
+                            <span className={`text-xs font-bold truncate ${isUserTeam ? 'text-white' : 'text-gray-300'}`}>
+                              {ev.player_name || 'Unknown'}
+                            </span>
+                            <span className="text-[9px] text-gray-500 uppercase">
+                              {ev.type.replace('_', ' ')}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

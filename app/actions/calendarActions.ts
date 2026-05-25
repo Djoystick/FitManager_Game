@@ -96,11 +96,15 @@ export async function simulateNextRound(userId?: string) {
     const updates = [];
     const teamStats: Record<string, { matches: number, wins: number, draws: number, losses: number, gf: number, ga: number, pts: number }> = {};
 
-    // Fetch user IDs for fancoins distribution
-    const { data: teamsData } = await supabaseAdmin.from('teams').select('id, user_id');
+    // Fetch user IDs and names for fancoins distribution and reports
+    const { data: teamsData } = await supabaseAdmin.from('teams').select('id, user_id, name');
     const teamUsers: Record<string, string> = {};
+    const teamNames: Record<string, string> = {};
     if (teamsData) {
-      teamsData.forEach(t => teamUsers[t.id] = t.user_id);
+      teamsData.forEach(t => {
+        teamUsers[t.id] = t.user_id;
+        teamNames[t.id] = t.name;
+      });
     }
 
     // Fetch infrastructure for stadium level
@@ -245,7 +249,9 @@ export async function simulateNextRound(userId?: string) {
       matchReports.push({
         match_id: match.id,
         home_team_id: match.home_team_id,
+        home_team_name: teamNames[match.home_team_id] || 'Unknown Home Team',
         away_team_id: match.away_team_id,
+        away_team_name: teamNames[match.away_team_id] || 'Unknown Away Team',
         home_score: homeScore,
         away_score: awayScore,
         is_knockout: match.is_knockout,
