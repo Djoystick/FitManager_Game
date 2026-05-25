@@ -210,9 +210,9 @@ function StadiumFacility() {
     setIsUpgrading(true);
     const res = await upgradeStadium(userId);
     if (res.success) {
-      setStadiumLevel(res.new_level);
-      setFancoins(res.new_balance);
-      toast.success(t.stadium_upgrade_success.replace('{level}', res.new_level));
+      setStadiumLevel(res.new_level ?? 1);
+      setFancoins(res.new_balance ?? 0);
+      toast.success(t.stadium_upgrade_success.replace('{level}', (res.new_level ?? 1).toString()));
     } else {
       toast.error(res.error || t.stadium_upgrade_fail);
     }
