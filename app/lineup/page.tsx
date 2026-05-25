@@ -222,7 +222,7 @@ export default function LineupPage() {
       <div 
         key={player.id} 
         onClick={() => handlePlayerClick(player)}
-        className={`flex-1 min-w-[110px] mx-1 mb-2 bg-black/80 backdrop-blur-md border rounded-lg flex flex-col items-center shadow-lg overflow-hidden cursor-pointer transition-all relative ${
+        className={`flex-1 w-full min-w-0 mx-0.5 mb-1 bg-black/80 backdrop-blur-md border rounded-md flex flex-col items-center shadow-lg overflow-hidden cursor-pointer transition-all relative ${
           isSelected 
             ? 'border-neon-pink shadow-[0_0_20px_rgba(255,0,60,0.6)] scale-105 z-10' 
             : isOOP
@@ -238,41 +238,41 @@ export default function LineupPage() {
         {/* Train Button */}
         <button 
           onClick={(e) => { e.stopPropagation(); setTrainingPlayer(player); }}
-          className="absolute top-0 right-0 bg-neon-pink/80 text-white text-[10px] font-black px-2 py-1 rounded-bl-lg hover:bg-neon-pink z-20 transition-colors"
+          className="absolute top-0 right-0 bg-neon-pink/80 text-white text-[9px] font-black px-1.5 py-0.5 rounded-bl hover:bg-neon-pink z-20 transition-colors"
         >
           +
         </button>
 
         {/* Header */}
-        <div className="w-full bg-gradient-to-b from-neon-cyan/30 to-transparent p-1.5 flex justify-between items-center border-b border-neon-cyan/20 relative z-10">
-           <div className="flex items-center gap-1.5">
-             <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-tighter shadow-[0_0_5px_rgba(0,240,255,0.8)] ${isOOP ? 'bg-red-500 text-white' : 'bg-neon-cyan text-black'}`}>
+        <div className="w-full bg-gradient-to-b from-neon-cyan/30 to-transparent p-1 flex justify-between items-center border-b border-neon-cyan/20 relative z-10">
+           <div className="flex items-center gap-1">
+             <span className={`text-[9px] font-black px-1 py-0.5 rounded-sm uppercase tracking-tighter shadow-[0_0_5px_rgba(0,240,255,0.8)] ${isOOP ? 'bg-red-500 text-white' : 'bg-neon-cyan text-black'}`}>
                {player.position}
              </span>
-             {isOOP && <span className="text-xs text-red-500 animate-pulse drop-shadow-[0_0_2px_rgba(255,0,0,1)]">⚠️</span>}
-             {player.is_injured && <span className="text-[10px] font-bold bg-red-900/80 text-red-300 px-1 py-0.5 rounded border border-red-500/50 animate-pulse drop-shadow-[0_0_5px_rgba(255,0,0,0.8)] flex items-center">🚑 {player.injury_matches_left || 1}M</span>}
+             {isOOP && <span className="text-[10px] text-red-500 animate-pulse drop-shadow-[0_0_2px_rgba(255,0,0,1)]">⚠️</span>}
+             {player.is_injured && <span className="text-[9px] font-bold bg-red-900/80 text-red-300 px-1 py-0.5 rounded border border-red-500/50 animate-pulse drop-shadow-[0_0_5px_rgba(255,0,0,0.8)] flex items-center">🚑 {player.injury_matches_left || 1}M</span>}
            </div>
-           <span className={`text-lg font-black drop-shadow-[0_0_4px_rgba(255,255,255,0.8)] pr-3 ${isOOP ? 'text-red-500' : 'text-white'}`}>{displayOvr}</span>
+           <span className={`text-sm font-black drop-shadow-[0_0_4px_rgba(255,255,255,0.8)] pr-1 ${isOOP ? 'text-red-500' : 'text-white'}`}>{displayOvr}</span>
         </div>
         
         {/* Name */}
-        <span className="text-xs font-bold text-white truncate w-full text-center py-1 px-2 tracking-wide">{player.name.split(' ').pop()}</span>
+        <span className="text-[10px] font-bold text-white truncate w-full text-center py-0.5 px-1 tracking-wide leading-tight">{player.name.split(' ').pop()}</span>
         
         {/* Stamina & Stats Grid */}
         {player.stats && (
              <div className="w-full">
-               <div className={`bg-gray-800/90 text-[10px] font-mono font-bold border-y border-gray-700 py-1 flex items-center justify-center gap-1.5 ${player.stamina > 70 ? 'text-neon-green' : player.stamina > 30 ? 'text-yellow-500' : 'text-red-500'}`}>
+               <div className={`bg-gray-800/90 text-[9px] font-mono font-bold border-y border-gray-700 py-0.5 flex items-center justify-center gap-1 ${player.stamina > 70 ? 'text-neon-green' : player.stamina > 30 ? 'text-yellow-500' : 'text-red-500'}`}>
                  ⚡ {player.stamina}
-                 <div className="w-12 h-[3px] bg-gray-900 rounded-full overflow-hidden">
+                 <div className="w-8 h-[2px] bg-gray-900 rounded-full overflow-hidden">
                    <div className={`h-full ${player.stamina > 70 ? 'bg-neon-green' : player.stamina > 30 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${player.stamina}%` }}></div>
                  </div>
                </div>
-               <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 p-1.5 bg-gray-900/90 text-[10px] font-orbitron text-gray-400">
-               <div className="flex justify-between items-center"><span className="opacity-70">PAC</span><span className="text-neon-green font-bold text-xs">{player.stats.pace}</span></div>
-               <div className="flex justify-between items-center"><span className="opacity-70">SHO</span><span className="text-neon-green font-bold text-xs">{player.stats.shooting}</span></div>
-               <div className="flex justify-between items-center"><span className="opacity-70">PAS</span><span className="text-neon-green font-bold text-xs">{player.stats.passing}</span></div>
-               <div className="flex justify-between items-center"><span className="opacity-70">DEF</span><span className="text-neon-green font-bold text-xs">{player.stats.defending}</span></div>
-               <div className="col-span-2 flex justify-center items-center gap-2 border-t border-gray-700 pt-1 mt-0.5"><span className="opacity-70">PHY</span><span className="text-neon-green font-bold text-xs">{player.stats.physical}</span></div>
+               <div className="grid grid-cols-2 gap-x-1 gap-y-0 p-1 bg-gray-900/90 text-[9px] font-orbitron text-gray-400">
+               <div className="flex justify-between items-center"><span className="opacity-70">PAC</span><span className="text-neon-green font-bold text-[10px]">{player.stats.pace}</span></div>
+               <div className="flex justify-between items-center"><span className="opacity-70">SHO</span><span className="text-neon-green font-bold text-[10px]">{player.stats.shooting}</span></div>
+               <div className="flex justify-between items-center"><span className="opacity-70">PAS</span><span className="text-neon-green font-bold text-[10px]">{player.stats.passing}</span></div>
+               <div className="flex justify-between items-center"><span className="opacity-70">DEF</span><span className="text-neon-green font-bold text-[10px]">{player.stats.defending}</span></div>
+               <div className="col-span-2 flex justify-center items-center gap-1 border-t border-gray-700 pt-0.5 mt-0.5"><span className="opacity-70">PHY</span><span className="text-neon-green font-bold text-[10px]">{player.stats.physical}</span></div>
                </div>
              </div>
         )}
