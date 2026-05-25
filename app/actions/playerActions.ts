@@ -33,7 +33,7 @@ export async function bulkTrainPlayer(
     // 2. Fetch Player
     const { data: player, error: playerError } = await supabaseAdmin
       .from('players')
-      .select('id, team_id, stats, ovr, potential_limit')
+      .select('id, team_id, stats, ovr, potential_limit, stamina')
       .eq('id', playerId)
       .single();
 
@@ -70,10 +70,13 @@ export async function bulkTrainPlayer(
 
     if (!hasChanges) return { success: false, error: 'No stats to upgrade' };
     
+    const STAMINA_COST_PER_STAT = 5;
     const totalCost = totalStatsIncreased * costPerStat;
+    const totalStaminaCost = totalStatsIncreased * STAMINA_COST_PER_STAT;
 
-    // 3. Verify balance
+    // 3. Verify balance and stamina
     if (user.balance_fancoins < totalCost) return { success: false, error: 'Insufficient FanCoins' };
+    if ((player.stamina || 0) < totalStaminaCost) return { success: false, error: 'Not enough stamina' };
 
     const sum = ['pace', 'shooting', 'passing', 'defending', 'physical'].reduce(
       (acc, key) => acc + (newStats[key] || 50), 0
@@ -95,9 +98,11 @@ export async function bulkTrainPlayer(
 
     if (deductError) throw deductError;
 
+    const newStamina = (player.stamina || 0) - totalStaminaCost;
+    
     const { data: updatedPlayer, error: updateError } = await supabaseAdmin
       .from('players')
-      .update({ stats: newStats, ovr: newOvr })
+      .update({ stats: newStats, ovr: newOvr, stamina: newStamina })
       .eq('id', playerId)
       .select('*')
       .single();

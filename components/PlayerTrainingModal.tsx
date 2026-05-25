@@ -73,6 +73,7 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
   
   const totalPointsAdded = Object.values(stagedStats).reduce((a, b) => a + b, 0);
   const stagedCost = totalPointsAdded * trainCost;
+  const stagedStaminaCost = totalPointsAdded * 5;
 
   const projectedStats = useMemo(() => {
     return {
@@ -93,6 +94,10 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
   const handleIncrement = (key: keyof PlayerStats) => {
     if (fancoins < stagedCost + trainCost) {
       setErrorMsg('Insufficient FanCoins');
+      return;
+    }
+    if (player.stamina < stagedStaminaCost + 5) {
+      setErrorMsg('Not enough Stamina');
       return;
     }
     if (isMaxed) {
@@ -221,7 +226,10 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
             <div className="flex flex-col items-end">
               <span className="text-sm font-black text-neon-cyan">{isLoadingData ? '...' : fancoins.toLocaleString()} FC</span>
               {stagedCost > 0 && (
-                <span className="text-[10px] text-red-400 animate-pulse">- {stagedCost.toLocaleString()} FC</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-yellow-500 animate-pulse">⚡ -{stagedStaminaCost}</span>
+                  <span className="text-[10px] text-red-400 animate-pulse">- {stagedCost.toLocaleString()} FC</span>
+                </div>
               )}
             </div>
           </div>
@@ -325,9 +333,9 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
                       <span className="text-xs font-mono w-4 text-center text-gray-400">{added > 0 ? `+${added}` : ''}</span>
                       <button 
                         onClick={() => handleIncrement(key)}
-                        disabled={isMaxed || fancoins < stagedCost + trainCost || isSaving}
+                        disabled={isMaxed || fancoins < stagedCost + trainCost || player.stamina < stagedStaminaCost + 5 || isSaving}
                         className={`w-8 h-8 rounded flex items-center justify-center font-bold text-lg transition-colors border ${
-                          (!isMaxed && fancoins >= stagedCost + trainCost) ? 'bg-neon-cyan/10 text-neon-cyan border-neon-cyan hover:bg-neon-cyan hover:text-black' : 'bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed'
+                          (!isMaxed && fancoins >= stagedCost + trainCost && player.stamina >= stagedStaminaCost + 5) ? 'bg-neon-cyan/10 text-neon-cyan border-neon-cyan hover:bg-neon-cyan hover:text-black' : 'bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed'
                         }`}
                       >
                         +
@@ -350,9 +358,9 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
                 </button>
                 <button
                   onClick={handleSaveBulk}
-                  disabled={totalPointsAdded === 0 || isSaving}
+                  disabled={totalPointsAdded === 0 || player.stamina < stagedStaminaCost || isSaving}
                   className={`flex-1 py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all border ${
-                    totalPointsAdded > 0 && !isSaving ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan hover:bg-neon-cyan hover:text-black shadow-[0_0_15px_rgba(0,240,255,0.4)]' : 'bg-gray-900 text-gray-700 border-gray-800 cursor-not-allowed'
+                    totalPointsAdded > 0 && player.stamina >= stagedStaminaCost && !isSaving ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan hover:bg-neon-cyan hover:text-black shadow-[0_0_15px_rgba(0,240,255,0.4)]' : 'bg-gray-900 text-gray-700 border-gray-800 cursor-not-allowed'
                   }`}
                 >
                   {isSaving ? 'Saving...' : `Сохранить`}
