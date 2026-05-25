@@ -39,7 +39,7 @@ export async function simulateMatch(): Promise<MatchResult> {
     // 2. Fetch starting lineup players
     const { data: startingPlayers, error: playersError } = await supabase
       .from('players')
-      .select('id, ovr, stamina')
+      .select('id, ovr, stamina, position, lineup_slot')
       .eq('team_id', teamId)
       .eq('lineup_status', 'starting');
 
@@ -51,8 +51,21 @@ export async function simulateMatch(): Promise<MatchResult> {
       return { success: false, error: `Invalid lineup. You need exactly 11 starting players. Currently: ${startingPlayers?.length || 0}` };
     }
 
-    // 3. Calculate Home OVR
-    const totalOvr = startingPlayers.reduce((acc, p) => acc + p.ovr, 0);
+    // 3. Calculate Home OVR with OOP Penalty
+    const isCompatible = (natural: string, slot: string) => {
+      if (!slot) return true;
+      if (natural === slot) return true;
+      if (['LWF', 'RWF', 'ST', 'CF'].includes(natural) && slot === 'FWD') return true;
+      if (['CAM', 'CDM', 'CM', 'RM', 'LM'].includes(natural) && slot === 'MID') return true;
+      if (['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(natural) && slot === 'DEF') return true;
+      return false;
+    };
+
+    const totalOvr = startingPlayers.reduce((acc, p) => {
+      const slotPos = p.lineup_slot ? p.lineup_slot.split('_')[0] : p.position;
+      const oop = !isCompatible(p.position, slotPos);
+      return acc + (oop ? Math.floor(p.ovr * 0.8) : p.ovr);
+    }, 0);
     // Ensure min 1 OVR to prevent div by 0 issues logically
     const homeOvr = Math.max(1, Math.round(totalOvr / 11)); 
 

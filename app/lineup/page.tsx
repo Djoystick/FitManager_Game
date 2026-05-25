@@ -162,6 +162,7 @@ export default function LineupPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
+        setTeam(prev => prev ? { ...prev, formation: newFormation } : prev);
         await fetchTeamData();
       } else {
         toast.error(data.error || 'Failed to change formation');
@@ -175,10 +176,20 @@ export default function LineupPage() {
     }
   };
 
+  const isCompatible = (natural: string, slot: string) => {
+    if (!slot) return true;
+    if (natural === slot) return true;
+    if (['LWF', 'RWF', 'ST', 'CF'].includes(natural) && slot === 'FWD') return true;
+    if (['CAM', 'CDM', 'CM', 'RM', 'LM'].includes(natural) && slot === 'MID') return true;
+    if (['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(natural) && slot === 'DEF') return true;
+    return false;
+  };
+
   const renderPlayerCard = (player: Player) => {
     const isSelected = selectedPlayerId === player.id;
     const slotPos = getSlotType(player);
-    const isOOP = player.position !== slotPos && player.lineup_status === 'starting'; // Out of Position Check
+    const isOOP = !isCompatible(player.position, slotPos) && player.lineup_status === 'starting';
+    const displayOvr = isOOP ? Math.floor(player.ovr * 0.8) : player.ovr;
 
     return (
       <div 
@@ -213,7 +224,7 @@ export default function LineupPage() {
              </span>
              {isOOP && <span className="text-[8px] text-red-500 animate-pulse">⚠️</span>}
            </div>
-           <span className="text-[11px] font-black text-white drop-shadow-[0_0_2px_rgba(255,255,255,0.8)] pr-2">{player.ovr}</span>
+           <span className={`text-[11px] font-black drop-shadow-[0_0_2px_rgba(255,255,255,0.8)] pr-2 ${isOOP ? 'text-red-500' : 'text-white'}`}>{displayOvr}</span>
         </div>
         
         {/* Name */}
@@ -241,8 +252,12 @@ export default function LineupPage() {
   // Calculate Average OVR exclusively for the starting pitch lineup
   let averageOvr = 50;
   if (startingPlayers.length > 0) {
-    const sum = startingPlayers.reduce((acc, p) => acc + p.ovr, 0);
-    averageOvr = Math.round(sum / startingPlayers.length);
+    const sum = startingPlayers.reduce((acc, p) => {
+       const slotPos = getSlotType(p);
+       const oop = !isCompatible(p.position, slotPos) && p.lineup_status === 'starting';
+       return acc + (oop ? Math.floor(p.ovr * 0.8) : p.ovr);
+    }, 0);
+    averageOvr = Math.max(1, Math.round(sum / startingPlayers.length));
   }
 
   // Calculate projected Luxury Tax

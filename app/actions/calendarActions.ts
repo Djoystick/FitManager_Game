@@ -90,6 +90,13 @@ export async function simulateNextRound() {
     const updates = [];
     const teamStats: Record<string, { matches: number, wins: number, draws: number, losses: number, gf: number, ga: number, pts: number }> = {};
 
+    // Fetch user IDs for fancoins distribution
+    const { data: teamsData } = await supabaseAdmin.from('teams').select('id, user_id');
+    const teamUsers: Record<string, string> = {};
+    if (teamsData) {
+      teamsData.forEach(t => teamUsers[t.id] = t.user_id);
+    }
+
     // Initialize stats
     const { data: currentStandings } = await supabaseAdmin.from('league_standings').select('*');
     if (currentStandings) {
@@ -143,6 +150,27 @@ export async function simulateNextRound() {
         a.draws++; a.pts += 1;
       }
 
+      // Fancoins Economy
+      let homeAmount = 50; // home bonus tickets
+      let awayAmount = 0;
+      if (homeScore > awayScore) {
+        homeAmount += 100;
+        awayAmount += 10;
+      } else if (homeScore < awayScore) {
+        awayAmount += 100;
+        homeAmount += 10;
+      } else {
+        homeAmount += 50;
+        awayAmount += 50;
+      }
+
+      if (teamUsers[match.home_team_id]) {
+        updates.push(supabaseAdmin.rpc('increment_fancoins', { u_id: teamUsers[match.home_team_id], amount: homeAmount }));
+      }
+      if (teamUsers[match.away_team_id]) {
+        updates.push(supabaseAdmin.rpc('increment_fancoins', { u_id: teamUsers[match.away_team_id], amount: awayAmount }));
+      }
+
       // INJURY MECHANIC: 50% chance per match to injure a random starting player (temporary for testing)
       if (Math.random() < 0.50) {
         // Pick a team randomly
@@ -158,6 +186,7 @@ export async function simulateNextRound() {
         
         if (teamPlayers && teamPlayers.length > 0) {
           const randomPlayer = teamPlayers[Math.floor(Math.random() * teamPlayers.length)];
+          console.log("INJURY TRIGGERED FOR PLAYER:", randomPlayer.id, "TEAM:", injuredTeamId);
           updates.push(supabaseAdmin.from('players').update({ is_injured: true }).eq('id', randomPlayer.id));
         }
       }
