@@ -123,7 +123,7 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
     setErrorMsg(null);
     
     try {
-      const res = await bulkTrainPlayer(userId, player.id, stagedStats, stagedCost);
+      const res = await bulkTrainPlayer(userId, player.id, stagedStats);
       if (res.success) {
         setFancoins(res.newBalance ?? 0);
         window.dispatchEvent(new Event('balanceUpdated'));

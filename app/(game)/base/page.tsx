@@ -120,12 +120,14 @@ function MedicalWardCard({ t }: { t: any }) {
           <span className="text-xs font-mono text-gray-500">
             {isLoading ? '...' : `${injuredPlayers.length} Injured`}
           </span>
-          <button 
-            onClick={handleDebugInjury}
-            className="text-[9px] px-2 py-1 bg-red-900/30 text-red-400 border border-red-500/30 rounded uppercase font-bold tracking-widest hover:bg-red-500 hover:text-white transition-colors"
-          >
-            🐛 DEBUG: Сломать ногу
-          </button>
+          {process.env.NODE_ENV === 'development' && (
+            <button 
+              onClick={handleDebugInjury}
+              className="text-[9px] px-2 py-1 bg-red-900/30 text-red-400 border border-red-500/30 rounded uppercase font-bold tracking-widest hover:bg-red-500 hover:text-white transition-colors"
+            >
+              🐛 DEBUG: Сломать ногу
+            </button>
+          )}
         </div>
       </div>
 

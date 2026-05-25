@@ -10,8 +10,7 @@ const supabaseAdmin = createClient(
 export async function bulkTrainPlayer(
   userId: string, 
   playerId: string, 
-  statIncreases: Record<string, number>, 
-  totalCost: number
+  statIncreases: Record<string, number>
 ) {
   try {
     // 1. Fetch user & team
@@ -41,22 +40,40 @@ export async function bulkTrainPlayer(
     if (playerError || !player) return { success: false, error: 'Player not found' };
     if (player.team_id !== team.id) return { success: false, error: 'Player does not belong to your team' };
 
-    // 3. Verify balance
-    if (user.balance_fancoins < totalCost) return { success: false, error: 'Insufficient FanCoins' };
 
-    // 4. Calculate new stats & OVR
+
+    // 2.5 Get Training Camp Level
+    const { data: infra } = await supabaseAdmin
+      .from('infrastructure')
+      .select('training_camp_level')
+      .eq('team_id', team.id)
+      .maybeSingle();
+      
+    const trainingLevel = infra ? infra.training_camp_level : 1;
+    const baseCostPerStat = 500;
+    const discountPercent = Math.min(0.50, trainingLevel * 0.05);
+    const costPerStat = Math.floor(baseCostPerStat * (1 - discountPercent));
+
+    // 4. Calculate new stats & OVR & Cost
     const currentStats = player.stats || { pace: 50, shooting: 50, passing: 50, defending: 50, physical: 50 };
     const newStats = { ...currentStats };
     let hasChanges = false;
+    let totalStatsIncreased = 0;
     
     for (const [key, inc] of Object.entries(statIncreases)) {
       if (inc > 0) {
         newStats[key] = (newStats[key] || 50) + inc;
         hasChanges = true;
+        totalStatsIncreased += inc;
       }
     }
 
     if (!hasChanges) return { success: false, error: 'No stats to upgrade' };
+    
+    const totalCost = totalStatsIncreased * costPerStat;
+
+    // 3. Verify balance
+    if (user.balance_fancoins < totalCost) return { success: false, error: 'Insufficient FanCoins' };
 
     const sum = ['pace', 'shooting', 'passing', 'defending', 'physical'].reduce(
       (acc, key) => acc + (newStats[key] || 50), 0
