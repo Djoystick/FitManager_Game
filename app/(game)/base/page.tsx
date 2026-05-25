@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 
 export default function BaseDashboard() {
   const { language } = useContext(LanguageContext);
+  const t = dict[language as keyof typeof dict];
   const { userId, isAuthenticated } = useContext(TelegramAuthContext);
   const [infra, setInfra] = useState({ stadium: 1, medical: 1, training: 1, fancoins: 0 });
   const [isLoading, setIsLoading] = useState(true);
