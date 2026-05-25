@@ -66,6 +66,9 @@ export const dict = {
     injured_players: "Injured Players",
     heal_button: "Heal (500 FC)",
     heal_success: "Player healed successfully!",
+    stadium_income: "Income: {amount} FC / home match",
+    stadium_upgrade_success: "Stadium upgraded to level {level}!",
+    stadium_upgrade_fail: "Failed to upgrade stadium.",
   },
   ru: {
     welcome: "Добро пожаловать",
@@ -134,5 +137,8 @@ export const dict = {
     injured_players: "Травмированные игроки",
     heal_button: "Вылечить (500 FC)",
     heal_success: "Игрок успешно вылечен!",
+    stadium_income: "Доход: {amount} FC / домашний матч",
+    stadium_upgrade_success: "Стадион улучшен до уровня {level}!",
+    stadium_upgrade_fail: "Не удалось улучшить стадион.",
   }
 };

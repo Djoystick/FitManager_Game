@@ -97,6 +97,13 @@ export async function simulateNextRound() {
       teamsData.forEach(t => teamUsers[t.id] = t.user_id);
     }
 
+    // Fetch infrastructure for stadium level
+    const { data: infraData } = await supabaseAdmin.from('infrastructure').select('team_id, stadium_level');
+    const teamStadiums: Record<string, number> = {};
+    if (infraData) {
+      infraData.forEach(i => teamStadiums[i.team_id] = i.stadium_level);
+    }
+
     // Initialize stats
     const { data: currentStandings } = await supabaseAdmin.from('league_standings').select('*');
     if (currentStandings) {
@@ -151,7 +158,7 @@ export async function simulateNextRound() {
       }
 
       // Fancoins Economy
-      let homeAmount = 50; // home bonus tickets
+      let homeAmount = 50 * (teamStadiums[match.home_team_id] || 1); // home bonus tickets
       let awayAmount = 0;
       if (homeScore > awayScore) {
         homeAmount += 100;
