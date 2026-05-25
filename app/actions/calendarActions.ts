@@ -305,8 +305,7 @@ export async function simulateNextRound(userId?: string) {
       if (teamUsers[match.away_team_id]) {
         updates.push(supabaseAdmin.rpc('increment_fancoins', { u_id: teamUsers[match.away_team_id], amount: awayAmount }));
       }
-
-
+    }
 
     // Await all match and injury updates
     await Promise.all(updates);

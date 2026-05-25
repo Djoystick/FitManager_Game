@@ -125,10 +125,10 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
     try {
       const res = await bulkTrainPlayer(userId, player.id, stagedStats, stagedCost);
       if (res.success) {
-        setFancoins(res.newBalance);
+        setFancoins(res.newBalance ?? 0);
         window.dispatchEvent(new Event('balanceUpdated'));
         handleCancel();
-        onTrainSuccess(res.player, res.newBalance);
+        onTrainSuccess(res.player!, res.newBalance ?? 0);
       } else {
         setErrorMsg(res.error || 'Training failed');
       }
