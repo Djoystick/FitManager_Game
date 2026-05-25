@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { BackButton } from '@/components/ui/BackButton';
 import { PlayerTrainingModal } from '@/components/PlayerTrainingModal';
 import { swapPlayers } from '@/app/actions/lineupActions';
+import { healAllPlayersStamina } from '@/app/actions/playerActions';
 import toast from 'react-hot-toast';
 
 interface PlayerStats {
@@ -50,6 +51,7 @@ export default function LineupPage() {
   const [isSwapping, setIsSwapping] = useState(false);
   const [isFormationLoading, setIsFormationLoading] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [isHealingAll, setIsHealingAll] = useState(false);
   const [trainingPlayer, setTrainingPlayer] = useState<Player | null>(null);
   const [submitMessage, setSubmitMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
   const router = useRouter();
@@ -151,6 +153,29 @@ export default function LineupPage() {
     }
   };
 
+  const handleMassHeal = async () => {
+    if (!userId) return;
+    setIsHealingAll(true);
+    setSubmitMessage(null);
+    try {
+      const res = await healAllPlayersStamina(userId);
+      if (res.success) {
+        toast.success(`Healed ${res.playersHealed} players`);
+        setSubmitMessage({ text: `Healed ${res.playersHealed} players!`, type: 'success' });
+        setPlayers(prev => prev.map(p => ({ ...p, stamina: 100 })));
+        window.dispatchEvent(new Event('balanceUpdated'));
+      } else {
+        toast.error(res.error || 'Failed to mass heal');
+        setSubmitMessage({ text: res.error || 'Failed to mass heal', type: 'error' });
+      }
+    } catch (err: any) {
+      toast.error('Network error during mass heal');
+      setSubmitMessage({ text: 'Network error during mass heal', type: 'error' });
+    } finally {
+      setIsHealingAll(false);
+    }
+  };
+
   const handleFormationChange = async (newFormation: string) => {
     if (!userId || !team || team.formation === newFormation) return;
     
@@ -197,9 +222,9 @@ export default function LineupPage() {
       <div 
         key={player.id} 
         onClick={() => handlePlayerClick(player)}
-        className={`flex-1 max-w-[85px] mx-0.5 bg-black/80 backdrop-blur-md border rounded-md flex flex-col items-center shadow-lg overflow-hidden cursor-pointer transition-all relative ${
+        className={`flex-1 min-w-[110px] mx-1 mb-2 bg-black/80 backdrop-blur-md border rounded-lg flex flex-col items-center shadow-lg overflow-hidden cursor-pointer transition-all relative ${
           isSelected 
-            ? 'border-neon-pink shadow-[0_0_15px_rgba(255,0,60,0.6)] scale-105 z-10' 
+            ? 'border-neon-pink shadow-[0_0_20px_rgba(255,0,60,0.6)] scale-105 z-10' 
             : isOOP
               ? 'border-red-500 shadow-[0_0_10px_rgba(255,0,0,0.4)] hover:border-red-400'
               : 'border-neon-cyan/50 hover:border-white'
@@ -213,43 +238,43 @@ export default function LineupPage() {
         {/* Train Button */}
         <button 
           onClick={(e) => { e.stopPropagation(); setTrainingPlayer(player); }}
-          className="absolute top-0 right-0 bg-neon-pink/80 text-white text-[8px] font-black px-1.5 py-0.5 rounded-bl hover:bg-neon-pink z-20"
+          className="absolute top-0 right-0 bg-neon-pink/80 text-white text-[10px] font-black px-2 py-1 rounded-bl-lg hover:bg-neon-pink z-20 transition-colors"
         >
           +
         </button>
 
         {/* Header */}
-        <div className="w-full bg-gradient-to-b from-neon-cyan/30 to-transparent p-1 flex justify-between items-center border-b border-neon-cyan/20 relative z-10">
-           <div className="flex items-center gap-1">
-             <span className={`text-[8px] font-black px-1 rounded-sm uppercase tracking-tighter shadow-[0_0_5px_rgba(0,240,255,0.8)] ${isOOP ? 'bg-red-500 text-white' : 'bg-neon-cyan text-black'}`}>
+        <div className="w-full bg-gradient-to-b from-neon-cyan/30 to-transparent p-1.5 flex justify-between items-center border-b border-neon-cyan/20 relative z-10">
+           <div className="flex items-center gap-1.5">
+             <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-tighter shadow-[0_0_5px_rgba(0,240,255,0.8)] ${isOOP ? 'bg-red-500 text-white' : 'bg-neon-cyan text-black'}`}>
                {player.position}
              </span>
-             {isOOP && <span className="text-[8px] text-red-500 animate-pulse">⚠️</span>}
-             {player.is_injured && <span className="text-[9px] bg-red-900/60 text-red-400 px-0.5 rounded border border-red-500/50 animate-pulse drop-shadow-[0_0_5px_rgba(255,0,0,0.8)]">🚑{player.injury_matches_left || 1}M</span>}
+             {isOOP && <span className="text-xs text-red-500 animate-pulse drop-shadow-[0_0_2px_rgba(255,0,0,1)]">⚠️</span>}
+             {player.is_injured && <span className="text-[10px] font-bold bg-red-900/80 text-red-300 px-1 py-0.5 rounded border border-red-500/50 animate-pulse drop-shadow-[0_0_5px_rgba(255,0,0,0.8)] flex items-center">🚑 {player.injury_matches_left || 1}M</span>}
            </div>
-           <span className={`text-[11px] font-black drop-shadow-[0_0_2px_rgba(255,255,255,0.8)] pr-2 ${isOOP ? 'text-red-500' : 'text-white'}`}>{displayOvr}</span>
+           <span className={`text-lg font-black drop-shadow-[0_0_4px_rgba(255,255,255,0.8)] pr-3 ${isOOP ? 'text-red-500' : 'text-white'}`}>{displayOvr}</span>
         </div>
         
         {/* Name */}
-        <span className="text-[9px] font-bold text-white truncate w-full text-center py-0.5 px-1">{player.name.split(' ').pop()}</span>
+        <span className="text-xs font-bold text-white truncate w-full text-center py-1 px-2 tracking-wide">{player.name.split(' ').pop()}</span>
         
         {/* Stamina & Stats Grid */}
         {player.stats && (
              <div className="w-full">
-               <div className={`bg-gray-800/80 text-[7px] text-center font-bold border-y border-gray-700 py-0.5 flex items-center justify-center gap-0.5 ${player.stamina > 70 ? 'text-neon-green' : player.stamina > 30 ? 'text-yellow-500' : 'text-red-500'}`}>
+               <div className={`bg-gray-800/90 text-[10px] font-mono font-bold border-y border-gray-700 py-1 flex items-center justify-center gap-1.5 ${player.stamina > 70 ? 'text-neon-green' : player.stamina > 30 ? 'text-yellow-500' : 'text-red-500'}`}>
                  ⚡ {player.stamina}
-                 <div className="w-8 h-[2px] bg-gray-900 rounded-full overflow-hidden ml-1">
+                 <div className="w-12 h-[3px] bg-gray-900 rounded-full overflow-hidden">
                    <div className={`h-full ${player.stamina > 70 ? 'bg-neon-green' : player.stamina > 30 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${player.stamina}%` }}></div>
                  </div>
                </div>
-               <div className="grid grid-cols-2 gap-x-1 gap-y-0 p-1 bg-gray-900/80 text-[9px] font-orbitron text-gray-400">
-               <div className="flex justify-between"><span>PAC</span><span className="text-neon-green font-bold">{player.stats.pace}</span></div>
-               <div className="flex justify-between"><span>SHO</span><span className="text-neon-green font-bold">{player.stats.shooting}</span></div>
-               <div className="flex justify-between"><span>PAS</span><span className="text-neon-green font-bold">{player.stats.passing}</span></div>
-               <div className="flex justify-between"><span>DEF</span><span className="text-neon-green font-bold">{player.stats.defending}</span></div>
-               <div className="col-span-2 flex justify-center gap-1 border-t border-gray-700 pt-[1px] mt-[1px]"><span>PHY</span><span className="text-neon-green font-bold">{player.stats.physical}</span></div>
+               <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 p-1.5 bg-gray-900/90 text-[10px] font-orbitron text-gray-400">
+               <div className="flex justify-between items-center"><span className="opacity-70">PAC</span><span className="text-neon-green font-bold text-xs">{player.stats.pace}</span></div>
+               <div className="flex justify-between items-center"><span className="opacity-70">SHO</span><span className="text-neon-green font-bold text-xs">{player.stats.shooting}</span></div>
+               <div className="flex justify-between items-center"><span className="opacity-70">PAS</span><span className="text-neon-green font-bold text-xs">{player.stats.passing}</span></div>
+               <div className="flex justify-between items-center"><span className="opacity-70">DEF</span><span className="text-neon-green font-bold text-xs">{player.stats.defending}</span></div>
+               <div className="col-span-2 flex justify-center items-center gap-2 border-t border-gray-700 pt-1 mt-0.5"><span className="opacity-70">PHY</span><span className="text-neon-green font-bold text-xs">{player.stats.physical}</span></div>
+               </div>
              </div>
-           </div>
         )}
       </div>
     );
@@ -434,6 +459,26 @@ export default function LineupPage() {
 
       {/* SUBMISSION AREA */}
       <div className="mt-auto flex flex-col gap-3 pt-4">
+        
+        {/* Mass Heal Button */}
+        {players.filter(p => p.stamina < 100).length > 0 && (
+          <button 
+            onClick={handleMassHeal}
+            disabled={isHealingAll || isSubmitting || isSwapping}
+            className={`w-full py-2.5 rounded-lg font-bold text-sm uppercase tracking-wider flex justify-between items-center px-4 transition-all ${
+              isHealingAll || isSubmitting || isSwapping
+                ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 hover:bg-yellow-500 hover:text-black shadow-[0_0_10px_rgba(234,179,8,0.2)]'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-lg">⚡</span>
+              <span>Mass Heal Roster</span>
+            </div>
+            <span className="font-mono">-{players.filter(p => p.stamina < 100).length * 50} TP</span>
+          </button>
+        )}
+
         {submitMessage && (
           <div className={`p-3 rounded text-sm text-center border font-semibold ${submitMessage.type === 'error' ? 'bg-red-900/20 text-red-400 border-red-900/50' : 'bg-green-900/20 text-neon-green border-neon-green/40 shadow-[0_0_10px_rgba(57,255,20,0.2)]'}`}>
             {submitMessage.text}

@@ -188,3 +188,69 @@ export async function healPlayerStamina(userId: string, playerId: string) {
     return { success: false, error: err.message || 'Failed to heal stamina' };
   }
 }
+
+export async function healAllPlayersStamina(userId: string) {
+  try {
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id, balance_tp')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) return { success: false, error: 'User not found' };
+
+    const { data: team, error: teamError } = await supabaseAdmin
+      .from('teams')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    if (teamError || !team) return { success: false, error: 'Team not found' };
+
+    const { data: players, error: playersError } = await supabaseAdmin
+      .from('players')
+      .select('id, stamina')
+      .eq('team_id', team.id)
+      .lt('stamina', 100);
+
+    if (playersError) return { success: false, error: 'Failed to fetch players' };
+    
+    if (!players || players.length === 0) {
+      return { success: false, error: 'All players have full stamina' };
+    }
+
+    const costTP = players.length * 50;
+
+    if (user.balance_tp < costTP) {
+      return { success: false, error: `Insufficient TP. Need ${costTP} TP for ${players.length} players.` };
+    }
+
+    const newBalance = user.balance_tp - costTP;
+
+    const { error: deductError } = await supabaseAdmin
+      .from('users')
+      .update({ balance_tp: newBalance })
+      .eq('id', userId);
+
+    if (deductError) throw deductError;
+
+    const { error: healError } = await supabaseAdmin
+      .from('players')
+      .update({ stamina: 100 })
+      .in('id', players.map(p => p.id));
+
+    if (healError) {
+      await supabaseAdmin.from('users').update({ balance_tp: user.balance_tp }).eq('id', userId);
+      throw healError;
+    }
+
+    return {
+      success: true,
+      newBalance,
+      playersHealed: players.length
+    };
+
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to mass heal stamina' };
+  }
+}
