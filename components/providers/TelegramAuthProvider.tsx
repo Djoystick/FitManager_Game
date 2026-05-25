@@ -2,7 +2,6 @@
 
 import { createContext, useEffect, useState, ReactNode, useContext } from 'react';
 import { LanguageContext } from '@/components/LanguageContext';
-import { Loader2 } from 'lucide-react';
 
 interface TelegramAuthContextType {
   isAuthenticated: boolean;
@@ -79,12 +78,36 @@ export function TelegramAuthProvider({ children }: { children: ReactNode }) {
 
   if (!isMounted || isLoading) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-space-dark">
-        <Loader2 className="w-12 h-12 text-neon-cyan animate-spin drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]" />
-        <h2 className="mt-4 text-sm font-bold tracking-widest uppercase text-neon-cyan drop-shadow-[0_0_5px_rgba(0,240,255,0.5)]">
+      <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-space-dark relative overflow-hidden">
+        <style>{`
+          @keyframes dash-pulse {
+            0% { stroke-dashoffset: 280; }
+            100% { stroke-dashoffset: 0; }
+          }
+          .ekg-line {
+            stroke-dasharray: 40 280;
+            animation: dash-pulse 1.8s linear infinite;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+          }
+        `}</style>
+        
+        {/* SVG Container */}
+        <div className="w-64 h-24 relative flex justify-center items-center">
+          <svg viewBox="0 0 200 50" className="w-full h-full overflow-visible">
+             {/* Faded Background Line */}
+             <path d="M 0 25 L 80 25 L 90 5 L 100 45 L 110 25 L 200 25" fill="none" stroke="#00f3ff" strokeWidth="2" className="opacity-10" />
+             {/* Glowing Animated Pulse */}
+             <path d="M 0 25 L 80 25 L 90 5 L 100 45 L 110 25 L 200 25" fill="none" stroke="#00f3ff" strokeWidth="3" className="ekg-line drop-shadow-[0_0_8px_rgba(0,240,255,1)]" />
+          </svg>
+        </div>
+
+        <h2 className="mt-8 text-sm font-bold tracking-[0.3em] font-orbitron uppercase text-neon-cyan animate-pulse drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
           Authenticating
         </h2>
-        <p className="text-xs text-gray-500 mt-2">Connecting to Telegram Secure Gateway...</p>
+        <p className="text-[10px] uppercase font-mono tracking-widest text-gray-500 mt-3 opacity-60">
+          Connecting to Telegram Secure Gateway...
+        </p>
       </div>
     );
   }

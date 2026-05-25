@@ -178,22 +178,32 @@ export async function simulateNextRound() {
         updates.push(supabaseAdmin.rpc('increment_fancoins', { u_id: teamUsers[match.away_team_id], amount: awayAmount }));
       }
 
-      // INJURY MECHANIC: HARDCODED TO USER TEAM FOR TESTING
-      const userTeamId = teamUsers[match.home_team_id] ? match.home_team_id : (teamUsers[match.away_team_id] ? match.away_team_id : null);
-      if (userTeamId) {
-        const { data: teamPlayers } = await supabaseAdmin
+      // INJURY MECHANIC: HARDCODED DIRECT EXECUTION FOR TESTING
+      try {
+        const { data: firstPlayer, error: fetchError } = await supabaseAdmin
           .from('players')
           .select('id')
-          .eq('team_id', userTeamId)
-          .eq('lineup_status', 'starting') // Ensure they are a starter
+          .eq('lineup_status', 'starting')
           .eq('is_injured', false)
-          .limit(15);
-        
-        if (teamPlayers && teamPlayers.length > 0) {
-          const randomPlayer = teamPlayers[Math.floor(Math.random() * teamPlayers.length)];
-          console.log("INJURY TRIGGERED FOR PLAYER:", randomPlayer.id, "TEAM:", userTeamId);
-          updates.push(supabaseAdmin.from('players').update({ is_injured: true }).eq('id', randomPlayer.id));
+          .limit(1)
+          .single();
+          
+        if (fetchError) {
+          console.error("Injury Fetch Error:", fetchError);
+        } else if (firstPlayer) {
+          const { error: updateError } = await supabaseAdmin
+            .from('players')
+            .update({ is_injured: true })
+            .eq('id', firstPlayer.id);
+            
+          if (updateError) {
+            console.error("Injury Update Error:", updateError);
+          } else {
+            console.log("INJURY SUCCESSFULLY APPLIED TO PLAYER:", firstPlayer.id);
+          }
         }
+      } catch (injuryErr) {
+        console.error("Critical Injury Logic Error:", injuryErr);
       }
     }
 
