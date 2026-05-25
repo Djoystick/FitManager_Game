@@ -83,6 +83,7 @@ function MedicalWardCard({ t }: { t: any }) {
     const res = await healPlayer(userId, playerId);
     if (res.success) {
       setInjuredPlayers(prev => prev.filter(p => p.id !== playerId));
+      window.dispatchEvent(new Event('balanceUpdated'));
     } else {
       toast.error(res.error || "Failed to heal");
     }
@@ -204,6 +205,7 @@ function StadiumFacilityCard({ t }: { t: any }) {
       setStadiumLevel(res.new_level ?? 1);
       setFancoins(res.new_balance ?? 0);
       toast.success(t.stadium_upgrade_success.replace('{level}', (res.new_level ?? 1).toString()));
+      window.dispatchEvent(new Event('balanceUpdated'));
     } else {
       toast.error(res.error || t.stadium_upgrade_fail);
     }

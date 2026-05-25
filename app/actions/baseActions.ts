@@ -13,7 +13,7 @@ export async function getInjuredPlayers(userId: string) {
     const { data: team } = await supabaseAdmin
       .from('teams')
       .select('id')
-      .eq('owner_id', userId)
+      .eq('user_id', userId)
       .single();
 
     if (!team) return { success: false, error: 'Team not found' };
@@ -41,7 +41,7 @@ export async function healPlayer(userId: string, playerId: string) {
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
       .select('balance_fancoins')
-      .eq('telegram_id', userId)
+      .eq('id', userId)
       .single();
 
     if (userError || !user) {
@@ -56,7 +56,7 @@ export async function healPlayer(userId: string, playerId: string) {
     const { data: team } = await supabaseAdmin
       .from('teams')
       .select('id')
-      .eq('owner_id', userId)
+      .eq('user_id', userId)
       .single();
 
     if (!team) return { success: false, error: 'Team not found' };
@@ -81,7 +81,7 @@ export async function healPlayer(userId: string, playerId: string) {
     const { error: deductError } = await supabaseAdmin
       .from('users')
       .update({ balance_fancoins: newBalance })
-      .eq('telegram_id', userId);
+      .eq('id', userId);
 
     if (deductError) throw deductError;
 
@@ -93,7 +93,7 @@ export async function healPlayer(userId: string, playerId: string) {
 
     if (healError) {
       // Rollback balance (best effort in simple RPC-less flow)
-      await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins }).eq('telegram_id', userId);
+      await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins }).eq('id', userId);
       throw healError;
     }
 
@@ -109,7 +109,7 @@ export async function getStadiumData(userId: string) {
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
       .select('id, balance_fancoins')
-      .eq('telegram_id', userId)
+      .eq('id', userId)
       .single();
 
     if (userError || !user) return { success: false, error: 'User not found' };
@@ -158,7 +158,7 @@ export async function upgradeStadium(userId: string) {
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
       .select('id, balance_fancoins')
-      .eq('telegram_id', userId)
+      .eq('id', userId)
       .single();
 
     if (userError || !user) return { success: false, error: 'User not found' };
