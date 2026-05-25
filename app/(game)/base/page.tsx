@@ -6,7 +6,7 @@ import { BackButton } from '@/components/ui/BackButton';
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
-import { getInjuredPlayers, healPlayer, getStadiumData, upgradeStadium } from '@/app/actions/baseActions';
+import { getInjuredPlayers, healPlayer, getStadiumData, upgradeStadium, forceInjuryDebug } from '@/app/actions/baseActions';
 import toast from 'react-hot-toast';
 
 export default function BaseDashboard() {
@@ -89,6 +89,17 @@ function MedicalWardCard({ t }: { t: any }) {
     setHealingId(null);
   };
 
+  const handleDebugInjury = async () => {
+    if (!userId) return;
+    const res = await forceInjuryDebug(userId);
+    if (res.success) {
+      toast.success(`Травма применена: ${res.playerName}`);
+      fetchInjured();
+    } else {
+      toast.error(res.error || "Ошибка травмы");
+    }
+  };
+
   return (
     <div className="flex flex-col gap-2">
       <div className="bg-black/40 border border-gray-800 rounded-xl p-4 shadow-lg relative overflow-hidden group hover:border-neon-pink/50 transition-colors flex items-center justify-between">
@@ -104,8 +115,16 @@ function MedicalWardCard({ t }: { t: any }) {
           </div>
         </div>
 
-        <div className="relative z-10 text-xs font-mono text-gray-500">
-          {isLoading ? '...' : `${injuredPlayers.length} Injured`}
+        <div className="relative z-10 flex flex-col items-end gap-2">
+          <span className="text-xs font-mono text-gray-500">
+            {isLoading ? '...' : `${injuredPlayers.length} Injured`}
+          </span>
+          <button 
+            onClick={handleDebugInjury}
+            className="text-[9px] px-2 py-1 bg-red-900/30 text-red-400 border border-red-500/30 rounded uppercase font-bold tracking-widest hover:bg-red-500 hover:text-white transition-colors"
+          >
+            🐛 DEBUG: Сломать ногу
+          </button>
         </div>
       </div>
 
@@ -165,8 +184,20 @@ function StadiumFacilityCard({ t }: { t: any }) {
     }
   }, [isAuthenticated, userId]);
 
+  const upgradeCost = stadiumLevel * 1000;
+  const currentIncome = stadiumLevel * 50;
+  
+  // Safe cast for Fancoins to avoid NaN
+  const safeBalance = typeof fancoins === 'string' ? Number(fancoins.replace(/\D/g, '')) : Number(fancoins);
+
   const handleUpgrade = async () => {
     if (!userId) return;
+    
+    if (safeBalance < upgradeCost) {
+      toast.error(`Не хватает FC! Баланс: ${safeBalance}, Цена: ${upgradeCost}`);
+      return;
+    }
+
     setIsUpgrading(true);
     const res = await upgradeStadium(userId);
     if (res.success) {
@@ -178,13 +209,6 @@ function StadiumFacilityCard({ t }: { t: any }) {
     }
     setIsUpgrading(false);
   };
-
-  const upgradeCost = stadiumLevel * 1000;
-  const currentIncome = stadiumLevel * 50;
-  
-  // Safe cast for Fancoins to avoid NaN
-  const safeBalance = typeof fancoins === 'string' ? Number(fancoins.replace(/\D/g, '')) : Number(fancoins);
-  const canUpgrade = safeBalance >= upgradeCost;
 
   return (
     <div className="bg-black/40 border border-gray-800 rounded-xl p-4 shadow-lg relative overflow-hidden group hover:border-yellow-500/50 transition-colors flex items-center justify-between">
@@ -207,13 +231,11 @@ function StadiumFacilityCard({ t }: { t: any }) {
       
       <button 
         onClick={handleUpgrade}
-        disabled={!canUpgrade || isUpgrading || isLoading}
+        disabled={isUpgrading || isLoading}
         className={`relative z-10 text-[10px] px-3 py-1.5 rounded uppercase font-bold tracking-widest transition-colors ${
-          !canUpgrade 
-            ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700' 
-            : isUpgrading || isLoading
-              ? 'bg-yellow-900/50 text-yellow-500 border border-yellow-700 cursor-wait'
-              : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 hover:bg-yellow-500 hover:text-black shadow-[0_0_10px_rgba(234,179,8,0.2)]'
+          isUpgrading || isLoading
+            ? 'bg-yellow-900/50 text-yellow-500 border border-yellow-700 cursor-wait'
+            : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 hover:bg-yellow-500 hover:text-black shadow-[0_0_10px_rgba(234,179,8,0.2)]'
         }`}
       >
         {isUpgrading || isLoading ? '...' : `${upgradeCost} FC`}

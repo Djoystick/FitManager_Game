@@ -220,3 +220,45 @@ export async function upgradeStadium(userId: string) {
     return { success: false, error: err.message || 'Failed to upgrade stadium' };
   }
 }
+
+export async function forceInjuryDebug(userId: string) {
+  try {
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('telegram_id', userId)
+      .single();
+
+    if (userError || !user) return { success: false, error: 'User not found' };
+
+    const { data: team, error: teamError } = await supabaseAdmin
+      .from('teams')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (teamError || !team) return { success: false, error: 'Team not found' };
+
+    const { data: player, error: fetchError } = await supabaseAdmin
+      .from('players')
+      .select('id, name')
+      .eq('team_id', team.id)
+      .eq('lineup_status', 'starting')
+      .eq('is_injured', false)
+      .limit(1)
+      .single();
+
+    if (fetchError || !player) return { success: false, error: 'No healthy starting players found' };
+
+    const { error: updateError } = await supabaseAdmin
+      .from('players')
+      .update({ is_injured: true })
+      .eq('id', player.id);
+
+    if (updateError) return { success: false, error: updateError.message };
+
+    return { success: true, playerName: player.name };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to force injury' };
+  }
+}

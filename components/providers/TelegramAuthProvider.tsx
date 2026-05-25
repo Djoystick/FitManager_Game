@@ -80,29 +80,34 @@ export function TelegramAuthProvider({ children }: { children: ReactNode }) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-space-dark relative overflow-hidden">
         <style>{`
-          @keyframes dash-pulse {
-            0% { stroke-dashoffset: 280; }
-            100% { stroke-dashoffset: 0; }
+          @keyframes spin-radar {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
           }
-          .ekg-line {
-            stroke-dasharray: 40 280;
-            animation: dash-pulse 1.8s linear infinite;
-            stroke-linecap: round;
-            stroke-linejoin: round;
+          .radar-sweep {
+            background: conic-gradient(from 0deg, transparent 60%, rgba(57,255,20,0.1) 80%, rgba(57,255,20,0.8) 100%);
+            border-radius: 50%;
+            animation: spin-radar 2s linear infinite;
           }
         `}</style>
         
-        {/* SVG Container */}
-        <div className="w-64 h-24 relative flex justify-center items-center">
-          <svg viewBox="0 0 200 50" className="w-full h-full overflow-visible">
-             {/* Faded Background Line */}
-             <path d="M 0 25 L 80 25 L 90 5 L 100 45 L 110 25 L 200 25" fill="none" stroke="#00f3ff" strokeWidth="2" className="opacity-10" />
-             {/* Glowing Animated Pulse */}
-             <path d="M 0 25 L 80 25 L 90 5 L 100 45 L 110 25 L 200 25" fill="none" stroke="#00f3ff" strokeWidth="3" className="ekg-line drop-shadow-[0_0_8px_rgba(0,240,255,1)]" />
-          </svg>
+        {/* Tactical Radar Pitch */}
+        <div className="relative w-40 h-56 border-2 border-neon-green/40 rounded-lg overflow-hidden bg-green-950/20 shadow-[0_0_20px_rgba(57,255,20,0.1)]">
+          {/* Halfway line */}
+          <div className="absolute top-1/2 left-0 w-full border-t-2 border-neon-green/30"></div>
+          {/* Center circle */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 border-2 border-neon-green/30 rounded-full"></div>
+          {/* Penalty boxes */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-10 border-2 border-t-0 border-neon-green/30"></div>
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-10 border-2 border-b-0 border-neon-green/30"></div>
+          
+          {/* Radar Sweep Element */}
+          <div className="absolute top-1/2 left-1/2 w-[200%] aspect-square -mt-[100%] -ml-[100%]">
+             <div className="w-full h-full radar-sweep"></div>
+          </div>
         </div>
 
-        <h2 className="mt-8 text-sm font-bold tracking-[0.3em] font-orbitron uppercase text-neon-cyan animate-pulse drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+        <h2 className="mt-8 text-sm font-bold tracking-[0.3em] font-orbitron uppercase text-neon-green animate-pulse drop-shadow-[0_0_8px_rgba(57,255,20,0.6)]">
           Authenticating
         </h2>
         <p className="text-[10px] uppercase font-mono tracking-widest text-gray-500 mt-3 opacity-60">
