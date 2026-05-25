@@ -1,12 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { generateLeagueSchedule, simulateNextRound } from '@/app/actions/calendarActions';
 import { CalendarDays, FastForward } from 'lucide-react';
+import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
+import { MatchReportModal, MatchReport } from '@/components/MatchReportModal';
+import { useRouter } from 'next/navigation';
 
 export function ScheduleButtons() {
+  const { userId } = useContext(TelegramAuthContext);
+  const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [reportData, setReportData] = useState<{ report: MatchReport, teamId: string } | null>(null);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -27,9 +33,15 @@ export function ScheduleButtons() {
   const handleSimulate = async () => {
     setIsSimulating(true);
     try {
-      const res = await simulateNextRound();
+      const res = await simulateNextRound(userId || undefined);
       if (res.success) {
-        alert("Success: " + res.message);
+        if (res.userMatchReport && res.userTeamId) {
+          setReportData({ report: res.userMatchReport, teamId: res.userTeamId });
+        } else {
+          alert("Success: " + res.message);
+          window.dispatchEvent(new Event('matchSimulated'));
+          router.refresh();
+        }
       } else {
         alert("Error: " + res.error);
       }
@@ -40,8 +52,15 @@ export function ScheduleButtons() {
     }
   };
 
+  const handleCloseReport = () => {
+    setReportData(null);
+    window.dispatchEvent(new Event('matchSimulated'));
+    router.refresh();
+  };
+
   return (
-    <div className="flex flex-col sm:flex-row gap-3">
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
       <button 
         onClick={handleGenerate}
         disabled={isGenerating || isSimulating}
@@ -67,6 +86,15 @@ export function ScheduleButtons() {
         <FastForward size={16} />
         {isSimulating ? 'Simulating...' : '⏩ Fast-Forward Next Round'}
       </button>
+      </div>
+
+      {reportData && (
+        <MatchReportModal 
+          report={reportData.report} 
+          userTeamId={reportData.teamId} 
+          onClose={handleCloseReport} 
+        />
+      )}
     </div>
   );
 }

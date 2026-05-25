@@ -62,8 +62,14 @@ export async function generateLeagueSchedule() {
   }
 }
 
-export async function simulateNextRound() {
+export async function simulateNextRound(userId?: string) {
   try {
+    let userTeamId = null;
+    if (userId) {
+      const { data: ut } = await supabaseAdmin.from('teams').select('id').eq('user_id', userId).single();
+      if (ut) userTeamId = ut.id;
+    }
+
     // Find lowest round_number where is_played == false
     const { data: unplayedMatches } = await supabaseAdmin
       .from('league_matches')
@@ -120,16 +126,138 @@ export async function simulateNextRound() {
       });
     }
 
+    const matchReports = []; // Array to collect reports
+
+    // Fetch players for all teams in the target round
+    const teamIdsInRound = matches.flatMap(m => [m.home_team_id, m.away_team_id]);
+    const { data: roundPlayers } = await supabaseAdmin
+      .from('players')
+      .select('id, team_id, name, position, ovr, lineup_slot, lineup_status, is_injured')
+      .in('team_id', teamIdsInRound)
+      .eq('lineup_status', 'starting')
+      .eq('is_injured', false);
+
+    const playersByTeam: Record<string, any[]> = {};
+    teamIdsInRound.forEach(id => playersByTeam[id] = []);
+    if (roundPlayers) {
+      roundPlayers.forEach(p => {
+        if (playersByTeam[p.team_id]) playersByTeam[p.team_id].push(p);
+      });
+    }
+
     for (const match of matches) {
-      // Basic math simulation for fast-forward
-      const homeScore = Math.floor(Math.random() * 5);
-      const awayScore = Math.floor(Math.random() * 5);
+      let homeOvr = playersByTeam[match.home_team_id].reduce((sum, p) => sum + p.ovr, 0) / Math.max(1, playersByTeam[match.home_team_id].length) || 50;
+      let awayOvr = playersByTeam[match.away_team_id].reduce((sum, p) => sum + p.ovr, 0) / Math.max(1, playersByTeam[match.away_team_id].length) || 50;
+
+      const events: any[] = [];
+      let homeRedCards = 0;
+      let awayRedCards = 0;
+
+      // Cards Generation
+      if (Math.random() < 0.3) {
+        const isHome = Math.random() > 0.5;
+        const teamId = isHome ? match.home_team_id : match.away_team_id;
+        const teamPlayers = playersByTeam[teamId];
+        if (teamPlayers.length > 0) {
+          const player = teamPlayers[Math.floor(Math.random() * teamPlayers.length)];
+          const isRed = Math.random() < (0.05 / 0.30); // 5% overall chance
+          events.push({
+            type: isRed ? 'red_card' : 'yellow_card',
+            player_id: player.id,
+            player_name: player.name,
+            team_id: teamId,
+            minute: Math.floor(Math.random() * 90) + 1
+          });
+          if (isRed) {
+            if (isHome) { homeRedCards++; homeOvr *= 0.9; }
+            else { awayRedCards++; awayOvr *= 0.9; }
+          }
+        }
+      }
+
+      // Injuries Generation (10% chance per match)
+      if (Math.random() < 0.1) {
+        const isHome = Math.random() > 0.5;
+        const teamId = isHome ? match.home_team_id : match.away_team_id;
+        const teamPlayers = playersByTeam[teamId];
+        if (teamPlayers.length > 0) {
+          const player = teamPlayers[Math.floor(Math.random() * teamPlayers.length)];
+          events.push({
+            type: 'injury',
+            player_id: player.id,
+            player_name: player.name,
+            team_id: teamId,
+            minute: Math.floor(Math.random() * 90) + 1
+          });
+          updates.push(supabaseAdmin.from('players').update({ is_injured: true }).eq('id', player.id));
+        }
+      }
+
+      // Score Generation based on OVR difference
+      const ovrDiff = homeOvr - awayOvr;
+      const baseGoals = 1.5;
+      let homeExpected = baseGoals + (ovrDiff * 0.1);
+      let awayExpected = baseGoals - (ovrDiff * 0.1);
       
+      let homeScore = Math.max(0, Math.floor(homeExpected + (Math.random() * 3 - 1.5)));
+      let awayScore = Math.max(0, Math.floor(awayExpected + (Math.random() * 3 - 1.5)));
+
+      // Goals Generation
+      const generateGoals = (score: number, teamId: string) => {
+        const teamPlayers = playersByTeam[teamId];
+        const attackers = teamPlayers.filter(p => ['FWD', 'MID', 'LWF', 'RWF', 'ST', 'CF', 'CAM'].includes(p.position || p.lineup_slot?.split('_')[0]));
+        const available = attackers.length > 0 ? attackers : teamPlayers;
+
+        for (let i = 0; i < score; i++) {
+          if (available.length > 0) {
+            const player = available[Math.floor(Math.random() * available.length)];
+            events.push({
+              type: 'goal',
+              player_id: player.id,
+              player_name: player.name,
+              team_id: teamId,
+              minute: Math.floor(Math.random() * 90) + 1
+            });
+          }
+        }
+      };
+
+      generateGoals(homeScore, match.home_team_id);
+      generateGoals(awayScore, match.away_team_id);
+
+      // Knockout & Penalty Logic
+      let penaltyEvent = null;
+      if (match.is_knockout && homeScore === awayScore) {
+        const homePen = Math.floor(Math.random() * 2) + 4; // 4 or 5
+        const awayPen = homePen === 5 ? Math.floor(Math.random() * 2) + 3 : 5; // e.g. 5:4 or 4:5
+        
+        penaltyEvent = {
+          type: 'penalty_shootout',
+          score: `${homePen}:${awayPen}`,
+          winner_team_id: homePen > awayPen ? match.home_team_id : match.away_team_id
+        };
+        events.push(penaltyEvent);
+      }
+
+      // Sort events by minute
+      events.sort((a, b) => (a.minute || 0) - (b.minute || 0));
+
+      matchReports.push({
+        match_id: match.id,
+        home_team_id: match.home_team_id,
+        away_team_id: match.away_team_id,
+        home_score: homeScore,
+        away_score: awayScore,
+        is_knockout: match.is_knockout,
+        events
+      });
+
       // Queue match update
       updates.push(supabaseAdmin.from('league_matches').update({
         home_score: homeScore,
         away_score: awayScore,
-        is_played: true
+        is_played: true,
+        match_events: events
       }).eq('id', match.id));
 
       // Update team stats safely
@@ -178,34 +306,7 @@ export async function simulateNextRound() {
         updates.push(supabaseAdmin.rpc('increment_fancoins', { u_id: teamUsers[match.away_team_id], amount: awayAmount }));
       }
 
-      // INJURY MECHANIC: HARDCODED DIRECT EXECUTION FOR TESTING
-      try {
-        const { data: firstPlayer, error: fetchError } = await supabaseAdmin
-          .from('players')
-          .select('id')
-          .eq('lineup_status', 'starting')
-          .eq('is_injured', false)
-          .limit(1)
-          .single();
-          
-        if (fetchError) {
-          console.error("Injury Fetch Error:", fetchError);
-        } else if (firstPlayer) {
-          const { error: updateError } = await supabaseAdmin
-            .from('players')
-            .update({ is_injured: true })
-            .eq('id', firstPlayer.id);
-            
-          if (updateError) {
-            console.error("Injury Update Error:", updateError);
-          } else {
-            console.log("INJURY SUCCESSFULLY APPLIED TO PLAYER:", firstPlayer.id);
-          }
-        }
-      } catch (injuryErr) {
-        console.error("Critical Injury Logic Error:", injuryErr);
-      }
-    }
+
 
     // Await all match and injury updates
     await Promise.all(updates);
@@ -225,7 +326,13 @@ export async function simulateNextRound() {
 
     await Promise.all(standingsUpdates);
 
-    return { success: true, message: `Simulated Round ${targetRound} successfully. ${matches.length} matches played.` };
+    return { 
+      success: true, 
+      message: `Simulated Round ${targetRound} successfully. ${matches.length} matches played.`, 
+      matchReports,
+      userTeamId,
+      userMatchReport: userTeamId ? matchReports.find(r => r.home_team_id === userTeamId || r.away_team_id === userTeamId) : null
+    };
   } catch (err: any) {
     return { success: false, error: err.message || 'Unknown error during simulation.' };
   }

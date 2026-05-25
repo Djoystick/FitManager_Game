@@ -271,6 +271,7 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
             <div className="text-center p-4 bg-green-900/20 border border-neon-green/30 rounded-lg">
               <span className="text-sm font-bold text-neon-green uppercase tracking-wider">Maximum Potential Reached</span>
             </div>
+          ) : (
             <div className="flex flex-col gap-2">
               <h3 className="text-[10px] text-gray-500 uppercase tracking-widest mb-1 border-b border-gray-800 pb-1 flex justify-between">
                 <span>Training Camp (Lvl {trainingLevel})</span>
