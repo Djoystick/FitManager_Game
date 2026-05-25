@@ -143,16 +143,16 @@ export async function simulateNextRound() {
         a.draws++; a.pts += 1;
       }
 
-      // INJURY MECHANIC: 15% chance per match to injure a random player
-      if (Math.random() < 0.15) {
+      // INJURY MECHANIC: 50% chance per match to injure a random starting player (temporary for testing)
+      if (Math.random() < 0.50) {
         // Pick a team randomly
         const injuredTeamId = Math.random() < 0.5 ? match.home_team_id : match.away_team_id;
-        // Query a random player from that team who is not already injured
-        // We will fetch up to 15 players and pick one randomly to minimize complex SQL
+        // Query a random player from that team who is currently a starter and not already injured
         const { data: teamPlayers } = await supabaseAdmin
           .from('players')
           .select('id')
           .eq('team_id', injuredTeamId)
+          .eq('lineup_status', 'starting') // Ensure they are a starter
           .eq('is_injured', false)
           .limit(15);
         

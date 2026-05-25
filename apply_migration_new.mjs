@@ -12,7 +12,7 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function applyMigration() {
-  const sql = fs.readFileSync('supabase/migrations/00022_add_injuries_to_players.sql', 'utf8');
+  const sql = fs.readFileSync('supabase/migrations/00023_add_lineup_slots.sql', 'utf8');
   const { data, error } = await supabase.rpc('execute_sql', { sql });
 
   if (error) {

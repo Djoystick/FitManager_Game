@@ -37,7 +37,7 @@ export async function PUT(req: Request) {
     }
 
     // 3. Auto-Adjustment Logic
-    const playersToUpdate = allPlayers.map(p => ({ ...p, lineup_status: 'bench' }));
+    const playersToUpdate = allPlayers.map(p => ({ ...p, lineup_status: 'bench', lineup_slot: null as string | null }));
 
     const reqs: Record<string, { GK: number, DEF: number, MID: number, FWD: number }> = {
       '4-4-2': { GK: 1, DEF: 4, MID: 4, FWD: 2 },
@@ -54,6 +54,7 @@ export async function PUT(req: Request) {
 
       for (let i = 0; i < Math.min(count, available.length); i++) {
         available[i].lineup_status = 'starting';
+        available[i].lineup_slot = `${pos}_${i + 1}`;
       }
     };
 
@@ -75,7 +76,8 @@ export async function PUT(req: Request) {
     // Prepare JSONB payload for bulk RPC
     const payload = playersToUpdate.map(p => ({
       id: p.id,
-      lineup_status: p.lineup_status
+      lineup_status: p.lineup_status,
+      lineup_slot: p.lineup_slot
     }));
 
     // Execute single bulk operation via RPC to prevent connection pool exhaustion

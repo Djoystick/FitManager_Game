@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { BackButton } from '@/components/ui/BackButton';
 import { PlayerTrainingModal } from '@/components/PlayerTrainingModal';
+import { swapPlayers } from '@/app/actions/lineupActions';
 
 interface PlayerStats {
   pace: number;
@@ -27,6 +28,7 @@ interface Player {
   perks?: any;
   stamina: number;
   lineup_status: string;
+  lineup_slot?: string;
 }
 
 interface Team {
@@ -90,11 +92,13 @@ export default function LineupPage() {
   const startingPlayers = activePlayers.filter(p => p.lineup_status === 'starting');
   const benchPlayers = activePlayers.filter(p => p.lineup_status === 'bench');
 
-  // Categorize by position
-  const fwds = startingPlayers.filter(p => p.position === 'FWD');
-  const mids = startingPlayers.filter(p => p.position === 'MID');
-  const defs = startingPlayers.filter(p => p.position === 'DEF');
-  const gks = startingPlayers.filter(p => p.position === 'GK');
+  // Categorize by position/slot
+  const getSlotType = (p: Player) => p.lineup_slot ? p.lineup_slot.split('_')[0] : p.position;
+  
+  const fwds = startingPlayers.filter(p => getSlotType(p) === 'FWD');
+  const mids = startingPlayers.filter(p => getSlotType(p) === 'MID');
+  const defs = startingPlayers.filter(p => getSlotType(p) === 'DEF');
+  const gks = startingPlayers.filter(p => getSlotType(p) === 'GK');
 
   const handlePlayerClick = async (player: Player) => {
     if (team?.is_ready_for_match) return; // Locked
@@ -125,25 +129,16 @@ export default function LineupPage() {
     setIsSwapping(true);
     setSubmitMessage(null);
     try {
-      const res = await fetch('/api/lineup/swap', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          playerOutId: player1.lineup_status === 'starting' ? player1.id : player2.id,
-          playerInId: player1.lineup_status === 'bench' ? player1.id : player2.id,
-        })
-      });
+      const res = await swapPlayers(player1.id, player2.id);
 
-      const json = await res.json();
-      if (res.ok && json.success) {
+      if (res.success) {
         setPlayers(prev => prev.map(p => {
-          if (p.id === player1.id) return { ...p, lineup_status: player2.lineup_status };
-          if (p.id === player2.id) return { ...p, lineup_status: player1.lineup_status };
+          if (p.id === player1.id) return { ...p, lineup_status: player2.lineup_status, lineup_slot: player2.lineup_slot };
+          if (p.id === player2.id) return { ...p, lineup_status: player1.lineup_status, lineup_slot: player1.lineup_slot };
           return p;
         }));
       } else {
-        setSubmitMessage({ text: json.error || 'Swap failed', type: 'error' });
+        setSubmitMessage({ text: res.error || 'Swap failed', type: 'error' });
       }
     } catch (err) {
       setSubmitMessage({ text: 'Network error during swap.', type: 'error' });
@@ -179,6 +174,9 @@ export default function LineupPage() {
 
   const renderPlayerCard = (player: Player) => {
     const isSelected = selectedPlayerId === player.id;
+    const slotPos = getSlotType(player);
+    const isOOP = player.position !== slotPos && player.lineup_status === 'starting'; // Out of Position Check
+
     return (
       <div 
         key={player.id} 
@@ -186,9 +184,16 @@ export default function LineupPage() {
         className={`flex-1 max-w-[85px] mx-0.5 bg-black/80 backdrop-blur-md border rounded-md flex flex-col items-center shadow-lg overflow-hidden cursor-pointer transition-all relative ${
           isSelected 
             ? 'border-neon-pink shadow-[0_0_15px_rgba(255,0,60,0.6)] scale-105 z-10' 
-            : 'border-neon-cyan/50 hover:border-white'
+            : isOOP
+              ? 'border-red-500 shadow-[0_0_10px_rgba(255,0,0,0.4)] hover:border-red-400'
+              : 'border-neon-cyan/50 hover:border-white'
         }`}
       >
+        {/* OOP Overlay */}
+        {isOOP && (
+          <div className="absolute inset-0 bg-red-900/20 animate-pulse pointer-events-none z-0"></div>
+        )}
+
         {/* Train Button */}
         <button 
           onClick={(e) => { e.stopPropagation(); setTrainingPlayer(player); }}
@@ -198,8 +203,13 @@ export default function LineupPage() {
         </button>
 
         {/* Header */}
-        <div className="w-full bg-gradient-to-b from-neon-cyan/30 to-transparent p-1 flex justify-between items-center border-b border-neon-cyan/20">
-           <span className="text-[8px] font-black bg-neon-cyan text-black px-1 rounded-sm uppercase tracking-tighter shadow-[0_0_5px_rgba(0,240,255,0.8)]">{player.position}</span>
+        <div className="w-full bg-gradient-to-b from-neon-cyan/30 to-transparent p-1 flex justify-between items-center border-b border-neon-cyan/20 relative z-10">
+           <div className="flex items-center gap-1">
+             <span className={`text-[8px] font-black px-1 rounded-sm uppercase tracking-tighter shadow-[0_0_5px_rgba(0,240,255,0.8)] ${isOOP ? 'bg-red-500 text-white' : 'bg-neon-cyan text-black'}`}>
+               {player.position}
+             </span>
+             {isOOP && <span className="text-[8px] text-red-500 animate-pulse">⚠️</span>}
+           </div>
            <span className="text-[11px] font-black text-white drop-shadow-[0_0_2px_rgba(255,255,255,0.8)] pr-2">{player.ovr}</span>
         </div>
         
