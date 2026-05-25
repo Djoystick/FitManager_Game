@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
+import { revalidatePath } from 'next/cache';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -131,12 +132,13 @@ export async function simulateNextRound(userId?: string) {
     }
 
     const matchReports = []; // Array to collect reports
+    const playerUpdates: Record<string, any> = {}; // Track player state changes
 
     // Fetch players for all teams in the target round
     const teamIdsInRound = matches.flatMap(m => [m.home_team_id, m.away_team_id]);
     const { data: roundPlayers } = await supabaseAdmin
       .from('players')
-      .select('id, team_id, name, position, ovr, lineup_slot, lineup_status, is_injured')
+      .select('id, team_id, name, position, ovr, lineup_slot, lineup_status, is_injured, stamina')
       .in('team_id', teamIdsInRound)
       .eq('lineup_status', 'starting')
       .eq('is_injured', false);
@@ -146,6 +148,29 @@ export async function simulateNextRound(userId?: string) {
     if (roundPlayers) {
       roundPlayers.forEach(p => {
         if (playersByTeam[p.team_id]) playersByTeam[p.team_id].push(p);
+        
+        // Stamina Decay (15 to 25 points)
+        const decay = Math.floor(Math.random() * 11) + 15;
+        const newStamina = Math.max(0, p.stamina - decay);
+        playerUpdates[p.id] = { ...playerUpdates[p.id], stamina: newStamina };
+      });
+    }
+
+    // Fetch injured players to process natural healing
+    const { data: injuredPlayers } = await supabaseAdmin
+      .from('players')
+      .select('id, injury_matches_left')
+      .in('team_id', teamIdsInRound)
+      .eq('is_injured', true);
+
+    if (injuredPlayers) {
+      injuredPlayers.forEach(p => {
+        const newLeft = (p.injury_matches_left || 1) - 1;
+        if (newLeft <= 0) {
+          playerUpdates[p.id] = { ...playerUpdates[p.id], is_injured: false, injury_matches_left: 0 };
+        } else {
+          playerUpdates[p.id] = { ...playerUpdates[p.id], injury_matches_left: newLeft };
+        }
       });
     }
 
@@ -193,7 +218,8 @@ export async function simulateNextRound(userId?: string) {
             team_id: teamId,
             minute: Math.floor(Math.random() * 90) + 1
           });
-          updates.push(supabaseAdmin.from('players').update({ is_injured: true }).eq('id', player.id));
+          const injuryMatches = Math.floor(Math.random() * 3) + 1;
+          playerUpdates[player.id] = { ...playerUpdates[player.id], is_injured: true, injury_matches_left: injuryMatches };
         }
       }
 
@@ -312,9 +338,28 @@ export async function simulateNextRound(userId?: string) {
         updates.push(supabaseAdmin.rpc('increment_fancoins', { u_id: teamUsers[match.away_team_id], amount: awayAmount }));
       }
     }
-
-    // Await all match and injury updates
+    // Await match and fancoins updates
     await Promise.all(updates);
+
+    // Process all accumulated player updates with explicit error logging
+    const playerUpdatePromises = Object.keys(playerUpdates).map(async (playerId) => {
+      const payload = playerUpdates[playerId];
+      // Safety check for stamina
+      if (payload.stamina !== undefined && payload.stamina < 0) {
+        payload.stamina = 0;
+      }
+      
+      const { error } = await supabaseAdmin
+        .from('players')
+        .update(payload)
+        .eq('id', playerId);
+        
+      if (error) {
+        console.error(`[MatchEngine] Failed to update player ${playerId}:`, error);
+      }
+    });
+
+    await Promise.all(playerUpdatePromises);
 
     // Batch update standings
     const standingsUpdates = Object.entries(teamStats).map(([teamId, st]) => 
@@ -330,6 +375,10 @@ export async function simulateNextRound(userId?: string) {
     );
 
     await Promise.all(standingsUpdates);
+
+    // Revalidate Next.js cache to ensure UI gets fresh data
+    revalidatePath('/lineup');
+    revalidatePath('/base');
 
     return { 
       success: true, 

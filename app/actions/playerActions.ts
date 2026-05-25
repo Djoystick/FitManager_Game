@@ -118,3 +118,68 @@ export async function bulkTrainPlayer(
     return { success: false, error: err.message || 'Failed to process bulk training' };
   }
 }
+
+export async function healPlayerStamina(userId: string, playerId: string) {
+  try {
+    const costTP = 50;
+    
+    // 1. Fetch user & team
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id, balance_tp')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) return { success: false, error: 'User not found' };
+
+    const { data: team, error: teamError } = await supabaseAdmin
+      .from('teams')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    if (teamError || !team) return { success: false, error: 'Team not found' };
+
+    // 2. Fetch Player
+    const { data: player, error: playerError } = await supabaseAdmin
+      .from('players')
+      .select('id, team_id, stamina')
+      .eq('id', playerId)
+      .single();
+
+    if (playerError || !player) return { success: false, error: 'Player not found' };
+    if (player.team_id !== team.id) return { success: false, error: 'Player does not belong to your team' };
+
+    // 3. Verify balance and stamina
+    if (user.balance_tp < costTP) return { success: false, error: 'Insufficient TP' };
+    if (player.stamina >= 100) return { success: false, error: 'Stamina is already full' };
+
+    // 4. Transaction
+    const newBalance = user.balance_tp - costTP;
+    
+    const { error: deductError } = await supabaseAdmin
+      .from('users')
+      .update({ balance_tp: newBalance })
+      .eq('id', userId);
+
+    if (deductError) throw deductError;
+
+    const { error: healError } = await supabaseAdmin
+      .from('players')
+      .update({ stamina: 100 })
+      .eq('id', playerId);
+
+    if (healError) {
+      await supabaseAdmin.from('users').update({ balance_tp: user.balance_tp }).eq('id', userId);
+      throw healError;
+    }
+
+    return { 
+      success: true, 
+      newBalance 
+    };
+
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to heal stamina' };
+  }
+}

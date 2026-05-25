@@ -99,7 +99,7 @@ export async function healPlayer(userId: string, playerId: string) {
     // 4. Heal Player
     const { error: healError } = await supabaseAdmin
       .from('players')
-      .update({ is_injured: false })
+      .update({ is_injured: false, injury_matches_left: 0 })
       .eq('id', playerId);
 
     if (healError) {

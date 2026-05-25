@@ -24,6 +24,7 @@ interface Player {
   ovr: number;
   is_nft_coach?: boolean;
   is_injured?: boolean;
+  injury_matches_left?: number;
   potential_limit: number;
   position: string;
   stats: PlayerStats;
@@ -224,7 +225,7 @@ export default function LineupPage() {
                {player.position}
              </span>
              {isOOP && <span className="text-[8px] text-red-500 animate-pulse">⚠️</span>}
-             {player.is_injured && <span className="text-[10px] animate-pulse drop-shadow-[0_0_5px_rgba(255,0,0,1)]">🚑</span>}
+             {player.is_injured && <span className="text-[9px] bg-red-900/60 text-red-400 px-0.5 rounded border border-red-500/50 animate-pulse drop-shadow-[0_0_5px_rgba(255,0,0,0.8)]">🚑{player.injury_matches_left || 1}M</span>}
            </div>
            <span className={`text-[11px] font-black drop-shadow-[0_0_2px_rgba(255,255,255,0.8)] pr-2 ${isOOP ? 'text-red-500' : 'text-white'}`}>{displayOvr}</span>
         </div>
@@ -234,11 +235,14 @@ export default function LineupPage() {
         
         {/* Stamina & Stats Grid */}
         {player.stats && (
-           <div className="w-full">
-             <div className="bg-gray-800/80 text-[7px] text-center font-bold text-neon-green border-y border-gray-700 py-0.5">
-               ⚡ {player.stamina}
-             </div>
-             <div className="grid grid-cols-2 gap-x-1 gap-y-0 p-1 bg-gray-900/80 text-[9px] font-orbitron text-gray-400">
+             <div className="w-full">
+               <div className={`bg-gray-800/80 text-[7px] text-center font-bold border-y border-gray-700 py-0.5 flex items-center justify-center gap-0.5 ${player.stamina > 70 ? 'text-neon-green' : player.stamina > 30 ? 'text-yellow-500' : 'text-red-500'}`}>
+                 ⚡ {player.stamina}
+                 <div className="w-8 h-[2px] bg-gray-900 rounded-full overflow-hidden ml-1">
+                   <div className={`h-full ${player.stamina > 70 ? 'bg-neon-green' : player.stamina > 30 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${player.stamina}%` }}></div>
+                 </div>
+               </div>
+               <div className="grid grid-cols-2 gap-x-1 gap-y-0 p-1 bg-gray-900/80 text-[9px] font-orbitron text-gray-400">
                <div className="flex justify-between"><span>PAC</span><span className="text-neon-green font-bold">{player.stats.pace}</span></div>
                <div className="flex justify-between"><span>SHO</span><span className="text-neon-green font-bold">{player.stats.shooting}</span></div>
                <div className="flex justify-between"><span>PAS</span><span className="text-neon-green font-bold">{player.stats.passing}</span></div>

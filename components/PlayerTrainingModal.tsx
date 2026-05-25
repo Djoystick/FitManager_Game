@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { bulkTrainPlayer } from '@/app/actions/playerActions';
+import { bulkTrainPlayer, healPlayerStamina } from '@/app/actions/playerActions';
 
 interface PlayerStats {
   pace: number;
@@ -20,6 +20,8 @@ interface Player {
   position: string;
   stats: PlayerStats;
   stamina: number;
+  is_injured?: boolean;
+  injury_matches_left?: number;
   lineup_status: string;
 }
 
@@ -149,15 +151,9 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
     setErrorMsg(null);
 
     try {
-      const res = await fetch('/api/players/heal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, playerId: player.id })
-      });
-
-      const data = await res.json();
+      const res = await healPlayerStamina(userId, player.id);
       
-      if (res.ok && data.success) {
+      if (res.success) {
         setTpBalance(prev => prev - 50);
         window.dispatchEvent(new Event('balanceUpdated')); // Trigger global header update
         
@@ -166,7 +162,7 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
         // We pass fancoins since it didn't change
         onTrainSuccess(updatedPlayer, fancoins);
       } else {
-        setErrorMsg(data.error || 'Healing failed');
+        setErrorMsg(res.error || 'Healing failed');
       }
     } catch (err) {
       setErrorMsg('Network error occurred.');
@@ -227,6 +223,30 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
               {stagedCost > 0 && (
                 <span className="text-[10px] text-red-400 animate-pulse">- {stagedCost.toLocaleString()} FC</span>
               )}
+            </div>
+          </div>
+
+          {/* Health Details */}
+          <div className="flex justify-center items-center gap-4 mt-2">
+            {player.is_injured && (
+              <span className="text-xs bg-red-900/40 text-red-400 px-2 py-1 rounded border border-red-500/50 animate-pulse flex items-center gap-1">
+                🚑 {player.injury_matches_left || 1}M
+              </span>
+            )}
+            
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] text-gray-500 uppercase tracking-widest">Stamina</span>
+              <div className="flex items-center gap-1">
+                <span className={`text-sm font-bold ${player.stamina > 70 ? 'text-neon-green' : player.stamina > 30 ? 'text-yellow-500' : 'text-red-500'}`}>
+                  ⚡ {player.stamina}
+                </span>
+                <div className="w-16 h-1.5 bg-gray-800 rounded-full overflow-hidden ml-1">
+                  <div 
+                    className={`h-full ${player.stamina > 70 ? 'bg-neon-green' : player.stamina > 30 ? 'bg-yellow-500' : 'bg-red-500'}`} 
+                    style={{ width: `${player.stamina}%` }}
+                  ></div>
+                </div>
+              </div>
             </div>
           </div>
 
