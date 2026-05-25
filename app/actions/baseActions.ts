@@ -226,7 +226,7 @@ export async function forceInjuryDebug(userId: string) {
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
       .select('id')
-      .eq('telegram_id', userId)
+      .eq('id', userId)
       .single();
 
     if (userError || !user) return { success: false, error: 'User not found' };
