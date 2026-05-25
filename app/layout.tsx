@@ -46,6 +46,7 @@ import { TonProvider } from "@/components/TonProvider";
 import { LanguageProvider } from "@/components/LanguageContext";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { BottomTabBar } from "@/components/ui/BottomTabBar";
+import { Toaster } from "react-hot-toast";
 
 export default function RootLayout({
   children,
@@ -72,6 +73,7 @@ export default function RootLayout({
                 </div>
                 <BottomTabBar />
               </main>
+              <Toaster position="top-center" toastOptions={{ className: 'font-sans font-bold shadow-[0_0_15px_rgba(255,0,60,0.4)] bg-black text-white border border-red-500/50' }} />
             </TonProvider>
           </TelegramAuthProvider>
         </LanguageProvider>

@@ -28,10 +28,6 @@ export async function swapPlayers(playerOutId: string, playerInId: string) {
       return { success: false, error: 'Team not found' };
     }
 
-    if (team.is_ready_for_match) {
-      return { success: false, error: 'Cannot swap players while lineup is locked for a match' };
-    }
-
     // 2. Fetch both players to verify ownership and current status
     const { data: players, error: playersError } = await supabase
       .from('players')

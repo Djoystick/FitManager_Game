@@ -21,10 +21,6 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 });
     }
 
-    if (team.is_ready_for_match) {
-      return NextResponse.json({ error: 'Cannot change formation while ready for match' }, { status: 400 });
-    }
-
     // 2. Fetch all active players
     const { data: allPlayers, error: playersError } = await supabase
       .from('players')

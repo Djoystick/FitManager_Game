@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { BackButton } from '@/components/ui/BackButton';
 import { PlayerTrainingModal } from '@/components/PlayerTrainingModal';
 import { swapPlayers } from '@/app/actions/lineupActions';
+import toast from 'react-hot-toast';
 
 interface PlayerStats {
   pace: number;
@@ -101,8 +102,6 @@ export default function LineupPage() {
   const gks = startingPlayers.filter(p => getSlotType(p) === 'GK');
 
   const handlePlayerClick = async (player: Player) => {
-    if (team?.is_ready_for_match) return; // Locked
-
     if (!selectedPlayerId) {
       setSelectedPlayerId(player.id);
       return;
@@ -138,9 +137,11 @@ export default function LineupPage() {
           return p;
         }));
       } else {
+        toast.error(res.error || 'Swap failed');
         setSubmitMessage({ text: res.error || 'Swap failed', type: 'error' });
       }
-    } catch (err) {
+    } catch (err: any) {
+      toast.error(err.message || 'Network error during swap.');
       setSubmitMessage({ text: 'Network error during swap.', type: 'error' });
     } finally {
       setIsSwapping(false);
@@ -149,7 +150,7 @@ export default function LineupPage() {
   };
 
   const handleFormationChange = async (newFormation: string) => {
-    if (!userId || !team || team.is_ready_for_match || team.formation === newFormation) return;
+    if (!userId || !team || team.formation === newFormation) return;
     
     setIsFormationLoading(true);
     setSubmitMessage(null);
@@ -163,9 +164,11 @@ export default function LineupPage() {
       if (res.ok && data.success) {
         await fetchTeamData();
       } else {
+        toast.error(data.error || 'Failed to change formation');
         setSubmitMessage({ text: data.error || 'Failed to change formation', type: 'error' });
       }
-    } catch (err) {
+    } catch (err: any) {
+      toast.error(err.message || 'Network error during formation change.');
       setSubmitMessage({ text: 'Network error during formation change.', type: 'error' });
     } finally {
       setIsFormationLoading(false);
@@ -261,12 +264,15 @@ export default function LineupPage() {
 
       const json = await res.json();
       if (res.ok && json.success) {
+        toast.success(json.message || 'Lineup submitted');
         setSubmitMessage({ text: json.message, type: 'success' });
         setTeam(prev => prev ? { ...prev, is_ready_for_match: true } : prev);
       } else {
+        toast.error(json.error || 'Failed to submit lineup');
         setSubmitMessage({ text: json.error || 'Failed to submit lineup', type: 'error' });
       }
-    } catch (err) {
+    } catch (err: any) {
+      toast.error(err.message || 'Network error connecting to backend servers.');
       setSubmitMessage({ text: 'Network error connecting to backend servers.', type: 'error' });
     } finally {
       setIsSubmitting(false);
@@ -323,7 +329,7 @@ export default function LineupPage() {
           <button
             key={f}
             onClick={() => handleFormationChange(f)}
-            disabled={isFormationLoading || team.is_ready_for_match}
+            disabled={isFormationLoading}
             className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider transition-colors border ${
               team.formation === f || (!team.formation && f === '4-4-2')
                 ? 'bg-neon-cyan text-black border-neon-cyan shadow-[0_0_10px_rgba(0,240,255,0.5)]'
@@ -411,18 +417,14 @@ export default function LineupPage() {
 
         <button 
           onClick={handleSubmitLineup}
-          disabled={isSubmitting || isSwapping || team.is_ready_for_match || startingPlayers.length === 0}
+          disabled={isSubmitting || isSwapping || startingPlayers.length === 0}
           className={`w-full py-4 rounded-lg font-black uppercase tracking-widest transition-all duration-300 ${
-            team.is_ready_for_match
-              ? 'bg-neon-green text-black cursor-not-allowed shadow-[0_0_20px_rgba(57,255,20,0.4)] opacity-90'
-              : isSubmitting || isSwapping || startingPlayers.length === 0
+            isSubmitting || isSwapping || startingPlayers.length === 0
                 ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
                 : 'bg-neon-cyan text-black hover:bg-white hover:text-neon-cyan shadow-[0_0_20px_rgba(0,240,255,0.4)]'
           }`}
         >
-          {team.is_ready_for_match 
-            ? 'Match Ready / Locked' 
-            : isSubmitting 
+          {isSubmitting 
               ? 'Processing Transaction...' 
               : isSwapping
                 ? 'Swapping...'
