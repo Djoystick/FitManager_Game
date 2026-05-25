@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { bulkTrainPlayer } from '@/app/actions/playerActions';
 
 interface PlayerStats {
   pace: number;
@@ -34,9 +35,10 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
   const [fancoins, setFancoins] = useState<number>(0);
   const [tpBalance, setTpBalance] = useState<number>(0);
   const [isLoadingData, setIsLoadingData] = useState(true);
-  const [isTraining, setIsTraining] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [isHealing, setIsHealing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [stagedStats, setStagedStats] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -64,36 +66,76 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
 
   const discountPercent = Math.min(0.50, trainingLevel * 0.05);
   const trainCost = Math.floor(500 * (1 - discountPercent));
-  const isMaxed = player.ovr >= player.potential_limit;
 
-  const handleTrain = async (statKey: keyof PlayerStats) => {
-    if (fancoins < trainCost) {
+  const currentStats = player.stats || { pace: 50, shooting: 50, passing: 50, defending: 50, physical: 50 };
+  
+  const totalPointsAdded = Object.values(stagedStats).reduce((a, b) => a + b, 0);
+  const stagedCost = totalPointsAdded * trainCost;
+
+  const projectedStats = useMemo(() => {
+    return {
+      pace: currentStats.pace + (stagedStats.pace || 0),
+      shooting: currentStats.shooting + (stagedStats.shooting || 0),
+      passing: currentStats.passing + (stagedStats.passing || 0),
+      defending: currentStats.defending + (stagedStats.defending || 0),
+      physical: currentStats.physical + (stagedStats.physical || 0),
+    };
+  }, [currentStats, stagedStats]);
+
+  const projectedOvr = Math.floor(
+    (projectedStats.pace + projectedStats.shooting + projectedStats.passing + projectedStats.defending + projectedStats.physical) / 5.0
+  );
+
+  const isMaxed = projectedOvr >= player.potential_limit;
+
+  const handleIncrement = (key: keyof PlayerStats) => {
+    if (fancoins < stagedCost + trainCost) {
       setErrorMsg('Insufficient FanCoins');
       return;
     }
-    
-    setIsTraining(statKey);
+    if (isMaxed) {
+      setErrorMsg('Cannot exceed potential limit');
+      return;
+    }
     setErrorMsg(null);
+    setStagedStats(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }));
+  };
 
+  const handleDecrement = (key: keyof PlayerStats) => {
+    setStagedStats(prev => {
+      const current = prev[key] || 0;
+      if (current <= 0) return prev;
+      const next = { ...prev, [key]: current - 1 };
+      if (next[key] === 0) delete next[key];
+      return next;
+    });
+    setErrorMsg(null);
+  };
+
+  const handleCancel = () => {
+    setStagedStats({});
+    setErrorMsg(null);
+  };
+
+  const handleSaveBulk = async () => {
+    if (totalPointsAdded === 0) return;
+    setIsSaving(true);
+    setErrorMsg(null);
+    
     try {
-      const res = await fetch('/api/players/train', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, playerId: player.id, statKey })
-      });
-
-      const data = await res.json();
-      
-      if (res.ok && data.success) {
-        setFancoins(data.newBalance);
-        onTrainSuccess(data.player, data.newBalance);
+      const res = await bulkTrainPlayer(userId, player.id, stagedStats, stagedCost);
+      if (res.success) {
+        setFancoins(res.newBalance);
+        window.dispatchEvent(new Event('balanceUpdated'));
+        handleCancel();
+        onTrainSuccess(res.player, res.newBalance);
       } else {
-        setErrorMsg(data.error || 'Training failed');
+        setErrorMsg(res.error || 'Training failed');
       }
     } catch (err) {
       setErrorMsg('Network error occurred.');
     } finally {
-      setIsTraining(null);
+      setIsSaving(false);
     }
   };
 
@@ -160,7 +202,14 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
           <div className="flex justify-center gap-4 text-sm font-orbitron">
             <div className="flex flex-col items-center">
               <span className="text-gray-500 text-[10px]">OVR</span>
-              <span className="text-xl font-black text-white">{player.ovr}</span>
+              <div className="flex items-center gap-1">
+                <span className={`text-xl font-black ${projectedOvr > player.ovr ? 'text-neon-green' : 'text-white'}`}>
+                  {projectedOvr}
+                </span>
+                {projectedOvr > player.ovr && (
+                  <span className="text-[10px] text-neon-green animate-pulse">+{projectedOvr - player.ovr}</span>
+                )}
+              </div>
             </div>
             <div className="flex flex-col items-center">
               <span className="text-gray-500 text-[10px]">POTENTIAL</span>
@@ -173,7 +222,12 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
         <div className="p-5 flex flex-col gap-4">
           <div className="flex justify-between items-center bg-black/50 p-2 rounded border border-gray-800">
             <span className="text-xs text-gray-400 uppercase tracking-widest">Balance</span>
-            <span className="text-sm font-black text-neon-cyan">{isLoadingData ? '...' : fancoins.toLocaleString()} FC</span>
+            <div className="flex flex-col items-end">
+              <span className="text-sm font-black text-neon-cyan">{isLoadingData ? '...' : fancoins.toLocaleString()} FC</span>
+              {stagedCost > 0 && (
+                <span className="text-[10px] text-red-400 animate-pulse">- {stagedCost.toLocaleString()} FC</span>
+              )}
+            </div>
           </div>
 
           {errorMsg && (
@@ -217,31 +271,72 @@ export function PlayerTrainingModal({ player, userId, onClose, onTrainSuccess }:
             <div className="text-center p-4 bg-green-900/20 border border-neon-green/30 rounded-lg">
               <span className="text-sm font-bold text-neon-green uppercase tracking-wider">Maximum Potential Reached</span>
             </div>
-          ) : (
             <div className="flex flex-col gap-2">
-              <h3 className="text-[10px] text-gray-500 uppercase tracking-widest mb-1 border-b border-gray-800 pb-1">Training Camp (Lvl {trainingLevel})</h3>
+              <h3 className="text-[10px] text-gray-500 uppercase tracking-widest mb-1 border-b border-gray-800 pb-1 flex justify-between">
+                <span>Training Camp (Lvl {trainingLevel})</span>
+                <span>{trainCost} FC / pt</span>
+              </h3>
               
-              {(Object.keys(statLabels) as Array<keyof PlayerStats>).map(key => (
-                <div key={key} className="flex items-center justify-between bg-black/40 p-2 rounded border border-gray-800 hover:border-neon-cyan/50 transition-colors">
-                  <div className="flex items-center gap-3 w-1/2">
-                    <span className="text-xs font-orbitron text-gray-400 w-8">{statLabels[key]}</span>
-                    <span className="text-sm font-black text-neon-green">{player.stats[key]}</span>
+              {(Object.keys(statLabels) as Array<keyof PlayerStats>).map(key => {
+                const added = stagedStats[key] || 0;
+                const currentVal = player.stats[key] || 50;
+                const projectedVal = currentVal + added;
+
+                return (
+                  <div key={key} className="flex items-center justify-between bg-black/40 p-2 rounded border border-gray-800 hover:border-neon-cyan/50 transition-colors">
+                    <div className="flex items-center gap-3 w-1/3">
+                      <span className="text-xs font-orbitron text-gray-400 w-8">{statLabels[key]}</span>
+                      <span className={`text-sm font-black ${added > 0 ? 'text-neon-green' : 'text-white'}`}>
+                        {projectedVal}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => handleDecrement(key)}
+                        disabled={added === 0 || isSaving}
+                        className={`w-8 h-8 rounded flex items-center justify-center font-bold text-lg transition-colors border ${
+                          added > 0 ? 'bg-red-900/30 text-red-500 border-red-500 hover:bg-red-500 hover:text-white' : 'bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed'
+                        }`}
+                      >
+                        -
+                      </button>
+                      <span className="text-xs font-mono w-4 text-center text-gray-400">{added > 0 ? `+${added}` : ''}</span>
+                      <button 
+                        onClick={() => handleIncrement(key)}
+                        disabled={isMaxed || fancoins < stagedCost + trainCost || isSaving}
+                        className={`w-8 h-8 rounded flex items-center justify-center font-bold text-lg transition-colors border ${
+                          (!isMaxed && fancoins >= stagedCost + trainCost) ? 'bg-neon-cyan/10 text-neon-cyan border-neon-cyan hover:bg-neon-cyan hover:text-black' : 'bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed'
+                        }`}
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
-                  <button 
-                    onClick={() => handleTrain(key)}
-                    disabled={fancoins < trainCost || isTraining !== null}
-                    className={`flex-1 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all border ${
-                      isTraining === key
-                        ? 'bg-neon-cyan text-black border-neon-cyan'
-                        : fancoins >= trainCost
-                          ? 'bg-transparent text-neon-cyan border-neon-cyan hover:bg-neon-cyan hover:text-black'
-                          : 'bg-gray-800 text-gray-500 border-gray-700 cursor-not-allowed'
-                    }`}
-                  >
-                    {isTraining === key ? '...' : `Train (${trainCost} FC)`}
-                  </button>
-                </div>
-              ))}
+                );
+              })}
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-800">
+                <button
+                  onClick={handleCancel}
+                  disabled={totalPointsAdded === 0 || isSaving}
+                  className={`flex-1 py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                    totalPointsAdded > 0 ? 'bg-gray-800 text-white border-gray-600 hover:bg-gray-700' : 'bg-gray-900 text-gray-700 border-gray-800 cursor-not-allowed'
+                  }`}
+                >
+                  Отменить
+                </button>
+                <button
+                  onClick={handleSaveBulk}
+                  disabled={totalPointsAdded === 0 || isSaving}
+                  className={`flex-1 py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                    totalPointsAdded > 0 && !isSaving ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan hover:bg-neon-cyan hover:text-black shadow-[0_0_15px_rgba(0,240,255,0.4)]' : 'bg-gray-900 text-gray-700 border-gray-800 cursor-not-allowed'
+                  }`}
+                >
+                  {isSaving ? 'Saving...' : `Сохранить`}
+                </button>
+              </div>
             </div>
           )}
         </div>
