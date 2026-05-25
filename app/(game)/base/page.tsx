@@ -6,12 +6,34 @@ import { BackButton } from '@/components/ui/BackButton';
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
-import { getInjuredPlayers, healPlayer, getStadiumData, upgradeStadium, forceInjuryDebug } from '@/app/actions/baseActions';
+import { getInjuredPlayers, healPlayer, getStadiumData, upgradeStadium, upgradeMedicalCenter, upgradeTrainingCenter, forceInjuryDebug } from '@/app/actions/baseActions';
 import toast from 'react-hot-toast';
 
 export default function BaseDashboard() {
   const { language } = useContext(LanguageContext);
-  const t = dict[language as keyof typeof dict];
+  const { userId, isAuthenticated } = useContext(TelegramAuthContext);
+  const [infra, setInfra] = useState({ stadium: 1, medical: 1, training: 1, fancoins: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchInfra = async () => {
+    if (!userId) return;
+    setIsLoading(true);
+    const res = await getStadiumData(userId);
+    if (res.success) {
+      setInfra({
+        stadium: res.stadium_level || 1,
+        medical: res.medical_center_level || 1,
+        training: res.training_camp_level || 1,
+        fancoins: res.fancoins || 0
+      });
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && userId) fetchInfra();
+  }, [isAuthenticated, userId]);
+
   return (
     <div className="flex flex-col flex-1 p-4 gap-4 pb-24 h-full overflow-y-auto custom-scrollbar bg-space-dark">
       {/* Header */}
@@ -24,15 +46,39 @@ export default function BaseDashboard() {
       </header>
 
       <div className="flex flex-col gap-4">
-        <StadiumFacilityCard t={t} />
-        <MedicalWardCard t={t} />
-        <TrainingCenterCard t={t} />
+        <StadiumFacilityCard t={t} infra={infra} onUpgradeSuccess={fetchInfra} />
+        <MedicalWardCard t={t} infra={infra} onUpgradeSuccess={fetchInfra} />
+        <TrainingCenterCard t={t} infra={infra} onUpgradeSuccess={fetchInfra} />
       </div>
     </div>
   );
 }
 
-function TrainingCenterCard({ t }: { t: any }) {
+function TrainingCenterCard({ t, infra, onUpgradeSuccess }: { t: any, infra: any, onUpgradeSuccess: () => void }) {
+  const { userId } = useContext(TelegramAuthContext);
+  const [isUpgrading, setIsUpgrading] = useState(false);
+  const upgradeCost = infra.training * 1000;
+  
+  const safeBalance = typeof infra.fancoins === 'string' ? Number(infra.fancoins.replace(/\D/g, '')) : Number(infra.fancoins);
+
+  const handleUpgrade = async () => {
+    if (!userId) return;
+    if (safeBalance < upgradeCost) {
+      toast.error(`Не хватает FC! Цена: ${upgradeCost}`);
+      return;
+    }
+    setIsUpgrading(true);
+    const res = await upgradeTrainingCenter(userId);
+    if (res.success) {
+      toast.success(`Training Center upgraded to level ${res.new_level}!`);
+      window.dispatchEvent(new Event('balanceUpdated'));
+      onUpgradeSuccess();
+    } else {
+      toast.error(res.error || "Upgrade failed");
+    }
+    setIsUpgrading(false);
+  };
+
   return (
     <div className="bg-black/40 border border-gray-800 rounded-xl p-4 shadow-lg relative overflow-hidden group hover:border-neon-cyan/50 transition-colors flex items-center justify-between">
       <div className="absolute top-0 right-0 w-24 h-24 bg-neon-cyan/10 rounded-full blur-2xl group-hover:bg-neon-cyan/20 transition-all -mr-10 -mt-10"></div>
@@ -43,22 +89,38 @@ function TrainingCenterCard({ t }: { t: any }) {
         </div>
         <div>
           <h2 className="text-sm font-bold text-white font-orbitron uppercase tracking-widest">{t.training_center}</h2>
-          <span className="text-xs font-mono text-gray-500">{t.level} 1</span>
+          <span className="text-xs font-mono text-gray-500">{t.level} {infra.training}</span>
         </div>
       </div>
       
-      <button className="relative z-10 text-[10px] bg-neon-cyan/10 text-neon-cyan px-3 py-1.5 rounded uppercase font-bold tracking-widest border border-neon-cyan/30 hover:bg-neon-cyan hover:text-black transition-colors">
-        {t.enter_facility}
+      <button 
+        onClick={handleUpgrade}
+        disabled={isUpgrading}
+        className={`relative z-10 text-[10px] px-3 py-1.5 rounded uppercase font-bold tracking-widest transition-colors ${
+          isUpgrading
+            ? 'bg-cyan-900/50 text-neon-cyan border border-cyan-700 cursor-wait'
+            : 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30 hover:bg-neon-cyan hover:text-black shadow-[0_0_10px_rgba(0,240,255,0.2)]'
+        }`}
+      >
+        {isUpgrading ? '...' : `${upgradeCost} FC`}
       </button>
     </div>
   );
 }
 
-function MedicalWardCard({ t }: { t: any }) {
+function MedicalWardCard({ t, infra, onUpgradeSuccess }: { t: any, infra: any, onUpgradeSuccess: () => void }) {
   const { userId, isAuthenticated } = useContext(TelegramAuthContext);
   const [injuredPlayers, setInjuredPlayers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [healingId, setHealingId] = useState<string | null>(null);
+  const [isUpgrading, setIsUpgrading] = useState(false);
+  
+  const upgradeCost = infra.medical * 1000;
+  const safeBalance = typeof infra.fancoins === 'string' ? Number(infra.fancoins.replace(/\D/g, '')) : Number(infra.fancoins);
+  
+  const baseHealCost = 500;
+  const discountPercent = Math.min(0.50, infra.medical * 0.05);
+  const healCost = Math.floor(baseHealCost * (1 - discountPercent));
 
   const fetchInjured = async () => {
     if (!userId) return;
@@ -112,7 +174,7 @@ function MedicalWardCard({ t }: { t: any }) {
           </div>
           <div>
             <h2 className="text-sm font-bold text-white font-orbitron uppercase tracking-widest">{t.medical_center}</h2>
-            <span className="text-xs font-mono text-gray-500">{t.level} 1</span>
+            <span className="text-xs font-mono text-gray-500">{t.level} {infra.medical}</span>
           </div>
         </div>
 
@@ -120,6 +182,34 @@ function MedicalWardCard({ t }: { t: any }) {
           <span className="text-xs font-mono text-gray-500">
             {isLoading ? '...' : `${injuredPlayers.length} Injured`}
           </span>
+          <button 
+            onClick={async () => {
+              if (!userId) return;
+              if (safeBalance < upgradeCost) {
+                toast.error(`Не хватает FC! Цена: ${upgradeCost}`);
+                return;
+              }
+              setIsUpgrading(true);
+              const res = await upgradeMedicalCenter(userId);
+              if (res.success) {
+                toast.success(`Medical Center upgraded to level ${res.new_level}!`);
+                window.dispatchEvent(new Event('balanceUpdated'));
+                onUpgradeSuccess();
+              } else {
+                toast.error(res.error || "Upgrade failed");
+              }
+              setIsUpgrading(false);
+            }}
+            disabled={isUpgrading}
+            className={`text-[10px] px-3 py-1.5 rounded uppercase font-bold tracking-widest transition-colors ${
+              isUpgrading
+                ? 'bg-pink-900/50 text-neon-pink border border-pink-700 cursor-wait'
+                : 'bg-neon-pink/10 text-neon-pink border border-neon-pink/30 hover:bg-neon-pink hover:text-black shadow-[0_0_10px_rgba(255,0,100,0.2)]'
+            }`}
+          >
+            {isUpgrading ? '...' : `UPGRADE ${upgradeCost} FC`}
+          </button>
+          
           {process.env.NODE_ENV === 'development' && (
             <button 
               onClick={handleDebugInjury}
@@ -147,13 +237,14 @@ function MedicalWardCard({ t }: { t: any }) {
               <button 
                 onClick={() => handleHeal(player.id)}
                 disabled={healingId === player.id}
-                className={`text-[10px] px-3 py-1.5 rounded uppercase font-bold tracking-widest transition-colors ${
+                className={`text-[10px] px-3 py-1.5 rounded uppercase font-bold tracking-widest transition-colors flex flex-col items-center justify-center ${
                   healingId === player.id 
                     ? 'bg-gray-800 text-gray-500 cursor-wait' 
                     : 'bg-neon-pink/10 text-neon-pink border border-neon-pink/30 hover:bg-neon-pink hover:text-black shadow-[0_0_10px_rgba(255,0,100,0.2)]'
                 }`}
               >
-                {healingId === player.id ? '...' : t.heal_button}
+                <span>{healingId === player.id ? '...' : t.heal_button}</span>
+                {!healingId && <span className="text-[8px] font-mono opacity-80">{healCost} FC</span>}
               </button>
             </div>
           ))}
@@ -163,35 +254,14 @@ function MedicalWardCard({ t }: { t: any }) {
   );
 }
 
-function StadiumFacilityCard({ t }: { t: any }) {
-  const { userId, isAuthenticated } = useContext(TelegramAuthContext);
-  const [stadiumLevel, setStadiumLevel] = useState<number>(1);
-  const [fancoins, setFancoins] = useState<any>(0);
-  const [isLoading, setIsLoading] = useState(true);
+function StadiumFacilityCard({ t, infra, onUpgradeSuccess }: { t: any, infra: any, onUpgradeSuccess: () => void }) {
+  const { userId } = useContext(TelegramAuthContext);
   const [isUpgrading, setIsUpgrading] = useState(false);
 
-  const fetchStadium = async () => {
-    if (!userId) return;
-    setIsLoading(true);
-    const res = await getStadiumData(userId);
-    if (res.success) {
-      setStadiumLevel(res.stadium_level || 1);
-      setFancoins(res.fancoins || 0);
-    }
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    if (isAuthenticated && userId) {
-      fetchStadium();
-    }
-  }, [isAuthenticated, userId]);
-
-  const upgradeCost = stadiumLevel * 1000;
-  const currentIncome = stadiumLevel * 50;
+  const upgradeCost = infra.stadium * 1000;
+  const currentIncome = infra.stadium * 50;
   
-  // Safe cast for Fancoins to avoid NaN
-  const safeBalance = typeof fancoins === 'string' ? Number(fancoins.replace(/\D/g, '')) : Number(fancoins);
+  const safeBalance = typeof infra.fancoins === 'string' ? Number(infra.fancoins.replace(/\D/g, '')) : Number(infra.fancoins);
 
   const handleUpgrade = async () => {
     if (!userId) return;
@@ -204,10 +274,9 @@ function StadiumFacilityCard({ t }: { t: any }) {
     setIsUpgrading(true);
     const res = await upgradeStadium(userId);
     if (res.success) {
-      setStadiumLevel(res.new_level ?? 1);
-      setFancoins(res.new_balance ?? 0);
       toast.success(t.stadium_upgrade_success.replace('{level}', (res.new_level ?? 1).toString()));
       window.dispatchEvent(new Event('balanceUpdated'));
+      onUpgradeSuccess();
     } else {
       toast.error(res.error || t.stadium_upgrade_fail);
     }
@@ -229,20 +298,20 @@ function StadiumFacilityCard({ t }: { t: any }) {
               +{currentIncome} FC/m
             </span>
           </h2>
-          <span className="text-xs font-mono text-gray-500">{t.level} {stadiumLevel}</span>
+          <span className="text-xs font-mono text-gray-500">{t.level} {infra.stadium}</span>
         </div>
       </div>
       
       <button 
         onClick={handleUpgrade}
-        disabled={isUpgrading || isLoading}
+        disabled={isUpgrading}
         className={`relative z-10 text-[10px] px-3 py-1.5 rounded uppercase font-bold tracking-widest transition-colors ${
-          isUpgrading || isLoading
+          isUpgrading
             ? 'bg-yellow-900/50 text-yellow-500 border border-yellow-700 cursor-wait'
             : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 hover:bg-yellow-500 hover:text-black shadow-[0_0_10px_rgba(234,179,8,0.2)]'
         }`}
       >
-        {isUpgrading || isLoading ? '...' : `${upgradeCost} FC`}
+        {isUpgrading ? '...' : `${upgradeCost} FC`}
       </button>
     </div>
   );
