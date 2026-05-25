@@ -23,6 +23,7 @@ interface Player {
   age: number;
   ovr: number;
   is_nft_coach?: boolean;
+  is_injured?: boolean;
   potential_limit: number;
   position: string;
   stats: PlayerStats;
@@ -223,6 +224,7 @@ export default function LineupPage() {
                {player.position}
              </span>
              {isOOP && <span className="text-[8px] text-red-500 animate-pulse">⚠️</span>}
+             {player.is_injured && <span className="text-[10px] animate-pulse drop-shadow-[0_0_5px_rgba(255,0,0,1)]">🚑</span>}
            </div>
            <span className={`text-[11px] font-black drop-shadow-[0_0_2px_rgba(255,255,255,0.8)] pr-2 ${isOOP ? 'text-red-500' : 'text-white'}`}>{displayOvr}</span>
         </div>
@@ -340,20 +342,24 @@ export default function LineupPage() {
 
       {/* TACTICAL PITCH UI */}
       <div className="flex justify-center gap-2 mb-[-10px] z-20">
-        {['4-4-2', '4-3-3', '3-5-2'].map(f => (
-          <button
-            key={f}
-            onClick={() => handleFormationChange(f)}
-            disabled={isFormationLoading}
-            className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider transition-colors border ${
-              team.formation === f || (!team.formation && f === '4-4-2')
-                ? 'bg-neon-cyan text-black border-neon-cyan shadow-[0_0_10px_rgba(0,240,255,0.5)]'
-                : 'bg-black/50 text-gray-400 border-gray-700 hover:border-neon-cyan/50'
-            } ${isFormationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {f}
-          </button>
-        ))}
+        {['4-4-2', '4-3-3', '3-5-2'].map(f => {
+          const realFormation = `${defs.length}-${mids.length}-${fwds.length}`;
+          const isRealActive = realFormation === f;
+          return (
+            <button
+              key={f}
+              onClick={() => handleFormationChange(f)}
+              disabled={isFormationLoading}
+              className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider transition-colors border ${
+                isRealActive
+                  ? 'bg-neon-cyan text-black border-neon-cyan shadow-[0_0_10px_rgba(0,240,255,0.5)]'
+                  : 'bg-black/50 text-gray-400 border-gray-700 hover:border-neon-cyan/50'
+              } ${isFormationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {f}
+            </button>
+          );
+        })}
       </div>
 
       <div className={`relative w-full aspect-[3/4] bg-green-950/30 border-2 border-neon-green/40 rounded-lg overflow-hidden shadow-[inset_0_0_40px_rgba(57,255,20,0.05)] flex flex-col items-center justify-around transition-opacity duration-300 ${isFormationLoading ? 'opacity-50 blur-sm' : 'opacity-100'}`}>

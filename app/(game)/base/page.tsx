@@ -225,7 +225,7 @@ function StadiumFacility() {
 
   const upgradeCost = stadiumLevel * 1000;
   const currentIncome = stadiumLevel * 50;
-  const canUpgrade = fancoins >= upgradeCost;
+  const canUpgrade = Number(fancoins) >= upgradeCost;
 
   return (
     <div className="mt-4 pt-4 border-t border-gray-800">

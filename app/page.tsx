@@ -23,6 +23,7 @@ export default function DashboardPage() {
 
   const [userData, setUserData] = useState<UserData | null>(null);
   const [hasTeam, setHasTeam] = useState<boolean | null>(null);
+  const [teamName, setTeamName] = useState<string | null>(null);
   const [isDataLoading, setIsDataLoading] = useState(true);
 
   const [firstName, setFirstName] = useState('Manager');
@@ -56,6 +57,7 @@ export default function DashboardPage() {
           setHasTeam(false);
         } else {
           setHasTeam(true);
+          setTeamName(teamJson.team.name);
         }
       } else {
         setHasTeam(true); // Fallback to allow dashboard to render, or could handle error
@@ -97,21 +99,26 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col flex-1 p-6 gap-8">
       {/* HEADER SECTION */}
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className={`text-2xl font-bold text-white tracking-tight ${headerFontClass}`}>
-            {t.welcome}, <span className="text-neon-pink">{firstName}</span>
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">{t.ready_to_manage}</p>
+      <header className="bg-black/60 border border-gray-800 rounded-xl p-4 shadow-[0_4px_20px_rgba(0,0,0,0.5)] flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neon-pink to-neon-cyan flex items-center justify-center shadow-[0_0_10px_rgba(255,0,100,0.3)]">
+            <Trophy className="text-white w-5 h-5" />
+          </div>
+          <div>
+            <h1 className={`text-lg font-bold text-white tracking-wider uppercase ${headerFontClass}`}>
+              {teamName || 'Manager Dashboard'}
+            </h1>
+            <p className="text-xs text-gray-400 font-mono mt-0.5">Manager: <span className="text-neon-pink">{firstName}</span></p>
+          </div>
         </div>
         <div>
           {userData?.wallet_address ? (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-green-900/30 border border-neon-green/50 shadow-[0_0_10px_rgba(57,255,20,0.2)]">
-              <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse"></div>
-              <span className="text-xs font-mono text-neon-green tracking-wider">{shortenAddress(userData.wallet_address)}</span>
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-black/80 border border-neon-green/30">
+              <div className="w-1.5 h-1.5 rounded-full bg-neon-green animate-pulse"></div>
+              <span className="text-[10px] font-mono text-neon-green">{shortenAddress(userData.wallet_address)}</span>
             </div>
           ) : (
-            <div className="scale-90 origin-right">
+            <div className="scale-75 origin-right opacity-80 hover:opacity-100 transition-opacity">
               <WalletConnect />
             </div>
           )}

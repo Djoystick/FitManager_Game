@@ -178,22 +178,20 @@ export async function simulateNextRound() {
         updates.push(supabaseAdmin.rpc('increment_fancoins', { u_id: teamUsers[match.away_team_id], amount: awayAmount }));
       }
 
-      // INJURY MECHANIC: 50% chance per match to injure a random starting player (temporary for testing)
-      if (Math.random() < 0.50) {
-        // Pick a team randomly
-        const injuredTeamId = Math.random() < 0.5 ? match.home_team_id : match.away_team_id;
-        // Query a random player from that team who is currently a starter and not already injured
+      // INJURY MECHANIC: HARDCODED TO USER TEAM FOR TESTING
+      const userTeamId = teamUsers[match.home_team_id] ? match.home_team_id : (teamUsers[match.away_team_id] ? match.away_team_id : null);
+      if (userTeamId) {
         const { data: teamPlayers } = await supabaseAdmin
           .from('players')
           .select('id')
-          .eq('team_id', injuredTeamId)
+          .eq('team_id', userTeamId)
           .eq('lineup_status', 'starting') // Ensure they are a starter
           .eq('is_injured', false)
           .limit(15);
         
         if (teamPlayers && teamPlayers.length > 0) {
           const randomPlayer = teamPlayers[Math.floor(Math.random() * teamPlayers.length)];
-          console.log("INJURY TRIGGERED FOR PLAYER:", randomPlayer.id, "TEAM:", injuredTeamId);
+          console.log("INJURY TRIGGERED FOR PLAYER:", randomPlayer.id, "TEAM:", userTeamId);
           updates.push(supabaseAdmin.from('players').update({ is_injured: true }).eq('id', randomPlayer.id));
         }
       }
