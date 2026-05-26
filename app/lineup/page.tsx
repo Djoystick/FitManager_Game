@@ -8,7 +8,7 @@ import { PlayerTrainingModal } from '@/components/PlayerTrainingModal';
 import { swapPlayers } from '@/app/actions/lineupActions';
 import { healAllPlayersStamina } from '@/app/actions/playerActions';
 import toast from 'react-hot-toast';
-import { Shirt, Dumbbell } from 'lucide-react';
+import { Shirt, Dumbbell, CircleHelp, X } from 'lucide-react';
 
 interface PlayerStats {
   pace: number;
@@ -54,6 +54,7 @@ export default function LineupPage() {
   const [isHealingAll, setIsHealingAll] = useState(false);
   const [trainingPlayer, setTrainingPlayer] = useState<Player | null>(null);
   const [submitMessage, setSubmitMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   
   // New State for Tabs
   const [activeTab, setActiveTab] = useState<'pitch' | 'roster'>('pitch');
@@ -136,11 +137,23 @@ export default function LineupPage() {
       const res = await swapPlayers(player1.id, player2.id);
 
       if (res.success) {
-        setPlayers(prev => prev.map(p => {
-          if (p.id === player1.id) return { ...p, lineup_status: player2.lineup_status, lineup_slot: player2.lineup_slot };
-          if (p.id === player2.id) return { ...p, lineup_status: player1.lineup_status, lineup_slot: player1.lineup_slot };
-          return p;
-        }));
+        setPlayers(prev => {
+          const newPlayers = prev.map(p => ({ ...p })); // Deep copy
+          const p1 = newPlayers.find(p => p.id === player1.id);
+          const p2 = newPlayers.find(p => p.id === player2.id);
+          
+          if (p1 && p2) {
+            const tempSlot = p1.lineup_slot;
+            const tempStatus = p1.lineup_status;
+            
+            p1.lineup_slot = p2.lineup_slot || null;
+            p1.lineup_status = p2.lineup_status;
+            
+            p2.lineup_slot = tempSlot || null;
+            p2.lineup_status = tempStatus;
+          }
+          return newPlayers;
+        });
       } else {
         toast.error(res.error || 'Swap failed');
         setSubmitMessage({ text: res.error || 'Swap failed', type: 'error' });
@@ -521,8 +534,14 @@ export default function LineupPage() {
           
           {/* STARTING XI BLOCK */}
           <div>
-            <h3 className="text-sm font-black text-neon-cyan mb-3 uppercase tracking-widest border-b border-neon-cyan/30 pb-1">
-              Starting XI
+            <h3 className="text-sm font-black text-neon-cyan mb-3 uppercase tracking-widest border-b border-neon-cyan/30 pb-1 flex items-center justify-between">
+              <span>Starting XI</span>
+              <button 
+                onClick={() => setIsStatsModalOpen(true)}
+                className="text-neon-cyan/70 hover:text-white transition-colors p-1"
+              >
+                <CircleHelp className="w-4 h-4" />
+              </button>
             </h3>
             <div className="flex flex-col">
               {startingPlayers.length > 0 ? (
@@ -624,6 +643,58 @@ export default function LineupPage() {
             setTrainingPlayer(updatedPlayer); // Update modal view instantly
           }}
         />
+      )}
+
+      {/* STATS INFO MODAL */}
+      {isStatsModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-4">
+          <div className="bg-gray-900 border-2 border-neon-cyan/50 rounded-xl w-full max-w-sm overflow-hidden shadow-[0_0_30px_rgba(0,240,255,0.15)] animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-4 border-b border-gray-800 bg-black/50">
+              <h2 className="text-lg font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <CircleHelp className="w-5 h-5 text-neon-cyan" />
+                Player Stats
+              </h2>
+              <button 
+                onClick={() => setIsStatsModalOpen(false)}
+                className="text-gray-400 hover:text-white transition-colors p-1"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-5 flex flex-col gap-4 text-sm bg-gray-900/90">
+              <div>
+                <span className="font-mono font-bold text-neon-cyan">PAC (Pace):</span>
+                <span className="text-gray-300 ml-2">Скорость игрока. Влияет на успешность отрывов и перемещение по полю.</span>
+              </div>
+              <div>
+                <span className="font-mono font-bold text-neon-cyan">SHO (Shooting):</span>
+                <span className="text-gray-300 ml-2">Удары. Определяет шанс забить гол при создании голевого момента.</span>
+              </div>
+              <div>
+                <span className="font-mono font-bold text-neon-cyan">PAS (Passing):</span>
+                <span className="text-gray-300 ml-2">Пасы. Влияет на контроль мяча (Владение) в центре поля и создание моментов.</span>
+              </div>
+              <div>
+                <span className="font-mono font-bold text-neon-cyan">DEF (Defending):</span>
+                <span className="text-gray-300 ml-2">Защита. Шанс отобрать мяч и прервать атаку соперника.</span>
+              </div>
+              <div>
+                <span className="font-mono font-bold text-neon-cyan">PHY (Physical):</span>
+                <span className="text-gray-300 ml-2">Физика. Влияет на борьбу за мяч и выносливость в стыках.</span>
+              </div>
+            </div>
+            
+            <div className="p-4 bg-black/50 border-t border-gray-800">
+              <button 
+                onClick={() => setIsStatsModalOpen(false)}
+                className="w-full py-3 rounded-lg font-black uppercase tracking-widest bg-gray-800 text-white hover:bg-gray-700 transition-colors border border-gray-600"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -50,21 +50,24 @@ export async function swapPlayers(playerOutId: string, playerInId: string) {
       return { success: false, error: 'Invalid player IDs' };
     }
 
+    const tempSlot = playerOut.lineup_slot || null;
+    const tempStatus = playerOut.lineup_status;
+
     // 3. Perform the swap via two updates
     // We swap both `lineup_status` and `lineup_slot`
     const { error: update1Error } = await supabase
       .from('players')
       .update({ 
         lineup_status: playerIn.lineup_status,
-        lineup_slot: playerIn.lineup_slot
+        lineup_slot: playerIn.lineup_slot || null
       })
       .eq('id', playerOut.id);
 
     const { error: update2Error } = await supabase
       .from('players')
       .update({ 
-        lineup_status: playerOut.lineup_status,
-        lineup_slot: playerOut.lineup_slot
+        lineup_status: tempStatus,
+        lineup_slot: tempSlot
       })
       .eq('id', playerIn.id);
 
