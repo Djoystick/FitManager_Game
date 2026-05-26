@@ -101,13 +101,15 @@ export default function LineupPage() {
   const startingPlayers = activePlayers.filter(p => p.lineup_status === 'starting');
   const benchPlayers = activePlayers.filter(p => p.lineup_status === 'bench');
 
-  // Categorize by position/slot
-  const getSlotType = (p: Player) => p.lineup_slot ? p.lineup_slot.split('_')[0] : p.position;
+  // Categorize strictly by lineup_slot (ignore native position for pitch layout)
+  const getSlotType = (p: Player) => p.lineup_slot ? p.lineup_slot.split('_')[0] : '';
   
-  const fwds = startingPlayers.filter(p => getSlotType(p) === 'FWD');
-  const mids = startingPlayers.filter(p => getSlotType(p) === 'MID');
-  const defs = startingPlayers.filter(p => getSlotType(p) === 'DEF');
-  const gks = startingPlayers.filter(p => getSlotType(p) === 'GK');
+  const sortBySlot = (a: Player, b: Player) => (a.lineup_slot || '').localeCompare(b.lineup_slot || '');
+  
+  const fwds = startingPlayers.filter(p => getSlotType(p) === 'FWD').sort(sortBySlot);
+  const mids = startingPlayers.filter(p => getSlotType(p) === 'MID').sort(sortBySlot);
+  const defs = startingPlayers.filter(p => getSlotType(p) === 'DEF').sort(sortBySlot);
+  const gks = startingPlayers.filter(p => getSlotType(p) === 'GK').sort(sortBySlot);
 
   const handlePlayerClick = async (player: Player) => {
     // Only allow swapping in pitch view
