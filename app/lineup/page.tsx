@@ -5,7 +5,7 @@ import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider
 import { useRouter } from 'next/navigation';
 import { BackButton } from '@/components/ui/BackButton';
 import { PlayerTrainingModal } from '@/components/PlayerTrainingModal';
-import { swapPlayers, updatePlayers } from '@/app/actions/lineupActions';
+import { swapPlayers, updatePlayers, updateTeamFormation } from '@/app/actions/lineupActions';
 import { healAllPlayersStamina } from '@/app/actions/playerActions';
 import toast from 'react-hot-toast';
 import { Shirt, Dumbbell, CircleHelp, X } from 'lucide-react';
@@ -58,6 +58,7 @@ export default function LineupPage() {
   
   // New State for Tabs
   const [activeTab, setActiveTab] = useState<'pitch' | 'roster'>('pitch');
+  const [activeFormation, setActiveFormation] = useState('4-4-2');
   const [hasCheckedCorruption, setHasCheckedCorruption] = useState(false);
   
   const router = useRouter();
@@ -71,6 +72,7 @@ export default function LineupPage() {
         if (data.success) {
           setTeam(data.team);
           setPlayers(data.players);
+          setActiveFormation(data.team?.formation || '4-4-2');
         }
       }
     } catch (error) {
@@ -150,7 +152,7 @@ export default function LineupPage() {
     '3-5-2': { FWD: [9, 10], MID: [4, 5, 6, 7, 8], DEF: [1, 2, 3], GK: [0] }
   };
 
-  const currentFormation = team?.formation || '4-4-2';
+  const currentFormation = activeFormation;
 
   const getIdealLineForSlot = (slotIndex: number, formation: string) => {
     const layout = FORMATIONS[formation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2'];
@@ -251,24 +253,25 @@ export default function LineupPage() {
   };
 
   const handleFormationChange = async (newFormation: string) => {
-    if (!userId || !team || team.formation === newFormation) return;
+    if (!userId || !team || activeFormation === newFormation) return;
     
     setIsFormationLoading(true);
+    // Optimistic UI update
+    setActiveFormation(newFormation);
+    
     try {
-      const res = await fetch('/api/lineup/formation', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, formation: newFormation })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      const res = await updateTeamFormation(team.id, newFormation);
+      if (res.success) {
         setTeam(prev => prev ? { ...prev, formation: newFormation } : prev);
-        // DB stores formation strictly as string. Slot architecture ensures decoupling.
       } else {
-        toast.error(data.error || 'Failed to change formation');
+        toast.error(res.error || 'Failed to change formation');
+        // Rollback on error
+        setActiveFormation(team.formation || '4-4-2');
       }
     } catch (err: any) {
       toast.error('Network error during formation change.');
+      // Rollback on error
+      setActiveFormation(team.formation || '4-4-2');
     } finally {
       setIsFormationLoading(false);
     }

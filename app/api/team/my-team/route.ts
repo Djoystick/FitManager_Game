@@ -14,7 +14,7 @@ export async function GET(req: Request) {
     // 1. Fetch the team metadata for the user securely
     const { data: team, error: teamError } = await supabase
       .from('teams')
-      .select('id, name, logo_url, is_ready_for_match')
+      .select('id, name, logo_url, is_ready_for_match, formation')
       .eq('user_id', userId)
       .single();
 

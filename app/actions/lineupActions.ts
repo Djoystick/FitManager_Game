@@ -134,3 +134,47 @@ export async function updatePlayers(payload: { id: string; lineup_status: string
   }
 }
 
+export async function updateTeamFormation(teamId: string, formation: string) {
+  try {
+    const cookieStore = await cookies();
+    const tgUserId = cookieStore.get('tg_user_id')?.value;
+
+    if (!tgUserId) {
+      return { success: false, error: 'Unauthorized: Valid Telegram session required.' };
+    }
+
+    // 1. Verify user's team ownership
+    const { data: teamAuth, error: teamAuthError } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('id', teamId)
+      .eq('user_id', tgUserId)
+      .single();
+
+    if (teamAuthError || !teamAuth) {
+      return { success: false, error: 'Forbidden: You do not own this team.' };
+    }
+
+    // 2. Update Formation
+    const allowedFormations = ['4-4-2', '4-3-3', '3-5-2'];
+    if (!allowedFormations.includes(formation)) {
+      return { success: false, error: 'Invalid formation' };
+    }
+
+    const { error: updateError } = await supabase
+      .from('teams')
+      .update({ formation })
+      .eq('id', teamId);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    revalidatePath('/lineup');
+    return { success: true };
+  } catch (error: any) {
+    console.error('Update team formation failed:', error);
+    return { success: false, error: error.message || 'An unexpected error occurred.' };
+  }
+}
+
