@@ -1,6 +1,7 @@
 import React from 'react';
 import { SeedLeagueButton } from '@/components/admin/SeedLeagueButton';
 import { ScheduleButtons } from '@/components/admin/ScheduleButtons';
+import { HardResetButton } from '@/components/admin/HardResetButton';
 import { ShieldAlert, DatabaseBackup, Lock, AlertOctagon, CalendarSync } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
@@ -73,6 +74,10 @@ export default async function AdminDashboard() {
               their standings in the global league. Use this to simulate a populated environment for testing the Match Engine.
             </p>
             <SeedLeagueButton />
+            <div className="mt-4 border-t border-gray-800 pt-4">
+              <p className="text-sm text-gray-400 mb-2">Delete your current team and regenerate players with traits:</p>
+              <HardResetButton />
+            </div>
           </div>
         </div>
       </section>

@@ -179,3 +179,38 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
     return { success: false, error: error.message || 'An unexpected error occurred during seeding.' };
   }
 }
+
+export async function hardResetUserTeam(userId: string): Promise<AdminActionResult> {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get user's team
+    const { data: team, error: teamError } = await supabaseAdmin
+      .from('teams')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (teamError) return { success: false, error: 'Database error fetching team.' };
+    if (!team) return { success: false, error: 'User does not have a team to reset.' };
+
+    // Delete the team (this will cascade delete players, standings, etc.)
+    const { error: deleteError } = await supabaseAdmin
+      .from('teams')
+      .delete()
+      .eq('id', team.id);
+
+    if (deleteError) {
+      console.error('Error deleting team:', deleteError);
+      return { success: false, error: 'Failed to delete team.' };
+    }
+
+    return { success: true, message: 'Team and all players have been hard reset. Please reload the app to create a new franchise.' };
+  } catch (error: any) {
+    console.error('Hard reset error:', error);
+    return { success: false, error: error.message || 'An unexpected error occurred during reset.' };
+  }
+}
+

@@ -56,7 +56,6 @@ export default function LineupPage() {
   const [isFormationLoading, setIsFormationLoading] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [isHealingAll, setIsHealingAll] = useState(false);
-  const [trainingPlayer, setTrainingPlayer] = useState<Player | null>(null);
   const [submitMessage, setSubmitMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   
@@ -786,19 +785,6 @@ export default function LineupPage() {
         </button>
       </div>
 
-      {/* TRAINING MODAL */}
-      {trainingPlayer && userId && (
-        <PlayerTrainingModal 
-          player={trainingPlayer} 
-          userId={userId} 
-          onClose={() => setTrainingPlayer(null)}
-          onTrainSuccess={(updatedPlayer) => {
-            setPlayers(prev => prev.map(p => p.id === updatedPlayer.id ? { ...p, ...updatedPlayer } : p));
-            setTrainingPlayer(updatedPlayer); // Update modal view instantly
-          }}
-        />
-      )}
-
       {/* STATS INFO MODAL */}
       {isStatsModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-4">
@@ -904,8 +890,16 @@ export default function LineupPage() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {profilePlayer && (
-          <PlayerProfileModal player={profilePlayer} onClose={() => setProfilePlayer(null)} />
+        {profilePlayer && userId && (
+          <PlayerProfileModal 
+            player={profilePlayer} 
+            userId={userId} 
+            onClose={() => setProfilePlayer(null)}
+            onTrainSuccess={(updatedPlayer, newBalance) => {
+              setPlayers(prev => prev.map(p => p.id === updatedPlayer.id ? { ...p, ...updatedPlayer } : p));
+              setProfilePlayer(updatedPlayer);
+            }}
+          />
         )}
       </AnimatePresence>
     </div>
