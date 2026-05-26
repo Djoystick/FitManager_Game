@@ -10,6 +10,7 @@ import { healAllPlayersStamina } from '@/app/actions/playerActions';
 import toast from 'react-hot-toast';
 import { CyberLoader } from '@/components/ui/CyberLoader';
 import { Shirt, Dumbbell, CircleHelp, X, RefreshCw, User } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface PlayerStats {
   pace: number;
@@ -62,7 +63,7 @@ export default function LineupPage() {
   const [viewMode, setViewMode] = useState<'tactics' | 'fitness'>('tactics');
   const [activeFormation, setActiveFormation] = useState('4-4-2');
   const [hasCheckedCorruption, setHasCheckedCorruption] = useState(false);
-  const [activeHUD, setActiveHUD] = useState<{player: Player, x: number, y: number} | null>(null);
+  const [activeHUD, setActiveHUD] = useState<{player: Player, x: number, y: number, isBelow?: boolean} | null>(null);
   
   const router = useRouter();
 
@@ -181,7 +182,16 @@ export default function LineupPage() {
     if (!selectedPlayerId) {
       if (e) {
         const rect = e.currentTarget.getBoundingClientRect();
-        setActiveHUD({ player, x: rect.left + rect.width / 2, y: rect.top });
+        const MENU_WIDTH = 220; 
+        const MENU_HEIGHT = 100;
+        
+        const centerX = rect.left + rect.width / 2;
+        const safeX = Math.min(Math.max(centerX, MENU_WIDTH / 2 + 10), typeof window !== 'undefined' ? window.innerWidth - MENU_WIDTH / 2 - 10 : centerX);
+        
+        const isBelow = rect.top < MENU_HEIGHT + 20;
+        const safeY = isBelow ? rect.bottom + 10 : rect.top - 10;
+        
+        setActiveHUD({ player, x: safeX, y: safeY, isBelow });
       } else {
         setActiveHUD({ player, x: typeof window !== 'undefined' ? window.innerWidth / 2 : 200, y: typeof window !== 'undefined' ? window.innerHeight / 2 : 400 });
       }
@@ -839,48 +849,56 @@ export default function LineupPage() {
       )}
 
       {/* FLOATING HUD: Player Context Menu */}
-      {activeHUD && (
-        <>
-          {/* Overlay to catch clicks and close HUD */}
-          <div 
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" 
-            onClick={() => setActiveHUD(null)} 
-          />
-          
-          {/* Popover Menu */}
-          <div 
-            className="fixed z-50 bg-gray-950/90 backdrop-blur-md border border-neon-cyan/50 shadow-[0_0_20px_rgba(0,255,255,0.2)] rounded-xl p-3 flex flex-row gap-3 animate-in zoom-in-95 fade-in duration-200"
-            style={{ 
-              left: typeof window !== 'undefined' ? Math.min(Math.max(activeHUD.x, 100), window.innerWidth - 100) : activeHUD.x, 
-              top: activeHUD.y < 150 ? activeHUD.y + 90 : activeHUD.y - 10,
-              transform: activeHUD.y < 150 ? 'translate(-50%, 0)' : 'translate(-50%, -100%)' 
-            }}
-          >
-            <button
-              onClick={() => {
-                const id = activeHUD.player.id;
-                setActiveHUD(null);
-                setSelectedPlayerId(id);
-              }}
-              className="px-4 py-2 rounded-lg font-black uppercase tracking-widest bg-black/60 text-neon-cyan border border-neon-cyan/50 hover:bg-neon-cyan hover:text-black transition-all shadow-[0_0_10px_rgba(0,240,255,0.15)] flex flex-col items-center justify-center gap-1"
-            >
-              <RefreshCw className="w-5 h-5" />
-              <span className="text-[10px]">ЗАМЕНИТЬ</span>
-            </button>
+      <AnimatePresence>
+        {activeHUD && (
+          <>
+            {/* Overlay to catch clicks and close HUD */}
+            <motion.div 
+              key="overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" 
+              onClick={() => setActiveHUD(null)} 
+            />
             
-            <button
-              onClick={() => {
-                setActiveHUD(null);
-                alert('Детальный профиль в разработке');
-              }}
-              className="px-4 py-2 rounded-lg font-black uppercase tracking-widest bg-black/60 text-gray-300 border border-gray-600 hover:border-white hover:text-white transition-all shadow-[0_0_10px_rgba(255,255,255,0.05)] flex flex-col items-center justify-center gap-1"
+            {/* Popover Menu */}
+            <motion.div 
+              key="menu"
+              initial={{ opacity: 0, scale: 0.8, x: "-50%", y: activeHUD.isBelow ? "-50%" : "-80%" }}
+              animate={{ opacity: 1, scale: 1, x: "-50%", y: activeHUD.isBelow ? "0%" : "-100%" }}
+              exit={{ opacity: 0, scale: 0.8, x: "-50%", y: activeHUD.isBelow ? "-50%" : "-80%" }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              className="fixed z-50 bg-gray-950/90 backdrop-blur-md border border-neon-cyan/50 shadow-[0_0_20px_rgba(0,255,255,0.2)] rounded-xl p-3 flex flex-row gap-3"
+              style={{ left: activeHUD.x, top: activeHUD.y }}
             >
-              <User className="w-5 h-5" />
-              <span className="text-[10px]">ПРОФИЛЬ</span>
-            </button>
-          </div>
-        </>
-      )}
+              <button
+                onClick={() => {
+                  const id = activeHUD.player.id;
+                  setActiveHUD(null);
+                  setSelectedPlayerId(id);
+                }}
+                className="px-4 py-2 rounded-lg font-black uppercase tracking-widest bg-black/60 text-neon-cyan border border-neon-cyan/50 hover:bg-neon-cyan hover:text-black transition-all shadow-[0_0_10px_rgba(0,240,255,0.15)] flex flex-col items-center justify-center gap-1 min-w-[90px]"
+              >
+                <RefreshCw className="w-5 h-5" />
+                <span className="text-[10px]">ЗАМЕНИТЬ</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  setActiveHUD(null);
+                  alert('Детальный профиль в разработке');
+                }}
+                className="px-4 py-2 rounded-lg font-black uppercase tracking-widest bg-black/60 text-gray-300 border border-gray-600 hover:border-white hover:text-white transition-all shadow-[0_0_10px_rgba(255,255,255,0.05)] flex flex-col items-center justify-center gap-1 min-w-[90px]"
+              >
+                <User className="w-5 h-5" />
+                <span className="text-[10px]">ПРОФИЛЬ</span>
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
