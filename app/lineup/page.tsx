@@ -9,7 +9,7 @@ import { swapPlayers, updatePlayers, updateTeamFormation } from '@/app/actions/l
 import { healAllPlayersStamina } from '@/app/actions/playerActions';
 import toast from 'react-hot-toast';
 import { CyberLoader } from '@/components/ui/CyberLoader';
-import { Shirt, Dumbbell, CircleHelp, X } from 'lucide-react';
+import { Shirt, Dumbbell, CircleHelp, X, RefreshCw, User } from 'lucide-react';
 
 interface PlayerStats {
   pace: number;
@@ -834,20 +834,20 @@ export default function LineupPage() {
       )}
 
       {/* BOTTOM SHEET: Player Actions */}
-      {inspectingPlayer && (
-        <>
-          {/* Overlay */}
-          <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-in fade-in duration-300"
-            onClick={() => setInspectingPlayer(null)}
-          ></div>
+      {/* Overlay */}
+      <div 
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300 ease-out ${inspectingPlayer ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={() => setInspectingPlayer(null)}
+      ></div>
+      
+      {/* Sheet */}
+      <div className={`fixed bottom-0 left-0 w-full z-50 bg-gray-950 border-t border-neon-cyan/50 rounded-t-2xl shadow-[0_-5px_20px_rgba(0,255,255,0.15)] transition-transform duration-300 ease-out transform max-h-[85vh] flex flex-col ${inspectingPlayer ? 'translate-y-0' : 'translate-y-full'}`}>
+        <div className="p-6 pb-12 overflow-y-auto custom-scrollbar flex flex-col gap-6">
           
-          {/* Sheet */}
-          <div className="fixed bottom-0 left-0 w-full z-50 bg-gray-900 border-t-2 border-neon-cyan/50 rounded-t-2xl shadow-[0_-10px_40px_rgba(0,240,255,0.15)] animate-in slide-in-from-bottom-full fade-in duration-300 max-h-[85vh] flex flex-col">
-            <div className="p-6 pb-12 overflow-y-auto custom-scrollbar flex flex-col gap-6">
-              
-              {/* Header */}
-              <div className="flex justify-between items-center border-b border-gray-800 pb-4 shrink-0">
+          {/* Header */}
+          <div className="flex justify-between items-center border-b border-gray-800 pb-4 shrink-0">
+            {inspectingPlayer ? (
+              <>
                 <div className="flex items-center gap-4">
                   <div className="flex flex-col items-center justify-center w-14 h-14 bg-black/50 border border-neon-cyan/30 rounded-xl shadow-[inset_0_0_10px_rgba(0,240,255,0.2)]">
                     <span className="text-xl font-black text-white">{inspectingPlayer.ovr}</span>
@@ -869,45 +869,42 @@ export default function LineupPage() {
                 >
                   <X className="w-5 h-5" />
                 </button>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="grid grid-cols-1 gap-3">
-                <button
-                  onClick={() => {
-                    setInspectingPlayer(null);
-                    setSelectedPlayerId(inspectingPlayer.id);
-                  }}
-                  className="w-full py-4 rounded-xl font-black uppercase tracking-widest bg-neon-cyan text-black hover:bg-white transition-all shadow-[0_0_15px_rgba(0,240,255,0.4)] flex items-center justify-center gap-3"
-                >
-                  <span className="text-xl">🔄</span> ЗАМЕНИТЬ
-                </button>
-                
-                <button
-                  onClick={() => {
-                    setInspectingPlayer(null);
-                    alert('Открытие окна тренировки');
-                  }}
-                  className="w-full py-4 rounded-xl font-black uppercase tracking-wider bg-black/50 text-neon-pink border border-neon-pink/40 hover:bg-neon-pink/10 transition-colors shadow-[0_0_10px_rgba(255,0,60,0.1)] flex items-center justify-center gap-2"
-                >
-                  <span className="text-lg">💪</span> ТРЕНИРОВКА
-                </button>
-
-                <button
-                  onClick={() => {
-                    setInspectingPlayer(null);
-                    alert('Детальный профиль в разработке');
-                  }}
-                  className="w-full py-4 rounded-xl font-black uppercase tracking-wider bg-black/50 text-white border border-gray-600 hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
-                >
-                  <span className="text-lg">📋</span> ПРОФИЛЬ
-                </button>
-              </div>
-
-            </div>
+              </>
+            ) : (
+              <div className="h-14"></div> // Placeholder to keep height
+            )}
           </div>
-        </>
-      )}
+
+          {/* Action Buttons */}
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={() => {
+                if (inspectingPlayer) {
+                  const id = inspectingPlayer.id;
+                  setInspectingPlayer(null);
+                  setSelectedPlayerId(id);
+                }
+              }}
+              className="w-full py-4 rounded-xl font-black uppercase tracking-widest bg-black/40 text-neon-cyan border border-neon-cyan/50 hover:bg-neon-cyan hover:text-black transition-all shadow-[0_0_10px_rgba(0,240,255,0.15)] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] flex flex-col items-center justify-center gap-2"
+            >
+              <RefreshCw className="w-6 h-6" />
+              <span className="text-xs">ЗАМЕНИТЬ</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                setInspectingPlayer(null);
+                alert('Детальный профиль в разработке');
+              }}
+              className="w-full py-4 rounded-xl font-black uppercase tracking-widest bg-black/40 text-gray-300 border border-gray-600 hover:border-white hover:text-white transition-all shadow-[0_0_10px_rgba(255,255,255,0.05)] hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] flex flex-col items-center justify-center gap-2"
+            >
+              <User className="w-6 h-6" />
+              <span className="text-xs">ПРОФИЛЬ</span>
+            </button>
+          </div>
+
+        </div>
+      </div>
     </div>
   );
 }
