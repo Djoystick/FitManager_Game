@@ -3,12 +3,12 @@
 import { useContext, useEffect, useState } from 'react';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { BackButton } from '@/components/ui/BackButton';
 import { PlayerTrainingModal } from '@/components/PlayerTrainingModal';
 import { swapPlayers } from '@/app/actions/lineupActions';
 import { healAllPlayersStamina } from '@/app/actions/playerActions';
 import toast from 'react-hot-toast';
+import { Shirt, Dumbbell } from 'lucide-react';
 
 interface PlayerStats {
   pace: number;
@@ -54,6 +54,10 @@ export default function LineupPage() {
   const [isHealingAll, setIsHealingAll] = useState(false);
   const [trainingPlayer, setTrainingPlayer] = useState<Player | null>(null);
   const [submitMessage, setSubmitMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+  
+  // New State for Tabs
+  const [activeTab, setActiveTab] = useState<'pitch' | 'roster'>('pitch');
+  
   const router = useRouter();
 
   const fetchTeamData = async () => {
@@ -75,7 +79,6 @@ export default function LineupPage() {
   };
 
   useEffect(() => {
-
     if (isAuthenticated && userId) {
       fetchTeamData();
     } else if (!isAuthLoading && !isAuthenticated) {
@@ -106,6 +109,9 @@ export default function LineupPage() {
   const gks = startingPlayers.filter(p => getSlotType(p) === 'GK');
 
   const handlePlayerClick = async (player: Player) => {
+    // Only allow swapping in pitch view
+    if (activeTab !== 'pitch') return;
+
     if (!selectedPlayerId) {
       setSelectedPlayerId(player.id);
       return;
@@ -212,7 +218,8 @@ export default function LineupPage() {
     return false;
   };
 
-  const renderPlayerCard = (player: Player) => {
+  // Compact Marker for Pitch View
+  const renderPitchMarker = (player: Player) => {
     const isSelected = selectedPlayerId === player.id;
     const slotPos = getSlotType(player);
     const isOOP = !isCompatible(player.position, slotPos) && player.lineup_status === 'starting';
@@ -222,60 +229,98 @@ export default function LineupPage() {
       <div 
         key={player.id} 
         onClick={() => handlePlayerClick(player)}
-        className={`flex-1 w-full min-w-0 mx-0.5 mb-1 bg-black/80 backdrop-blur-md border rounded-md flex flex-col items-center shadow-lg overflow-hidden cursor-pointer transition-all relative ${
+        className={`relative flex flex-col items-center justify-center p-1 w-14 cursor-pointer transition-all rounded-md ${
           isSelected 
-            ? 'border-neon-pink shadow-[0_0_20px_rgba(255,0,60,0.6)] scale-105 z-10' 
+            ? 'ring-2 ring-neon-pink scale-110 z-20 bg-neon-pink/20 shadow-[0_0_15px_rgba(255,0,60,0.6)]' 
             : isOOP
-              ? 'border-red-500 shadow-[0_0_10px_rgba(255,0,0,0.4)] hover:border-red-400'
-              : 'border-neon-cyan/50 hover:border-white'
+              ? 'ring-1 ring-red-500 bg-red-900/40 hover:bg-red-900/60 shadow-[0_0_10px_rgba(255,0,0,0.4)]'
+              : 'hover:bg-white/10'
         }`}
       >
-        {/* OOP Overlay */}
-        {isOOP && (
-          <div className="absolute inset-0 bg-red-900/20 animate-pulse pointer-events-none z-0"></div>
-        )}
-
-        {/* Train Button */}
-        <button 
-          onClick={(e) => { e.stopPropagation(); setTrainingPlayer(player); }}
-          className="absolute top-0 right-0 bg-neon-pink/80 text-white text-[9px] font-black px-1.5 py-0.5 rounded-bl hover:bg-neon-pink z-20 transition-colors"
-        >
-          +
-        </button>
-
-        {/* Header */}
-        <div className="w-full bg-gradient-to-b from-neon-cyan/30 to-transparent p-1 flex justify-between items-center border-b border-neon-cyan/20 relative z-10">
-           <div className="flex items-center gap-1">
-             <span className={`text-[9px] font-black px-1 py-0.5 rounded-sm uppercase tracking-tighter shadow-[0_0_5px_rgba(0,240,255,0.8)] ${isOOP ? 'bg-red-500 text-white' : 'bg-neon-cyan text-black'}`}>
-               {player.position}
-             </span>
-             {isOOP && <span className="text-[10px] text-red-500 animate-pulse drop-shadow-[0_0_2px_rgba(255,0,0,1)]">⚠️</span>}
-             {player.is_injured && <span className="text-[9px] font-bold bg-red-900/80 text-red-300 px-1 py-0.5 rounded border border-red-500/50 animate-pulse drop-shadow-[0_0_5px_rgba(255,0,0,0.8)] flex items-center">🚑 {player.injury_matches_left || 1}M</span>}
-           </div>
-           <span className={`text-sm font-black drop-shadow-[0_0_4px_rgba(255,255,255,0.8)] pr-1 ${isOOP ? 'text-red-500' : 'text-white'}`}>{displayOvr}</span>
+        {/* Position Badge & Injury */}
+        <div className="flex gap-0.5 items-center mb-0.5 z-10">
+          <span className={`text-[8px] font-black px-1 rounded-sm uppercase tracking-tighter shadow-sm ${isOOP ? 'bg-red-500 text-white' : 'bg-neon-cyan text-black'}`}>
+            {player.position}
+          </span>
+          {player.is_injured && <span className="text-[8px] drop-shadow-[0_0_2px_rgba(255,0,0,0.8)]">🚑</span>}
         </div>
-        
+
+        {/* Shirt Icon / OVR */}
+        <div className="relative flex items-center justify-center">
+          <Shirt className={`w-7 h-7 drop-shadow-md ${isOOP ? 'text-red-500' : 'text-white'}`} fill={isOOP ? '#ef4444' : '#ffffff'} fillOpacity={0.2} strokeWidth={1.5} />
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none mt-1">
+            <span className={`text-[10px] font-black drop-shadow-md ${isOOP ? 'text-red-200' : 'text-neon-cyan'}`}>{displayOvr}</span>
+          </div>
+        </div>
+
         {/* Name */}
-        <span className="text-[10px] font-bold text-white truncate w-full text-center py-0.5 px-1 tracking-wide leading-tight">{player.name.split(' ').pop()}</span>
+        <span className="text-[9px] font-bold text-white truncate w-full text-center tracking-wider mt-0.5 drop-shadow-sm leading-tight">
+          {player.name.split(' ').pop()}
+        </span>
         
-        {/* Stamina & Stats Grid */}
-        {player.stats && (
-             <div className="w-full">
-               <div className={`bg-gray-800/90 text-[9px] font-mono font-bold border-y border-gray-700 py-0.5 flex items-center justify-center gap-1 ${player.stamina > 70 ? 'text-neon-green' : player.stamina > 30 ? 'text-yellow-500' : 'text-red-500'}`}>
-                 ⚡ {player.stamina}
-                 <div className="w-8 h-[2px] bg-gray-900 rounded-full overflow-hidden">
-                   <div className={`h-full ${player.stamina > 70 ? 'bg-neon-green' : player.stamina > 30 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${player.stamina}%` }}></div>
-                 </div>
-               </div>
-               <div className="grid grid-cols-2 gap-x-1 gap-y-0 p-1 bg-gray-900/90 text-[9px] font-orbitron text-gray-400">
-               <div className="flex justify-between items-center"><span className="opacity-70">PAC</span><span className="text-neon-green font-bold text-[10px]">{player.stats.pace}</span></div>
-               <div className="flex justify-between items-center"><span className="opacity-70">SHO</span><span className="text-neon-green font-bold text-[10px]">{player.stats.shooting}</span></div>
-               <div className="flex justify-between items-center"><span className="opacity-70">PAS</span><span className="text-neon-green font-bold text-[10px]">{player.stats.passing}</span></div>
-               <div className="flex justify-between items-center"><span className="opacity-70">DEF</span><span className="text-neon-green font-bold text-[10px]">{player.stats.defending}</span></div>
-               <div className="col-span-2 flex justify-center items-center gap-1 border-t border-gray-700 pt-0.5 mt-0.5"><span className="opacity-70">PHY</span><span className="text-neon-green font-bold text-[10px]">{player.stats.physical}</span></div>
-               </div>
-             </div>
-        )}
+        {/* Stamina Bar */}
+        <div className="w-10 h-1 mt-1 bg-gray-900 rounded-full overflow-hidden border border-gray-700">
+          <div className={`h-full ${player.stamina > 70 ? 'bg-neon-green' : player.stamina > 30 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${player.stamina}%` }}></div>
+        </div>
+      </div>
+    );
+  };
+
+  // Detailed Row for List View
+  const renderListRow = (player: Player) => {
+    const slotPos = getSlotType(player);
+    const isOOP = !isCompatible(player.position, slotPos) && player.lineup_status === 'starting';
+    const displayOvr = isOOP ? Math.floor(player.ovr * 0.8) : player.ovr;
+
+    return (
+      <div key={player.id} className="flex items-center justify-between p-2 mb-2 bg-black/60 border border-gray-800 rounded-lg shadow-sm hover:border-gray-600 transition-colors backdrop-blur-sm">
+        
+        {/* Info Column */}
+        <div className="flex items-center gap-3 w-5/12">
+          <div className="flex flex-col items-center justify-center min-w-[36px]">
+            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter shadow-sm ${isOOP ? 'bg-red-500 text-white' : 'bg-neon-cyan text-black'}`}>
+              {player.position}
+            </span>
+            {isOOP && <span className="text-[8px] text-red-500 mt-0.5 font-bold animate-pulse">⚠️ OOP</span>}
+          </div>
+          <div className="flex flex-col overflow-hidden">
+            <span className="text-sm font-bold text-white truncate">{player.name}</span>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className={`text-[10px] font-mono font-bold flex items-center gap-1 ${player.stamina > 70 ? 'text-neon-green' : player.stamina > 30 ? 'text-yellow-500' : 'text-red-500'}`}>
+                ⚡ {player.stamina}
+              </span>
+              {player.is_injured && <span className="text-[10px] bg-red-900/50 text-red-300 px-1 rounded-sm flex items-center">🚑 {player.injury_matches_left}M</span>}
+            </div>
+          </div>
+        </div>
+
+        {/* OVR & Stats Column */}
+        <div className="flex flex-col items-center w-4/12 border-l border-gray-800 pl-2">
+          <div className={`text-xl font-black ${isOOP ? 'text-red-500' : 'text-white'} drop-shadow-[0_0_5px_rgba(255,255,255,0.3)] leading-none`}>
+            {displayOvr}
+          </div>
+          {player.stats && (
+            <div className="flex flex-wrap justify-center gap-x-2 gap-y-0.5 text-[8px] text-gray-400 font-orbitron mt-1">
+              <span>PAC <span className="text-neon-green">{player.stats.pace}</span></span>
+              <span>SHO <span className="text-neon-green">{player.stats.shooting}</span></span>
+              <span>PAS <span className="text-neon-green">{player.stats.passing}</span></span>
+              <span>DEF <span className="text-neon-green">{player.stats.defending}</span></span>
+              <span>PHY <span className="text-neon-green">{player.stats.physical}</span></span>
+            </div>
+          )}
+        </div>
+
+        {/* Action Column */}
+        <div className="flex justify-end w-3/12 pr-1">
+          <button
+            onClick={() => setTrainingPlayer(player)}
+            className="bg-neon-pink/10 hover:bg-neon-pink text-neon-pink hover:text-white border border-neon-pink/40 text-[10px] font-bold px-2 py-1.5 rounded transition-all uppercase flex items-center gap-1 shadow-[0_0_10px_rgba(255,0,60,0.1)] hover:shadow-[0_0_15px_rgba(255,0,60,0.4)]"
+          >
+            <Dumbbell className="w-3 h-3" />
+            <span className="hidden sm:inline">Train</span>
+          </button>
+        </div>
+
       </div>
     );
   };
@@ -334,12 +379,12 @@ export default function LineupPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 p-4 gap-6 pb-12 bg-space-dark min-h-screen">
+    <div className="flex flex-col flex-1 p-4 gap-4 pb-12 bg-space-dark min-h-screen">
       {/* HEADER */}
       <header className="flex justify-between items-end border-b border-gray-800 pb-2">
         <div>
           <BackButton />
-          <h1 className="text-2xl font-black text-white tracking-tight uppercase">Tactics</h1>
+          <h1 className="text-2xl font-black text-white tracking-tight uppercase">Squad</h1>
           <p className="text-xs text-gray-400 font-mono tracking-widest">{team.name}</p>
         </div>
         <div className="text-right">
@@ -349,115 +394,178 @@ export default function LineupPage() {
       </header>
 
       {/* LUXURY TAX HUD */}
-      <div className={`p-4 rounded-xl border flex items-center justify-between shadow-lg transition-colors duration-500 ${
+      <div className={`p-3 rounded-xl border flex items-center justify-between shadow-lg transition-colors duration-500 ${
         expectedTax > 0 
           ? 'bg-red-900/10 border-neon-pink shadow-[0_0_15px_rgba(255,0,60,0.2)]' 
           : 'bg-green-900/10 border-neon-green/30'
       }`}>
         <div>
-          <h3 className="text-sm font-bold text-white mb-1 uppercase tracking-wider">Luxury Tax Status</h3>
-          <p className="text-xs text-gray-400">Soft Cap: {LEAGUE_OVR_CAP} OVR</p>
+          <h3 className="text-xs font-bold text-white uppercase tracking-wider">Luxury Tax Status</h3>
+          <p className="text-[10px] text-gray-400">Soft Cap: {LEAGUE_OVR_CAP} OVR</p>
         </div>
         <div className="text-right">
           {expectedTax > 0 ? (
-            <span className="text-lg font-black text-neon-pink drop-shadow-[0_0_8px_rgba(255,0,60,0.8)] animate-pulse">
+            <span className="text-base font-black text-neon-pink drop-shadow-[0_0_8px_rgba(255,0,60,0.8)] animate-pulse">
               -{expectedTax} FC
             </span>
           ) : (
-            <span className="text-sm font-bold text-neon-green tracking-widest uppercase">Tax Exempt</span>
+            <span className="text-xs font-bold text-neon-green tracking-widest uppercase">Tax Exempt</span>
           )}
         </div>
       </div>
 
-      {/* TACTICAL PITCH UI */}
-      <div className="flex justify-center gap-2 mb-[-10px] z-20">
-        {['4-4-2', '4-3-3', '3-5-2'].map(f => {
-          const realFormation = `${defs.length}-${mids.length}-${fwds.length}`;
-          const isRealActive = realFormation === f;
-          return (
-            <button
-              key={f}
-              onClick={() => handleFormationChange(f)}
-              disabled={isFormationLoading}
-              className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider transition-colors border ${
-                isRealActive
-                  ? 'bg-neon-cyan text-black border-neon-cyan shadow-[0_0_10px_rgba(0,240,255,0.5)]'
-                  : 'bg-black/50 text-gray-400 border-gray-700 hover:border-neon-cyan/50'
-              } ${isFormationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {f}
-            </button>
-          );
-        })}
+      {/* TAB NAVIGATION */}
+      <div className="flex bg-black/50 p-1 rounded-lg border border-gray-800">
+        <button
+          onClick={() => setActiveTab('pitch')}
+          className={`flex-1 py-2 text-sm font-black uppercase tracking-wider rounded-md transition-all ${
+            activeTab === 'pitch'
+              ? 'bg-neon-cyan text-black shadow-[0_0_10px_rgba(0,240,255,0.4)]'
+              : 'text-gray-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          Тактика (Pitch)
+        </button>
+        <button
+          onClick={() => setActiveTab('roster')}
+          className={`flex-1 py-2 text-sm font-black uppercase tracking-wider rounded-md transition-all ${
+            activeTab === 'roster'
+              ? 'bg-neon-pink text-white shadow-[0_0_10px_rgba(255,0,60,0.4)]'
+              : 'text-gray-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          Тренировка (Roster)
+        </button>
       </div>
 
-      <div className={`relative w-full aspect-[3/4] bg-green-950/30 border-2 border-neon-green/40 rounded-lg overflow-hidden shadow-[inset_0_0_40px_rgba(57,255,20,0.05)] flex flex-col items-center justify-around transition-opacity duration-300 ${isFormationLoading ? 'opacity-50 blur-sm' : 'opacity-100'}`}>
-        {/* Abstract Pitch Markings */}
-        <div className="absolute top-0 w-1/2 h-16 border-2 border-t-0 border-neon-green/20 rounded-b-md"></div>
-        <div className="absolute bottom-0 w-1/2 h-16 border-2 border-b-0 border-neon-green/20 rounded-t-md"></div>
-        <div className="absolute top-1/2 left-0 w-full border-t-2 border-neon-green/20"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 border-2 border-neon-green/20 rounded-full"></div>
+      {/* CONDITIONAL RENDER: PITCH VIEW */}
+      {activeTab === 'pitch' && (
+        <div className="flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+          {/* TACTICAL PITCH UI */}
+          <div className="flex justify-center gap-2 mb-[-10px] z-20">
+            {['4-4-2', '4-3-3', '3-5-2'].map(f => {
+              const realFormation = `${defs.length}-${mids.length}-${fwds.length}`;
+              const isRealActive = realFormation === f;
+              return (
+                <button
+                  key={f}
+                  onClick={() => handleFormationChange(f)}
+                  disabled={isFormationLoading}
+                  className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider transition-colors border ${
+                    isRealActive
+                      ? 'bg-neon-cyan text-black border-neon-cyan shadow-[0_0_10px_rgba(0,240,255,0.5)]'
+                      : 'bg-black/50 text-gray-400 border-gray-700 hover:border-neon-cyan/50'
+                  } ${isFormationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {f}
+                </button>
+              );
+            })}
+          </div>
 
-        {/* Player Mapping (Tactical Layout) */}
-        <div className="relative z-10 w-full h-full flex flex-col justify-between px-2 py-4">
-          
-          {/* FWD Line */}
-          <div className="w-full flex justify-around items-center">
-             {fwds.map(renderPlayerCard)}
-          </div>
-          
-          {/* MID Line */}
-          <div className="w-full flex justify-around items-center">
-             {mids.map(renderPlayerCard)}
-          </div>
-          
-          {/* DEF Line */}
-          <div className="w-full flex justify-around items-center">
-             {defs.map(renderPlayerCard)}
-          </div>
-          
-          {/* GK Line */}
-          <div className="w-full flex justify-around items-center">
-             {gks.map(renderPlayerCard)}
-          </div>
-          
-          {startingPlayers.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center text-sm text-neon-cyan/60 font-mono">No starting players on roster</div>
-          )}
-        </div>
-      </div>
+          <div className={`relative w-full aspect-[3/4] bg-green-950/30 border-2 border-neon-green/40 rounded-lg overflow-hidden shadow-[inset_0_0_40px_rgba(57,255,20,0.05)] flex flex-col items-center justify-around transition-opacity duration-300 ${isFormationLoading ? 'opacity-50 blur-sm' : 'opacity-100'}`}>
+            {/* Abstract Pitch Markings */}
+            <div className="absolute top-0 w-1/2 h-16 border-2 border-t-0 border-neon-green/20 rounded-b-md"></div>
+            <div className="absolute bottom-0 w-1/2 h-16 border-2 border-b-0 border-neon-green/20 rounded-t-md"></div>
+            <div className="absolute top-1/2 left-0 w-full border-t-2 border-neon-green/20"></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 border-2 border-neon-green/20 rounded-full"></div>
 
-      {/* BENCH / SUBSTITUTES */}
-      {benchPlayers.length > 0 && (
-        <div className="mt-2">
-          <h3 className="text-xs font-bold text-white mb-2 uppercase tracking-widest border-b border-gray-800 pb-1">
-            Substitutes Bench
-          </h3>
-          <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-            {benchPlayers.map(renderPlayerCard)}
-          </div>
-        </div>
-      )}
-
-      {/* STAFF / EVOLVED COACHES */}
-      {coaches.length > 0 && (
-        <div className="mt-2">
-          <h3 className="text-xs font-bold text-neon-pink mb-2 uppercase tracking-widest border-b border-gray-800 pb-1 flex items-center justify-between">
-            <span>Staff Roster</span>
-            <span className="text-[10px] text-gray-500">Passive Boosts Active</span>
-          </h3>
-          <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
-            {coaches.map(coach => (
-              <div key={coach.id} className="min-w-[110px] bg-black/40 border border-neon-pink/30 p-2 rounded-lg flex flex-col items-center flex-shrink-0 shadow-[0_0_10px_rgba(255,0,60,0.1)]">
-                <span className="text-[10px] font-black text-neon-pink uppercase tracking-widest mb-1">NFT Coach</span>
-                <span className="text-xs font-bold text-white truncate w-full text-center">{coach.name}</span>
+            {/* Player Mapping (Tactical Layout) */}
+            <div className="relative z-10 w-full h-full flex flex-col justify-between px-2 py-4">
+              
+              {/* FWD Line */}
+              <div className="w-full flex justify-around items-center h-[20%]">
+                 {fwds.map(renderPitchMarker)}
               </div>
-            ))}
+              
+              {/* MID Line */}
+              <div className="w-full flex justify-around items-center h-[20%]">
+                 {mids.map(renderPitchMarker)}
+              </div>
+              
+              {/* DEF Line */}
+              <div className="w-full flex justify-around items-center h-[20%]">
+                 {defs.map(renderPitchMarker)}
+              </div>
+              
+              {/* GK Line */}
+              <div className="w-full flex justify-around items-center h-[20%]">
+                 {gks.map(renderPitchMarker)}
+              </div>
+              
+              {startingPlayers.length === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center text-sm text-neon-cyan/60 font-mono">No starting players on roster</div>
+              )}
+            </div>
           </div>
+
+          {/* BENCH / SUBSTITUTES (PITCH VIEW) */}
+          {benchPlayers.length > 0 && (
+            <div className="mt-2">
+              <h3 className="text-xs font-bold text-white mb-2 uppercase tracking-widest border-b border-gray-800 pb-1">
+                Substitutes Bench
+              </h3>
+              <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                {benchPlayers.map(renderPitchMarker)}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* SUBMISSION AREA */}
+      {/* CONDITIONAL RENDER: LIST VIEW (ROSTER / TRAINING) */}
+      {activeTab === 'roster' && (
+        <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-200">
+          
+          {/* STARTING XI BLOCK */}
+          <div>
+            <h3 className="text-sm font-black text-neon-cyan mb-3 uppercase tracking-widest border-b border-neon-cyan/30 pb-1">
+              Starting XI
+            </h3>
+            <div className="flex flex-col">
+              {startingPlayers.length > 0 ? (
+                startingPlayers.map(renderListRow)
+              ) : (
+                <div className="text-center text-gray-500 py-4 text-xs font-mono">No starting players.</div>
+              )}
+            </div>
+          </div>
+
+          {/* BENCH BLOCK */}
+          <div>
+            <h3 className="text-sm font-black text-white mb-3 uppercase tracking-widest border-b border-gray-700 pb-1 mt-2">
+              Bench / Reserves
+            </h3>
+            <div className="flex flex-col">
+              {benchPlayers.length > 0 ? (
+                benchPlayers.map(renderListRow)
+              ) : (
+                <div className="text-center text-gray-500 py-4 text-xs font-mono">No bench players.</div>
+              )}
+            </div>
+          </div>
+          
+          {/* STAFF / EVOLVED COACHES (Shown only in Roster view ideally, or both. Let's show here) */}
+          {coaches.length > 0 && (
+            <div className="mt-2">
+              <h3 className="text-xs font-bold text-neon-pink mb-2 uppercase tracking-widest border-b border-neon-pink/30 pb-1 flex items-center justify-between">
+                <span>Staff Roster</span>
+                <span className="text-[10px] text-gray-500">Passive Boosts Active</span>
+              </h3>
+              <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
+                {coaches.map(coach => (
+                  <div key={coach.id} className="min-w-[110px] bg-black/40 border border-neon-pink/30 p-2 rounded-lg flex flex-col items-center flex-shrink-0 shadow-[0_0_10px_rgba(255,0,60,0.1)]">
+                    <span className="text-[10px] font-black text-neon-pink uppercase tracking-widest mb-1">NFT Coach</span>
+                    <span className="text-xs font-bold text-white truncate w-full text-center">{coach.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SUBMISSION & ACTIONS AREA (GLOBAL) */}
       <div className="mt-auto flex flex-col gap-3 pt-4">
         
         {/* Mass Heal Button */}
@@ -485,6 +593,7 @@ export default function LineupPage() {
           </div>
         )}
 
+        {/* Submit Lineup Button (Only makes sense if starting players > 0 and maybe mostly for pitch, but keeping global) */}
         <button 
           onClick={handleSubmitLineup}
           disabled={isSubmitting || isSwapping || startingPlayers.length === 0}
