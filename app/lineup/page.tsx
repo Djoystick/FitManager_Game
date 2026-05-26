@@ -130,11 +130,6 @@ export default function LineupPage() {
       return;
     }
 
-    if (player1.lineup_status === player2.lineup_status) {
-      setSelectedPlayerId(player.id);
-      return;
-    }
-
     setIsSwapping(true);
     setSubmitMessage(null);
     try {
@@ -249,7 +244,7 @@ export default function LineupPage() {
         <div className="relative flex items-center justify-center">
           <Shirt className={`w-9 h-9 drop-shadow-md ${isOOP ? 'text-red-500' : 'text-white'}`} fill={isOOP ? '#ef4444' : '#ffffff'} fillOpacity={0.2} strokeWidth={1.5} />
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none mt-1">
-            <span className={`text-[11px] font-black drop-shadow-md ${isOOP ? 'text-red-200' : 'text-neon-cyan'}`}>{displayOvr}</span>
+            <span className={`text-[11px] font-black drop-shadow-md ${isOOP ? 'text-red-500' : 'text-neon-cyan'}`}>{displayOvr}</span>
           </div>
         </div>
 
@@ -273,52 +268,59 @@ export default function LineupPage() {
     const displayOvr = isOOP ? Math.floor(player.ovr * 0.8) : player.ovr;
 
     return (
-      <div key={player.id} className="flex items-center justify-between py-1.5 px-2 mb-1.5 bg-black/60 border border-gray-800 rounded-lg shadow-sm hover:border-gray-600 transition-colors backdrop-blur-sm">
+      <div key={player.id} className="flex flex-col py-1.5 px-3 mb-2 bg-black/60 border border-gray-800 rounded-lg shadow-sm hover:border-gray-600 transition-colors backdrop-blur-sm w-full">
         
-        {/* Info Column */}
-        <div className="flex items-center gap-2 w-5/12">
-          <div className="flex flex-col items-center justify-center min-w-[32px]">
-            <span className={`text-[9px] font-black px-1 py-0.5 rounded uppercase tracking-tighter shadow-sm ${isOOP ? 'bg-red-500 text-white' : 'bg-neon-cyan text-black'}`}>
+        {/* Top Tier */}
+        <div className="flex justify-between items-center w-full">
+          {/* Left: Badge + Name */}
+          <div className="flex items-center gap-2 overflow-hidden flex-1">
+            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter shadow-sm flex-shrink-0 ${isOOP ? 'bg-red-500 text-white' : 'bg-neon-cyan text-black'}`}>
               {player.position}
             </span>
-            {isOOP && <span className="text-[7px] text-red-500 mt-0.5 font-bold animate-pulse">⚠️ OOP</span>}
+            <span className="text-sm font-bold text-white truncate">{player.name}</span>
+            {isOOP && <span className="text-[8px] text-red-500 font-bold animate-pulse flex-shrink-0">⚠️ OOP</span>}
           </div>
-          <div className="flex flex-col overflow-hidden">
-            <span className="text-xs font-bold text-white truncate">{player.name}</span>
-            <div className="flex items-center gap-1 mt-0.5">
-              <span className={`text-[9px] font-mono font-bold flex items-center gap-0.5 ${player.stamina > 70 ? 'text-neon-green' : player.stamina > 30 ? 'text-yellow-500' : 'text-red-500'}`}>
-                ⚡ {player.stamina}
-              </span>
-              {player.is_injured && <span className="text-[9px] bg-red-900/50 text-red-300 px-1 rounded-sm flex items-center">🚑 {player.injury_matches_left}M</span>}
+
+          {/* Right: OVR + Train Button */}
+          <div className="flex items-center gap-3 flex-shrink-0 ml-2">
+            <div className={`text-lg font-black ${isOOP ? 'text-red-500' : 'text-white'} drop-shadow-[0_0_5px_rgba(255,255,255,0.3)] leading-none`}>
+              {displayOvr}
             </div>
+            <button
+              onClick={() => setTrainingPlayer(player)}
+              className="bg-neon-pink/10 hover:bg-neon-pink text-neon-pink hover:text-white border border-neon-pink/40 text-[10px] font-bold p-1.5 rounded transition-all shadow-[0_0_10px_rgba(255,0,60,0.1)] hover:shadow-[0_0_15px_rgba(255,0,60,0.4)]"
+            >
+              <Dumbbell className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        {/* OVR & Stats Column */}
-        <div className="flex flex-col items-center w-4/12 border-l border-gray-800 pl-1">
-          <div className={`text-base font-black ${isOOP ? 'text-red-500' : 'text-white'} drop-shadow-[0_0_5px_rgba(255,255,255,0.3)] leading-none`}>
-            {displayOvr}
+        {/* Bottom Tier */}
+        <div className="flex justify-between items-end w-full mt-1.5">
+          {/* Left: Stamina + Injury */}
+          <div className="flex flex-col w-24 gap-1 flex-shrink-0">
+             <div className="flex justify-between items-center">
+               <span className={`text-[10px] font-mono font-bold leading-none ${player.stamina > 70 ? 'text-neon-green' : player.stamina > 30 ? 'text-yellow-500' : 'text-red-500'}`}>
+                 ⚡ {player.stamina}
+               </span>
+               {player.is_injured && <span className="text-[8px] bg-red-900/50 text-red-300 px-1 rounded-sm leading-none py-0.5">🚑 {player.injury_matches_left}M</span>}
+             </div>
+             {/* Stamina bar visual */}
+             <div className="w-full h-1 bg-gray-900 rounded-full overflow-hidden border border-gray-700">
+                <div className={`h-full ${player.stamina > 70 ? 'bg-neon-green' : player.stamina > 30 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${player.stamina}%` }}></div>
+             </div>
           </div>
+
+          {/* Right: Stats row */}
           {player.stats && (
-            <div className="flex flex-wrap justify-center gap-x-1 gap-y-0 text-[8px] text-gray-400 font-orbitron mt-0.5 leading-none">
-              <span>PAC <span className="text-neon-green">{player.stats.pace}</span></span>
-              <span>SHO <span className="text-neon-green">{player.stats.shooting}</span></span>
-              <span>PAS <span className="text-neon-green">{player.stats.passing}</span></span>
-              <span>DEF <span className="text-neon-green">{player.stats.defending}</span></span>
-              <span>PHY <span className="text-neon-green">{player.stats.physical}</span></span>
+            <div className="flex items-center gap-2.5 flex-wrap justify-end pl-2">
+              <div className="flex items-baseline gap-1"><span className="text-gray-400 text-[10px]">PAC</span><span className="text-white font-mono text-[11px]">{player.stats.pace}</span></div>
+              <div className="flex items-baseline gap-1"><span className="text-gray-400 text-[10px]">SHO</span><span className="text-white font-mono text-[11px]">{player.stats.shooting}</span></div>
+              <div className="flex items-baseline gap-1"><span className="text-gray-400 text-[10px]">PAS</span><span className="text-white font-mono text-[11px]">{player.stats.passing}</span></div>
+              <div className="flex items-baseline gap-1"><span className="text-gray-400 text-[10px]">DEF</span><span className="text-white font-mono text-[11px]">{player.stats.defending}</span></div>
+              <div className="flex items-baseline gap-1"><span className="text-gray-400 text-[10px]">PHY</span><span className="text-white font-mono text-[11px]">{player.stats.physical}</span></div>
             </div>
           )}
-        </div>
-
-        {/* Action Column */}
-        <div className="flex justify-end w-3/12 pr-1">
-          <button
-            onClick={() => setTrainingPlayer(player)}
-            className="bg-neon-pink/10 hover:bg-neon-pink text-neon-pink hover:text-white border border-neon-pink/40 text-[9px] font-bold px-2 py-1 rounded transition-all uppercase flex items-center gap-1 shadow-[0_0_10px_rgba(255,0,60,0.1)] hover:shadow-[0_0_15px_rgba(255,0,60,0.4)]"
-          >
-            <Dumbbell className="w-3 h-3" />
-            <span className="hidden sm:inline">Train</span>
-          </button>
         </div>
 
       </div>
