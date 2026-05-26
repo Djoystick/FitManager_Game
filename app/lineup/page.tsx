@@ -5,7 +5,7 @@ import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider
 import { useRouter } from 'next/navigation';
 import { BackButton } from '@/components/ui/BackButton';
 import { PlayerTrainingModal } from '@/components/PlayerTrainingModal';
-import { swapPlayers } from '@/app/actions/lineupActions';
+import { swapPlayers, updatePlayers } from '@/app/actions/lineupActions';
 import { healAllPlayersStamina } from '@/app/actions/playerActions';
 import toast from 'react-hot-toast';
 import { Shirt, Dumbbell, CircleHelp, X } from 'lucide-react';
@@ -58,6 +58,7 @@ export default function LineupPage() {
   
   // New State for Tabs
   const [activeTab, setActiveTab] = useState<'pitch' | 'roster'>('pitch');
+  const [hasCheckedCorruption, setHasCheckedCorruption] = useState(false);
   
   const router = useRouter();
 
@@ -118,6 +119,76 @@ export default function LineupPage() {
     return 'MID';
   };
 
+  const reassignSlots = async (formation: string, currentPlayers: Player[]) => {
+    const newPlayers = currentPlayers.map(p => ({ ...p }));
+    const starters = newPlayers.filter(p => p.lineup_status === 'starting' && !p.is_nft_coach);
+    
+    // Sort starters by OVR descending so better players get priority for their slots
+    starters.sort((a, b) => b.ovr - a.ovr);
+    
+    // Reset their slots to undefined temporarily
+    starters.forEach(p => p.lineup_slot = undefined);
+
+    const layout = FORMATIONS[formation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2'];
+    const availableSlots = {
+      GK: [...layout.GK],
+      DEF: [...layout.DEF],
+      MID: [...layout.MID],
+      FWD: [...layout.FWD]
+    };
+    
+    // 1. Assign native positions first
+    starters.forEach(p => {
+       const pos = p.position;
+       if (pos === 'GK' && availableSlots.GK.length > 0) {
+         p.lineup_slot = availableSlots.GK.shift()!.toString();
+       } else if (['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(pos) && availableSlots.DEF.length > 0) {
+         p.lineup_slot = availableSlots.DEF.shift()!.toString();
+       } else if (['CAM', 'CDM', 'CM', 'RM', 'LM'].includes(pos) && availableSlots.MID.length > 0) {
+         p.lineup_slot = availableSlots.MID.shift()!.toString();
+       } else if (['LWF', 'RWF', 'ST', 'CF'].includes(pos) && availableSlots.FWD.length > 0) {
+         p.lineup_slot = availableSlots.FWD.shift()!.toString();
+       }
+    });
+
+    // 2. Assign leftovers to any remaining slots
+    const allRemainingSlots = [
+      ...availableSlots.GK,
+      ...availableSlots.DEF,
+      ...availableSlots.MID,
+      ...availableSlots.FWD
+    ];
+
+    starters.filter(p => p.lineup_slot === undefined).forEach(p => {
+      p.lineup_slot = allRemainingSlots.shift()?.toString() || '0';
+    });
+
+    return newPlayers;
+  };
+
+  useEffect(() => {
+    if (!team || players.length === 0 || hasCheckedCorruption) return;
+    const formation = team.formation || '4-4-2';
+    
+    const startingPlayersList = players.filter(p => p.lineup_status === 'starting' && !p.is_nft_coach);
+    const validSlots = new Set(['0','1','2','3','4','5','6','7','8','9','10']);
+    const hasCorrupted = startingPlayersList.some(p => !validSlots.has(p.lineup_slot || ''));
+    
+    if (hasCorrupted && startingPlayersList.length > 0) {
+      const runRecovery = async () => {
+         const newPlayers = await reassignSlots(formation, players);
+         setPlayers(newPlayers);
+         const payload = newPlayers.filter(p => p.lineup_status === 'starting').map(p => ({
+            id: p.id,
+            lineup_status: p.lineup_status,
+            lineup_slot: p.lineup_slot || null
+         }));
+         await updatePlayers(payload);
+      };
+      runRecovery();
+    }
+    setHasCheckedCorruption(true);
+  }, [team, players, hasCheckedCorruption]);
 
   const handlePlayerClick = async (player: Player) => {
     // Only allow swapping in pitch view
@@ -214,6 +285,17 @@ export default function LineupPage() {
       const data = await res.json();
       if (res.ok && data.success) {
         setTeam(prev => prev ? { ...prev, formation: newFormation } : prev);
+        
+        const reassignedPlayers = await reassignSlots(newFormation, players);
+        setPlayers(reassignedPlayers);
+        
+        const payload = reassignedPlayers.filter(p => p.lineup_status === 'starting').map(p => ({
+          id: p.id,
+          lineup_status: p.lineup_status,
+          lineup_slot: p.lineup_slot || null
+        }));
+        await updatePlayers(payload);
+        
         await fetchTeamData();
       } else {
         toast.error(data.error || 'Failed to change formation');

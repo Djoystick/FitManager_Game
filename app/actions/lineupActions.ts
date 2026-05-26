@@ -83,3 +83,27 @@ export async function swapPlayers(playerOutId: string, playerInId: string) {
     return { success: false, error: error.message || 'Internal Server Error' };
   }
 }
+
+export async function updatePlayers(payload: { id: string; lineup_status: string; lineup_slot: string | null }[]) {
+  try {
+    const cookieStore = await cookies();
+    const tgUserId = cookieStore.get('tg_user_id')?.value;
+
+    if (!tgUserId) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    const { error: bulkError } = await supabase.rpc('bulk_update_lineup', { payload });
+
+    if (bulkError) {
+      return { success: false, error: bulkError.message };
+    }
+
+    revalidatePath('/lineup');
+    return { success: true };
+  } catch (err: any) {
+    console.error("updatePlayers Action Error:", err);
+    return { success: false, error: err.message };
+  }
+}
+
