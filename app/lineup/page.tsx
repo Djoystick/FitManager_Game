@@ -101,15 +101,49 @@ export default function LineupPage() {
   const startingPlayers = activePlayers.filter(p => p.lineup_status === 'starting');
   const benchPlayers = activePlayers.filter(p => p.lineup_status === 'bench');
 
-  // Categorize strictly by lineup_slot (ignore native position for pitch layout)
-  const getSlotType = (p: Player) => p.lineup_slot ? p.lineup_slot.split('_')[0] : '';
+  // Categorize strictly by lineup_slot (index mapping based on formation)
+  const getLineFromSlot = (p: Player, formation: string = '4-4-2') => {
+    if (!p.lineup_slot) return '';
+    if (p.lineup_slot.includes('_')) return p.lineup_slot.split('_')[0]; // Fallback for old string formats
+    
+    const slotIndex = parseInt(p.lineup_slot, 10);
+    if (isNaN(slotIndex)) return '';
+    
+    if (slotIndex === 0) return 'GK';
+    
+    if (formation === '4-4-2') {
+      if (slotIndex >= 1 && slotIndex <= 4) return 'DEF';
+      if (slotIndex >= 5 && slotIndex <= 8) return 'MID';
+      if (slotIndex >= 9 && slotIndex <= 10) return 'FWD';
+    } else if (formation === '4-3-3') {
+      if (slotIndex >= 1 && slotIndex <= 4) return 'DEF';
+      if (slotIndex >= 5 && slotIndex <= 7) return 'MID';
+      if (slotIndex >= 8 && slotIndex <= 10) return 'FWD';
+    } else if (formation === '3-5-2') {
+      if (slotIndex >= 1 && slotIndex <= 3) return 'DEF';
+      if (slotIndex >= 4 && slotIndex <= 8) return 'MID';
+      if (slotIndex >= 9 && slotIndex <= 10) return 'FWD';
+    }
+    return '';
+  };
+
+  const getSlotNumeric = (p: Player) => {
+     const val = parseInt(p.lineup_slot || '-1', 10);
+     return isNaN(val) ? -1 : val;
+  };
+
+  const sortBySlot = (a: Player, b: Player) => {
+    const numA = getSlotNumeric(a);
+    const numB = getSlotNumeric(b);
+    if (numA !== -1 && numB !== -1) return numA - numB;
+    return (a.lineup_slot || '').localeCompare(b.lineup_slot || '');
+  };
   
-  const sortBySlot = (a: Player, b: Player) => (a.lineup_slot || '').localeCompare(b.lineup_slot || '');
-  
-  const fwds = startingPlayers.filter(p => getSlotType(p) === 'FWD').sort(sortBySlot);
-  const mids = startingPlayers.filter(p => getSlotType(p) === 'MID').sort(sortBySlot);
-  const defs = startingPlayers.filter(p => getSlotType(p) === 'DEF').sort(sortBySlot);
-  const gks = startingPlayers.filter(p => getSlotType(p) === 'GK').sort(sortBySlot);
+  const currentFormation = team?.formation || '4-4-2';
+  const fwds = startingPlayers.filter(p => getLineFromSlot(p, currentFormation) === 'FWD').sort(sortBySlot);
+  const mids = startingPlayers.filter(p => getLineFromSlot(p, currentFormation) === 'MID').sort(sortBySlot);
+  const defs = startingPlayers.filter(p => getLineFromSlot(p, currentFormation) === 'DEF').sort(sortBySlot);
+  const gks = startingPlayers.filter(p => getLineFromSlot(p, currentFormation) === 'GK').sort(sortBySlot);
 
   const handlePlayerClick = async (player: Player) => {
     // Only allow swapping in pitch view
@@ -231,7 +265,7 @@ export default function LineupPage() {
   // Compact Marker for Pitch View
   const renderPitchMarker = (player: Player) => {
     const isSelected = selectedPlayerId === player.id;
-    const slotPos = getSlotType(player);
+    const slotPos = getLineFromSlot(player, team?.formation);
     const isOOP = !isCompatible(player.position, slotPos) && player.lineup_status === 'starting';
     const displayOvr = isOOP ? Math.floor(player.ovr * 0.8) : player.ovr;
 
@@ -278,7 +312,7 @@ export default function LineupPage() {
 
   // Detailed Row for List View
   const renderListRow = (player: Player) => {
-    const slotPos = getSlotType(player);
+    const slotPos = getLineFromSlot(player, team?.formation);
     const isOOP = !isCompatible(player.position, slotPos) && player.lineup_status === 'starting';
     const displayOvr = isOOP ? Math.floor(player.ovr * 0.8) : player.ovr;
 
@@ -346,7 +380,7 @@ export default function LineupPage() {
   let averageOvr = 50;
   if (startingPlayers.length > 0) {
     const sum = startingPlayers.reduce((acc, p) => {
-       const slotPos = getSlotType(p);
+       const slotPos = getLineFromSlot(p, team?.formation);
        const oop = !isCompatible(p.position, slotPos) && p.lineup_status === 'starting';
        return acc + (oop ? Math.floor(p.ovr * 0.8) : p.ovr);
     }, 0);
