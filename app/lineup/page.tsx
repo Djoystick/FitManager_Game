@@ -101,116 +101,23 @@ export default function LineupPage() {
   const startingPlayers = activePlayers.filter(p => p.lineup_status === 'starting');
   const benchPlayers = activePlayers.filter(p => p.lineup_status === 'bench');
 
-  // Categorize strictly by lineup_slot (index mapping based on formation)
-  const getLineFromSlot = (p: Player, formation: string = '4-4-2') => {
-    if (!p.lineup_slot) return '';
-    if (p.lineup_slot.includes('_')) return p.lineup_slot.split('_')[0]; // Fallback for old string formats
-    
-    const slotIndex = parseInt(p.lineup_slot, 10);
-    if (isNaN(slotIndex)) return '';
-    
-    if (slotIndex === 0) return 'GK';
-    
-    if (formation === '4-4-2') {
-      if (slotIndex >= 1 && slotIndex <= 4) return 'DEF';
-      if (slotIndex >= 5 && slotIndex <= 8) return 'MID';
-      if (slotIndex >= 9 && slotIndex <= 10) return 'FWD';
-    } else if (formation === '4-3-3') {
-      if (slotIndex >= 1 && slotIndex <= 4) return 'DEF';
-      if (slotIndex >= 5 && slotIndex <= 7) return 'MID';
-      if (slotIndex >= 8 && slotIndex <= 10) return 'FWD';
-    } else if (formation === '3-5-2') {
-      if (slotIndex >= 1 && slotIndex <= 3) return 'DEF';
-      if (slotIndex >= 4 && slotIndex <= 8) return 'MID';
-      if (slotIndex >= 9 && slotIndex <= 10) return 'FWD';
-    }
-    return '';
+  const FORMATIONS = {
+    '4-4-2': { FWD: [9, 10], MID: [5, 6, 7, 8], DEF: [1, 2, 3, 4], GK: [0] },
+    '4-3-3': { FWD: [8, 9, 10], MID: [5, 6, 7], DEF: [1, 2, 3, 4], GK: [0] },
+    '3-5-2': { FWD: [9, 10], MID: [4, 5, 6, 7, 8], DEF: [1, 2, 3], GK: [0] }
   };
 
-  const getSlotNumeric = (p: Player) => {
-     const val = parseInt(p.lineup_slot || '-1', 10);
-     return isNaN(val) ? -1 : val;
-  };
-
-  const sortBySlot = (a: Player, b: Player) => {
-    const numA = getSlotNumeric(a);
-    const numB = getSlotNumeric(b);
-    if (numA !== -1 && numB !== -1) return numA - numB;
-    return (a.lineup_slot || '').localeCompare(b.lineup_slot || '');
-  };
-  
   const currentFormation = team?.formation || '4-4-2';
 
-  const getLineForRender = (p: Player, formation: string = '4-4-2') => {
-    const slotLine = getLineFromSlot(p, formation);
-    if (slotLine) return slotLine;
-    
-    // Auto-Recovery: if slot is broken, fallback to native position's line mapping
-    const pos = p.position;
-    if (['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(pos)) return 'DEF';
-    if (['CAM', 'CDM', 'CM', 'RM', 'LM'].includes(pos)) return 'MID';
-    if (['LWF', 'RWF', 'ST', 'CF'].includes(pos)) return 'FWD';
-    if (pos === 'GK') return 'GK';
-    
-    return 'MID'; // Ultimate fallback
+  const getLineForSlot = (slotIndex: number, formation: string) => {
+    const layout = FORMATIONS[formation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2'];
+    if (layout.FWD.includes(slotIndex)) return 'FWD';
+    if (layout.MID.includes(slotIndex)) return 'MID';
+    if (layout.DEF.includes(slotIndex)) return 'DEF';
+    if (layout.GK.includes(slotIndex)) return 'GK';
+    return 'MID';
   };
 
-  const fwds = startingPlayers.filter(p => getLineForRender(p, currentFormation) === 'FWD').sort(sortBySlot);
-  const mids = startingPlayers.filter(p => getLineForRender(p, currentFormation) === 'MID').sort(sortBySlot);
-  const defs = startingPlayers.filter(p => getLineForRender(p, currentFormation) === 'DEF').sort(sortBySlot);
-  const gks = startingPlayers.filter(p => getLineForRender(p, currentFormation) === 'GK').sort(sortBySlot);
-
-  // Auto-Recovery Effect: Give broken starters a valid slot index in local state so swaps work
-  useEffect(() => {
-    if (!team) return;
-    const formation = team.formation || '4-4-2';
-    
-    const brokenStarters = players.filter(p => p.lineup_status === 'starting' && !getLineFromSlot(p, formation));
-    
-    if (brokenStarters.length > 0) {
-      setPlayers(prev => {
-        const newPlayers = prev.map(p => ({ ...p })); // deep copy
-        let changed = false;
-        
-        brokenStarters.forEach(brokenPlayer => {
-          const pIndex = newPlayers.findIndex(p => p.id === brokenPlayer.id);
-          if (pIndex !== -1) {
-            const targetLine = getLineForRender(brokenPlayer, formation);
-            let min = 0, max = 0;
-            
-            if (targetLine === 'GK') { min = 0; max = 0; }
-            else if (formation === '4-4-2') {
-               if (targetLine === 'DEF') { min = 1; max = 4; }
-               if (targetLine === 'MID') { min = 5; max = 8; }
-               if (targetLine === 'FWD') { min = 9; max = 10; }
-            }
-            else if (formation === '4-3-3') {
-               if (targetLine === 'DEF') { min = 1; max = 4; }
-               if (targetLine === 'MID') { min = 5; max = 7; }
-               if (targetLine === 'FWD') { min = 8; max = 10; }
-            }
-            else if (formation === '3-5-2') {
-               if (targetLine === 'DEF') { min = 1; max = 3; }
-               if (targetLine === 'MID') { min = 4; max = 8; }
-               if (targetLine === 'FWD') { min = 9; max = 10; }
-            }
-
-            for (let i = min; i <= max; i++) {
-               const idxStr = i.toString();
-               const isOccupied = newPlayers.some(p => p.lineup_status === 'starting' && p.lineup_slot === idxStr);
-               if (!isOccupied) {
-                 newPlayers[pIndex].lineup_slot = idxStr;
-                 changed = true;
-                 break;
-               }
-            }
-          }
-        });
-        
-        return changed ? newPlayers : prev;
-      });
-    }
-  }, [players, team]);
 
   const handlePlayerClick = async (player: Player) => {
     // Only allow swapping in pitch view
@@ -330,10 +237,9 @@ export default function LineupPage() {
   };
 
   // Compact Marker for Pitch View
-  const renderPitchMarker = (player: Player) => {
+  const renderPitchMarker = (player: Player, targetLine: string = '') => {
     const isSelected = selectedPlayerId === player.id;
-    const slotPos = getLineForRender(player, team?.formation);
-    const isOOP = !isCompatible(player.position, slotPos) && player.lineup_status === 'starting';
+    const isOOP = !isCompatible(player.position, targetLine) && player.lineup_status === 'starting';
     const displayOvr = isOOP ? Math.floor(player.ovr * 0.8) : player.ovr;
 
     return (
@@ -377,10 +283,25 @@ export default function LineupPage() {
     );
   };
 
+  const renderEmptySlot = (slotIndex: number, targetLine: string) => (
+    <div 
+      key={`empty-${slotIndex}`} 
+      className="relative flex flex-col items-center justify-center p-1 w-14 h-[84px] cursor-not-allowed transition-all rounded-md border border-dashed border-gray-600/50 bg-black/20"
+    >
+      <div className="w-8 h-8 rounded-full border border-gray-700/50 flex items-center justify-center bg-gray-800/30 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
+        <span className="text-gray-500 font-black text-[10px] opacity-40">{targetLine}</span>
+      </div>
+    </div>
+  );
+
   // Detailed Row for List View
   const renderListRow = (player: Player) => {
-    const slotPos = getLineForRender(player, team?.formation);
-    const isOOP = !isCompatible(player.position, slotPos) && player.lineup_status === 'starting';
+    let targetLine = '';
+    if (player.lineup_status === 'starting') {
+      const idx = parseInt(player.lineup_slot || '-1', 10);
+      targetLine = getLineForSlot(idx, currentFormation);
+    }
+    const isOOP = !isCompatible(player.position, targetLine) && player.lineup_status === 'starting';
     const displayOvr = isOOP ? Math.floor(player.ovr * 0.8) : player.ovr;
 
     return (
@@ -447,8 +368,9 @@ export default function LineupPage() {
   let averageOvr = 50;
   if (startingPlayers.length > 0) {
     const sum = startingPlayers.reduce((acc, p) => {
-       const slotPos = getLineForRender(p, team?.formation);
-       const oop = !isCompatible(p.position, slotPos) && p.lineup_status === 'starting';
+       const idx = parseInt(p.lineup_slot || '-1', 10);
+       const targetLine = getLineForSlot(idx, currentFormation);
+       const oop = !isCompatible(p.position, targetLine) && p.lineup_status === 'starting';
        return acc + (oop ? Math.floor(p.ovr * 0.8) : p.ovr);
     }, 0);
     averageOvr = Math.max(1, Math.round(sum / startingPlayers.length));
@@ -562,8 +484,7 @@ export default function LineupPage() {
           {/* TACTICAL PITCH UI */}
           <div className="flex justify-center gap-2 mb-[-10px] z-20">
             {['4-4-2', '4-3-3', '3-5-2'].map(f => {
-              const realFormation = `${defs.length}-${mids.length}-${fwds.length}`;
-              const isRealActive = realFormation === f;
+              const isRealActive = currentFormation === f;
               return (
                 <button
                   key={f}
@@ -593,27 +514,35 @@ export default function LineupPage() {
               
               {/* FWD Line */}
               <div className="w-full flex justify-around items-center h-[20%]">
-                 {fwds.map(renderPitchMarker)}
+                 {(FORMATIONS[currentFormation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2']).FWD.map(idx => {
+                   const p = startingPlayers.find(sp => parseInt(sp.lineup_slot || '-1', 10) === idx);
+                   return p ? renderPitchMarker(p, 'FWD') : renderEmptySlot(idx, 'FWD');
+                 })}
               </div>
               
               {/* MID Line */}
               <div className="w-full flex justify-around items-center h-[20%]">
-                 {mids.map(renderPitchMarker)}
+                 {(FORMATIONS[currentFormation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2']).MID.map(idx => {
+                   const p = startingPlayers.find(sp => parseInt(sp.lineup_slot || '-1', 10) === idx);
+                   return p ? renderPitchMarker(p, 'MID') : renderEmptySlot(idx, 'MID');
+                 })}
               </div>
               
               {/* DEF Line */}
               <div className="w-full flex justify-around items-center h-[20%]">
-                 {defs.map(renderPitchMarker)}
+                 {(FORMATIONS[currentFormation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2']).DEF.map(idx => {
+                   const p = startingPlayers.find(sp => parseInt(sp.lineup_slot || '-1', 10) === idx);
+                   return p ? renderPitchMarker(p, 'DEF') : renderEmptySlot(idx, 'DEF');
+                 })}
               </div>
               
               {/* GK Line */}
               <div className="w-full flex justify-around items-center h-[20%]">
-                 {gks.map(renderPitchMarker)}
+                 {(FORMATIONS[currentFormation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2']).GK.map(idx => {
+                   const p = startingPlayers.find(sp => parseInt(sp.lineup_slot || '-1', 10) === idx);
+                   return p ? renderPitchMarker(p, 'GK') : renderEmptySlot(idx, 'GK');
+                 })}
               </div>
-              
-              {startingPlayers.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center text-sm text-neon-cyan/60 font-mono">No starting players on roster</div>
-              )}
             </div>
           </div>
 
@@ -624,7 +553,7 @@ export default function LineupPage() {
                 Substitutes Bench
               </h3>
               <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                {benchPlayers.map(renderPitchMarker)}
+                {benchPlayers.map(p => renderPitchMarker(p, ''))}
               </div>
             </div>
           )}
