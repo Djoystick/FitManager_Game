@@ -204,7 +204,7 @@ export async function hardResetUserTeam(userId: string): Promise<AdminActionResu
 
     if (deleteError) {
       console.error('Error deleting team:', deleteError);
-      return { success: false, error: 'Failed to delete team.' };
+      return { success: false, error: deleteError.message || 'Неизвестная ошибка базы данных' };
     }
 
     return { success: true, message: 'Team and all players have been hard reset. Please reload the app to create a new franchise.' };
