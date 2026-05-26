@@ -838,16 +838,16 @@ export default function LineupPage() {
         <>
           {/* Overlay */}
           <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-in fade-in duration-300"
             onClick={() => setInspectingPlayer(null)}
           ></div>
           
           {/* Sheet */}
-          <div className="fixed bottom-0 left-0 w-full z-50 bg-gray-900 border-t-2 border-neon-cyan/50 rounded-t-2xl shadow-[0_-10px_40px_rgba(0,240,255,0.15)] animate-in slide-in-from-bottom duration-300">
-            <div className="p-6 flex flex-col gap-6">
+          <div className="fixed bottom-0 left-0 w-full z-50 bg-gray-900 border-t-2 border-neon-cyan/50 rounded-t-2xl shadow-[0_-10px_40px_rgba(0,240,255,0.15)] animate-in slide-in-from-bottom-full fade-in duration-300 max-h-[85vh] flex flex-col">
+            <div className="p-6 pb-12 overflow-y-auto custom-scrollbar flex flex-col gap-6">
               
               {/* Header */}
-              <div className="flex justify-between items-center border-b border-gray-800 pb-4">
+              <div className="flex justify-between items-center border-b border-gray-800 pb-4 shrink-0">
                 <div className="flex items-center gap-4">
                   <div className="flex flex-col items-center justify-center w-14 h-14 bg-black/50 border border-neon-cyan/30 rounded-xl shadow-[inset_0_0_10px_rgba(0,240,255,0.2)]">
                     <span className="text-xl font-black text-white">{inspectingPlayer.ovr}</span>
@@ -872,7 +872,7 @@ export default function LineupPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <button
                   onClick={() => {
                     setInspectingPlayer(null);
@@ -883,26 +883,25 @@ export default function LineupPage() {
                   <span className="text-xl">🔄</span> ЗАМЕНИТЬ
                 </button>
                 
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setInspectingPlayer(null);
-                      alert('Открытие окна тренировки');
-                    }}
-                    className="flex-1 py-3 rounded-xl font-black uppercase tracking-wider bg-black/50 text-neon-pink border border-neon-pink/40 hover:bg-neon-pink/10 transition-colors shadow-[0_0_10px_rgba(255,0,60,0.1)] flex items-center justify-center gap-2"
-                  >
-                    <span className="text-lg">💪</span> ТРЕНИРОВКА
-                  </button>
-                  <button
-                    onClick={() => {
-                      setInspectingPlayer(null);
-                      alert('Детальный профиль в разработке');
-                    }}
-                    className="flex-1 py-3 rounded-xl font-black uppercase tracking-wider bg-black/50 text-white border border-gray-600 hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <span className="text-lg">📋</span> ПРОФИЛЬ
-                  </button>
-                </div>
+                <button
+                  onClick={() => {
+                    setInspectingPlayer(null);
+                    alert('Открытие окна тренировки');
+                  }}
+                  className="w-full py-4 rounded-xl font-black uppercase tracking-wider bg-black/50 text-neon-pink border border-neon-pink/40 hover:bg-neon-pink/10 transition-colors shadow-[0_0_10px_rgba(255,0,60,0.1)] flex items-center justify-center gap-2"
+                >
+                  <span className="text-lg">💪</span> ТРЕНИРОВКА
+                </button>
+
+                <button
+                  onClick={() => {
+                    setInspectingPlayer(null);
+                    alert('Детальный профиль в разработке');
+                  }}
+                  className="w-full py-4 rounded-xl font-black uppercase tracking-wider bg-black/50 text-white border border-gray-600 hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+                >
+                  <span className="text-lg">📋</span> ПРОФИЛЬ
+                </button>
               </div>
 
             </div>
