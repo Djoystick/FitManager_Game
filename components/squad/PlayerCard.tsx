@@ -9,6 +9,7 @@ interface Player {
   stamina: number;
   lineup_status?: string;
   is_nft_coach?: boolean;
+  traits?: string[];
 }
 
 export function PlayerCard({ player }: { player: Player }) {

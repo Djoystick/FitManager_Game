@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import { CyberLoader } from '@/components/ui/CyberLoader';
 import { Shirt, Dumbbell, CircleHelp, X, RefreshCw, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PlayerProfileModal } from '@/components/PlayerProfileModal';
 
 interface PlayerStats {
   pace: number;
@@ -35,6 +36,7 @@ interface Player {
   stamina: number;
   lineup_status: string;
   lineup_slot?: string;
+  traits?: string[];
 }
 
 interface Team {
@@ -64,6 +66,7 @@ export default function LineupPage() {
   const [activeFormation, setActiveFormation] = useState('4-4-2');
   const [hasCheckedCorruption, setHasCheckedCorruption] = useState(false);
   const [activeHUD, setActiveHUD] = useState<{player: Player, x: number, y: number, isBelow?: boolean} | null>(null);
+  const [profilePlayer, setProfilePlayer] = useState<Player | null>(null);
   
   const router = useRouter();
 
@@ -887,8 +890,8 @@ export default function LineupPage() {
               
               <button
                 onClick={() => {
+                  setProfilePlayer(activeHUD.player);
                   setActiveHUD(null);
-                  alert('Детальный профиль в разработке');
                 }}
                 className="px-4 py-2 rounded-lg font-black uppercase tracking-widest bg-black/60 text-gray-300 border border-gray-600 hover:border-white hover:text-white transition-all shadow-[0_0_10px_rgba(255,255,255,0.05)] flex flex-col items-center justify-center gap-1 min-w-[90px]"
               >
@@ -897,6 +900,12 @@ export default function LineupPage() {
               </button>
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {profilePlayer && (
+          <PlayerProfileModal player={profilePlayer} onClose={() => setProfilePlayer(null)} />
         )}
       </AnimatePresence>
     </div>

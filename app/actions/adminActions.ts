@@ -102,6 +102,18 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
         const ovr = Math.max(1, Math.min(99, teamBaseOvr + Math.floor(Math.random() * 10 - 5)));
         const generateStat = () => Math.max(1, Math.min(99, Math.round(ovr + (Math.random() * 14 - 7))));
         
+        const traitsRoll = Math.random();
+        let numTraits = 0;
+        if (traitsRoll >= 0.85) numTraits = 2;
+        else if (traitsRoll >= 0.50) numTraits = 1;
+
+        const traits: string[] = [];
+        const availableTraits = ['Sniper', 'Playmaker', 'Wall', 'Speedster', 'Anchor', 'Poacher', 'Engine'];
+        for (let t = 0; t < numTraits; t++) {
+          const idx = Math.floor(Math.random() * availableTraits.length);
+          traits.push(availableTraits.splice(idx, 1)[0]);
+        }
+
         playersToInsert.push({
           team_id: team.id,
           name: `${pFirst[Math.floor(Math.random() * pFirst.length)]} ${pLast[Math.floor(Math.random() * pLast.length)]}`,
@@ -119,7 +131,8 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
           },
           stamina: 100,
           lineup_status: 'starting',
-          is_nft_coach: false
+          is_nft_coach: false,
+          traits
         });
       }
     });

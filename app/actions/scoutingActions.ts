@@ -23,6 +23,7 @@ export interface Player {
   position: string;
   stats: PlayerStats;
   stamina: number;
+  traits?: string[];
   lineup_status: string;
   is_nft_coach: boolean;
 }

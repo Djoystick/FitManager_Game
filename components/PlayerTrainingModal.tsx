@@ -23,6 +23,7 @@ interface Player {
   is_injured?: boolean;
   injury_matches_left?: number;
   lineup_status: string;
+  traits?: string[];
 }
 
 interface PlayerTrainingModalProps {

@@ -13,6 +13,8 @@ function getRandomInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+const AVAILABLE_TRAITS = ['Sniper', 'Playmaker', 'Wall', 'Speedster', 'Anchor', 'Poacher', 'Engine'];
+
 function generatePlayer(teamId: string, position: string, lineup_status: string = 'starting') {
   const stats: PlayerStats = {
     pace: getRandomInt(45, 65),
@@ -29,6 +31,21 @@ function generatePlayer(teamId: string, position: string, lineup_status: string 
   const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson'];
   const name = `${firstNames[getRandomInt(0, firstNames.length - 1)]} ${lastNames[getRandomInt(0, lastNames.length - 1)]}`;
   
+  const traitsRoll = Math.random();
+  let numTraits = 0;
+  if (traitsRoll >= 0.85) {
+    numTraits = 2;
+  } else if (traitsRoll >= 0.50) {
+    numTraits = 1;
+  }
+
+  const traits: string[] = [];
+  const available = [...AVAILABLE_TRAITS];
+  for (let i = 0; i < numTraits; i++) {
+    const idx = getRandomInt(0, available.length - 1);
+    traits.push(available.splice(idx, 1)[0]);
+  }
+  
   return {
     team_id: teamId,
     name,
@@ -39,7 +56,8 @@ function generatePlayer(teamId: string, position: string, lineup_status: string 
     position,
     stats,
     stamina: 100,
-    lineup_status
+    lineup_status,
+    traits
   };
 }
 

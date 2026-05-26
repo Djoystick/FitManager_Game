@@ -8,6 +8,7 @@ interface Player {
   name: string;
   position: string;
   ovr: number;
+  traits?: string[];
 }
 
 interface NextOpponentCardProps {
