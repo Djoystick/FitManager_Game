@@ -146,10 +146,10 @@ export default function LineupPage() {
             const tempSlot = p1.lineup_slot;
             const tempStatus = p1.lineup_status;
             
-            p1.lineup_slot = p2.lineup_slot || null;
+            p1.lineup_slot = p2.lineup_slot || undefined;
             p1.lineup_status = p2.lineup_status;
             
-            p2.lineup_slot = tempSlot || null;
+            p2.lineup_slot = tempSlot || undefined;
             p2.lineup_status = tempStatus;
           }
           return newPlayers;
