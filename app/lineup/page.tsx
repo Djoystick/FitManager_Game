@@ -62,7 +62,7 @@ export default function LineupPage() {
   const [viewMode, setViewMode] = useState<'tactics' | 'fitness'>('tactics');
   const [activeFormation, setActiveFormation] = useState('4-4-2');
   const [hasCheckedCorruption, setHasCheckedCorruption] = useState(false);
-  const [inspectingPlayer, setInspectingPlayer] = useState<Player | null>(null);
+  const [activeHUD, setActiveHUD] = useState<{player: Player, x: number, y: number} | null>(null);
   
   const router = useRouter();
 
@@ -175,11 +175,16 @@ export default function LineupPage() {
     return false;
   };
 
-  const handlePlayerClick = async (player: Player) => {
+  const handlePlayerClick = async (player: Player, e?: React.MouseEvent) => {
     if (activeTab !== 'pitch') return;
 
     if (!selectedPlayerId) {
-      setInspectingPlayer(player);
+      if (e) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        setActiveHUD({ player, x: rect.left + rect.width / 2, y: rect.top });
+      } else {
+        setActiveHUD({ player, x: typeof window !== 'undefined' ? window.innerWidth / 2 : 200, y: typeof window !== 'undefined' ? window.innerHeight / 2 : 400 });
+      }
       return;
     }
 
@@ -308,7 +313,7 @@ export default function LineupPage() {
     return (
       <div 
         key={player.id} 
-        onClick={() => handlePlayerClick(player)}
+        onClick={(e) => handlePlayerClick(player, e)}
         className={`relative flex flex-col items-center justify-center p-1 w-14 cursor-pointer transition-all duration-300 rounded-md ${
           isSelected 
             ? 'ring-2 ring-neon-pink scale-110 z-20 bg-neon-pink/20 shadow-[0_0_15px_rgba(255,0,60,0.6)]' 
@@ -833,78 +838,49 @@ export default function LineupPage() {
         </div>
       )}
 
-      {/* BOTTOM SHEET: Player Actions */}
-      {/* Overlay */}
-      <div 
-        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300 ease-out ${inspectingPlayer ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        onClick={() => setInspectingPlayer(null)}
-      ></div>
-      
-      {/* Sheet */}
-      <div className={`fixed bottom-0 left-0 w-full z-50 bg-gray-950 border-t border-neon-cyan/50 rounded-t-2xl shadow-[0_-5px_20px_rgba(0,255,255,0.15)] transition-transform duration-300 ease-out transform max-h-[85vh] flex flex-col ${inspectingPlayer ? 'translate-y-0' : 'translate-y-full'}`}>
-        <div className="p-6 pb-12 overflow-y-auto custom-scrollbar flex flex-col gap-6">
+      {/* FLOATING HUD: Player Context Menu */}
+      {activeHUD && (
+        <>
+          {/* Overlay to catch clicks and close HUD */}
+          <div 
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" 
+            onClick={() => setActiveHUD(null)} 
+          />
           
-          {/* Header */}
-          <div className="flex justify-between items-center border-b border-gray-800 pb-4 shrink-0">
-            {inspectingPlayer ? (
-              <>
-                <div className="flex items-center gap-4">
-                  <div className="flex flex-col items-center justify-center w-14 h-14 bg-black/50 border border-neon-cyan/30 rounded-xl shadow-[inset_0_0_10px_rgba(0,240,255,0.2)]">
-                    <span className="text-xl font-black text-white">{inspectingPlayer.ovr}</span>
-                    <span className="text-[10px] text-neon-cyan font-bold uppercase">{inspectingPlayer.position}</span>
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-black text-white uppercase tracking-wider">{inspectingPlayer.name.split(' ').pop()}</h2>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-gray-400 font-mono">⚡ {inspectingPlayer.stamina}%</span>
-                      <div className="w-24 h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                        <div className={`h-full ${inspectingPlayer.stamina > 70 ? 'bg-neon-green' : inspectingPlayer.stamina > 30 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${inspectingPlayer.stamina}%` }}></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setInspectingPlayer(null)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </>
-            ) : (
-              <div className="h-14"></div> // Placeholder to keep height
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Popover Menu */}
+          <div 
+            className="fixed z-50 bg-gray-950/90 backdrop-blur-md border border-neon-cyan/50 shadow-[0_0_20px_rgba(0,255,255,0.2)] rounded-xl p-3 flex flex-row gap-3 animate-in zoom-in-95 fade-in duration-200"
+            style={{ 
+              left: typeof window !== 'undefined' ? Math.min(Math.max(activeHUD.x, 100), window.innerWidth - 100) : activeHUD.x, 
+              top: activeHUD.y < 150 ? activeHUD.y + 90 : activeHUD.y - 10,
+              transform: activeHUD.y < 150 ? 'translate(-50%, 0)' : 'translate(-50%, -100%)' 
+            }}
+          >
             <button
               onClick={() => {
-                if (inspectingPlayer) {
-                  const id = inspectingPlayer.id;
-                  setInspectingPlayer(null);
-                  setSelectedPlayerId(id);
-                }
+                const id = activeHUD.player.id;
+                setActiveHUD(null);
+                setSelectedPlayerId(id);
               }}
-              className="w-full py-4 rounded-xl font-black uppercase tracking-widest bg-black/40 text-neon-cyan border border-neon-cyan/50 hover:bg-neon-cyan hover:text-black transition-all shadow-[0_0_10px_rgba(0,240,255,0.15)] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] flex flex-col items-center justify-center gap-2"
+              className="px-4 py-2 rounded-lg font-black uppercase tracking-widest bg-black/60 text-neon-cyan border border-neon-cyan/50 hover:bg-neon-cyan hover:text-black transition-all shadow-[0_0_10px_rgba(0,240,255,0.15)] flex flex-col items-center justify-center gap-1"
             >
-              <RefreshCw className="w-6 h-6" />
-              <span className="text-xs">ЗАМЕНИТЬ</span>
+              <RefreshCw className="w-5 h-5" />
+              <span className="text-[10px]">ЗАМЕНИТЬ</span>
             </button>
             
             <button
               onClick={() => {
-                setInspectingPlayer(null);
+                setActiveHUD(null);
                 alert('Детальный профиль в разработке');
               }}
-              className="w-full py-4 rounded-xl font-black uppercase tracking-widest bg-black/40 text-gray-300 border border-gray-600 hover:border-white hover:text-white transition-all shadow-[0_0_10px_rgba(255,255,255,0.05)] hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] flex flex-col items-center justify-center gap-2"
+              className="px-4 py-2 rounded-lg font-black uppercase tracking-widest bg-black/60 text-gray-300 border border-gray-600 hover:border-white hover:text-white transition-all shadow-[0_0_10px_rgba(255,255,255,0.05)] flex flex-col items-center justify-center gap-1"
             >
-              <User className="w-6 h-6" />
-              <span className="text-xs">ПРОФИЛЬ</span>
+              <User className="w-5 h-5" />
+              <span className="text-[10px]">ПРОФИЛЬ</span>
             </button>
           </div>
-
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }
