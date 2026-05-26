@@ -9,6 +9,7 @@ import { LanguageContext } from '@/components/LanguageContext';
 import { OnboardingFlow } from '@/components/OnboardingFlow';
 import { FitnessSyncWidget } from '@/components/FitnessSyncWidget';
 import { MatchHistoryWidget } from '@/components/MatchHistoryWidget';
+import { CyberLoader } from '@/components/ui/CyberLoader';
 import { Users, Trophy, ShoppingCart, Building2, User, BookOpen } from 'lucide-react';
 
 interface UserData {
@@ -86,11 +87,7 @@ export default function DashboardPage() {
   };
 
   if (isAuthLoading || isDataLoading || hasTeam === null) {
-    return (
-      <div className="flex-1 flex items-center justify-center min-h-screen bg-space-dark">
-        <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(0,240,255,0.5)]"></div>
-      </div>
-    );
+    return <CyberLoader fullScreen />;
   }
 
   if (hasTeam === false && userId) {

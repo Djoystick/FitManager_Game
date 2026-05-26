@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BackButton } from '@/components/ui/BackButton';
+import { CyberLoader } from '@/components/ui/CyberLoader';
 
 interface MarketListing {
   id: string;
@@ -61,9 +62,7 @@ export default function TransferMarketPage() {
 
       {/* LISTINGS FEED */}
       {isLoading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-10 h-10 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin"></div>
-        </div>
+        <CyberLoader fullScreen />
       ) : listings.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-800 rounded-xl p-8">
           <span className="text-xl font-black text-neon-pink drop-shadow-[0_0_10px_rgba(255,0,60,0.8)] uppercase tracking-widest text-center">No Active Listings</span>

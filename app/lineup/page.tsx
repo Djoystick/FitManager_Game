@@ -8,6 +8,7 @@ import { PlayerTrainingModal } from '@/components/PlayerTrainingModal';
 import { swapPlayers, updatePlayers, updateTeamFormation } from '@/app/actions/lineupActions';
 import { healAllPlayersStamina } from '@/app/actions/playerActions';
 import toast from 'react-hot-toast';
+import { CyberLoader } from '@/components/ui/CyberLoader';
 import { Shirt, Dumbbell, CircleHelp, X } from 'lucide-react';
 
 interface PlayerStats {
@@ -61,6 +62,7 @@ export default function LineupPage() {
   const [viewMode, setViewMode] = useState<'tactics' | 'fitness'>('tactics');
   const [activeFormation, setActiveFormation] = useState('4-4-2');
   const [hasCheckedCorruption, setHasCheckedCorruption] = useState(false);
+  const [inspectingPlayer, setInspectingPlayer] = useState<Player | null>(null);
   
   const router = useRouter();
 
@@ -177,7 +179,7 @@ export default function LineupPage() {
     if (activeTab !== 'pitch') return;
 
     if (!selectedPlayerId) {
-      setSelectedPlayerId(player.id);
+      setInspectingPlayer(player);
       return;
     }
 
@@ -481,11 +483,7 @@ export default function LineupPage() {
   };
 
   if (isAuthLoading || isLoading || !team) {
-    return (
-      <div className="flex-1 flex items-center justify-center min-h-screen bg-space-dark">
-        <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(0,240,255,0.5)]"></div>
-      </div>
-    );
+    return <CyberLoader fullScreen />;
   }
 
   if (isCorrupted) {
@@ -833,6 +831,83 @@ export default function LineupPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* BOTTOM SHEET: Player Actions */}
+      {inspectingPlayer && (
+        <>
+          {/* Overlay */}
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity"
+            onClick={() => setInspectingPlayer(null)}
+          ></div>
+          
+          {/* Sheet */}
+          <div className="fixed bottom-0 left-0 w-full z-50 bg-gray-900 border-t-2 border-neon-cyan/50 rounded-t-2xl shadow-[0_-10px_40px_rgba(0,240,255,0.15)] animate-in slide-in-from-bottom duration-300">
+            <div className="p-6 flex flex-col gap-6">
+              
+              {/* Header */}
+              <div className="flex justify-between items-center border-b border-gray-800 pb-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-col items-center justify-center w-14 h-14 bg-black/50 border border-neon-cyan/30 rounded-xl shadow-[inset_0_0_10px_rgba(0,240,255,0.2)]">
+                    <span className="text-xl font-black text-white">{inspectingPlayer.ovr}</span>
+                    <span className="text-[10px] text-neon-cyan font-bold uppercase">{inspectingPlayer.position}</span>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-white uppercase tracking-wider">{inspectingPlayer.name.split(' ').pop()}</h2>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-gray-400 font-mono">⚡ {inspectingPlayer.stamina}%</span>
+                      <div className="w-24 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                        <div className={`h-full ${inspectingPlayer.stamina > 70 ? 'bg-neon-green' : inspectingPlayer.stamina > 30 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${inspectingPlayer.stamina}%` }}></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setInspectingPlayer(null)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    setInspectingPlayer(null);
+                    setSelectedPlayerId(inspectingPlayer.id);
+                  }}
+                  className="w-full py-4 rounded-xl font-black uppercase tracking-widest bg-neon-cyan text-black hover:bg-white transition-all shadow-[0_0_15px_rgba(0,240,255,0.4)] flex items-center justify-center gap-3"
+                >
+                  <span className="text-xl">🔄</span> ЗАМЕНИТЬ
+                </button>
+                
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setInspectingPlayer(null);
+                      alert('Открытие окна тренировки');
+                    }}
+                    className="flex-1 py-3 rounded-xl font-black uppercase tracking-wider bg-black/50 text-neon-pink border border-neon-pink/40 hover:bg-neon-pink/10 transition-colors shadow-[0_0_10px_rgba(255,0,60,0.1)] flex items-center justify-center gap-2"
+                  >
+                    <span className="text-lg">💪</span> ТРЕНИРОВКА
+                  </button>
+                  <button
+                    onClick={() => {
+                      setInspectingPlayer(null);
+                      alert('Детальный профиль в разработке');
+                    }}
+                    className="flex-1 py-3 rounded-xl font-black uppercase tracking-wider bg-black/50 text-white border border-gray-600 hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span className="text-lg">📋</span> ПРОФИЛЬ
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
