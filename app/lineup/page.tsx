@@ -99,8 +99,50 @@ export default function LineupPage() {
   const activePlayers = players.filter(p => !p.is_nft_coach);
   const coaches = players.filter(p => p.is_nft_coach);
   
-  const startingPlayers = activePlayers.filter(p => p.lineup_status === 'starting');
-  const benchPlayers = activePlayers.filter(p => p.lineup_status === 'bench');
+  // Data Corruption Check
+  const isCorrupted = activePlayers.some(p => {
+    if (p.lineup_status === 'starting' || p.lineup_status === 'bench') {
+      if (!p.lineup_slot) return true;
+      const idx = parseInt(p.lineup_slot, 10);
+      if (isNaN(idx) || idx < 0 || idx > 15) return true;
+    }
+    return false;
+  });
+
+  const handleEmergencyReset = async () => {
+    setIsSubmitting(true);
+    try {
+      const sortedPlayers = [...activePlayers].sort((a, b) => b.ovr - a.ovr);
+      const payload = sortedPlayers.map((p, index) => {
+        let newStatus = 'reserve';
+        let newSlot: string | null = null;
+        if (index < 11) {
+          newStatus = 'starting';
+          newSlot = index.toString();
+        } else if (index >= 11 && index < 16) {
+          newStatus = 'bench';
+          newSlot = index.toString();
+        }
+        return {
+          id: p.id,
+          lineup_status: newStatus,
+          lineup_slot: newSlot
+        };
+      });
+      
+      const res = await updatePlayers(payload);
+      if (res.success) {
+        toast.success('Database recovered. Reloading...');
+        window.location.reload();
+      } else {
+        toast.error(res.error || 'Failed to hard reset');
+        setIsSubmitting(false);
+      }
+    } catch (err: any) {
+      toast.error('Network error during hard reset');
+      setIsSubmitting(false);
+    }
+  };
 
   const FORMATIONS = {
     '4-4-2': { FWD: [9, 10], MID: [5, 6, 7, 8], DEF: [1, 2, 3, 4], GK: [0] },
@@ -423,6 +465,34 @@ export default function LineupPage() {
     return (
       <div className="flex-1 flex items-center justify-center min-h-screen bg-space-dark">
         <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(0,240,255,0.5)]"></div>
+      </div>
+    );
+  }
+
+  if (isCorrupted) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-space-dark p-6">
+        <div className="bg-red-900/20 border-2 border-red-500 rounded-xl p-8 max-w-md w-full text-center shadow-[0_0_30px_rgba(255,0,0,0.3)]">
+          <div className="text-5xl mb-4 animate-pulse">⚠️</div>
+          <h2 className="text-xl font-black text-white uppercase tracking-wider mb-3 text-red-500">
+            Data Corruption Detected
+          </h2>
+          <p className="text-sm text-red-200 mb-6 font-mono">
+            Обнаружено повреждение данных состава. Позиции игроков не распознаны (NULL/Invalid).
+            Необходимо жестко восстановить базу данных.
+          </p>
+          <button
+            onClick={handleEmergencyReset}
+            disabled={isSubmitting}
+            className={`w-full py-4 rounded-lg font-black uppercase tracking-widest transition-all ${
+              isSubmitting 
+                ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
+                : 'bg-red-600 text-white hover:bg-red-500 shadow-[0_0_20px_rgba(255,0,0,0.5)]'
+            }`}
+          >
+            {isSubmitting ? 'Восстановление...' : '🚑 Восстановить БД (Hard Reset)'}
+          </button>
+        </div>
       </div>
     );
   }
