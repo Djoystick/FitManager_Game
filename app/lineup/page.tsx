@@ -8,7 +8,7 @@ import { swapPlayers, updatePlayers, updateTeamFormation } from '@/app/actions/l
 import { healAllPlayersStamina } from '@/app/actions/playerActions';
 import toast from 'react-hot-toast';
 import { CyberLoader } from '@/components/ui/CyberLoader';
-import { Shirt, CircleHelp, X, RefreshCw, User } from 'lucide-react';
+import { Shirt, X, RefreshCw, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlayerProfileModal } from '@/components/PlayerProfileModal';
 
@@ -56,10 +56,7 @@ export default function LineupPage() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [isHealingAll, setIsHealingAll] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
-  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
-  
-  // New State for Tabs
-  const [activeTab, setActiveTab] = useState<'pitch' | 'roster'>('pitch');
+
   const [viewMode, setViewMode] = useState<'tactics' | 'fitness'>('tactics');
   const [activeFormation, setActiveFormation] = useState('4-4-2');
   const [hasCheckedCorruption, setHasCheckedCorruption] = useState(false);
@@ -102,9 +99,8 @@ export default function LineupPage() {
     }
   }, [isLoading, isAuthLoading, team, router]);
 
-  // Segment active players vs retired NFT coaches
+  // Segment active players
   const activePlayers = players.filter(p => !p.is_nft_coach);
-  const coaches = players.filter(p => p.is_nft_coach);
   
   // Data Corruption Check
   const isCorrupted = activePlayers.some(p => {
@@ -178,7 +174,6 @@ export default function LineupPage() {
   };
 
   const handlePlayerClick = async (player: Player, e?: React.MouseEvent) => {
-    if (activeTab !== 'pitch') return;
 
     if (!selectedPlayerId) {
       if (e) {
@@ -377,68 +372,7 @@ export default function LineupPage() {
     );
   };
 
-  // Detailed Row for List View
-  const renderListRow = (slotIndex: number) => {
-    const player = getPlayerInSlot(slotIndex);
-    if (!player) return null;
 
-    const idealLine = getIdealLineForSlot(slotIndex, currentFormation);
-    const isOOP = !isCompatible(player.position, idealLine) && slotIndex <= 10;
-    const displayOvr = isOOP ? Math.floor(player.ovr * 0.8) : player.ovr;
-
-    return (
-      <div key={player.id} className="flex flex-col py-1.5 px-3 mb-2 bg-black/60 border border-gray-800 rounded-lg shadow-sm hover:border-gray-600 transition-colors backdrop-blur-sm w-full">
-        
-        {/* Top Tier */}
-        <div className="flex justify-between items-center w-full">
-          {/* Left: Badge + Name */}
-          <div className="flex items-center gap-2 overflow-hidden flex-1">
-            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter shadow-sm flex-shrink-0 ${isOOP ? 'bg-red-500 text-white' : 'bg-neon-cyan text-black'}`}>
-              {player.position}
-            </span>
-            <span className="text-sm font-bold text-white truncate">{player.name}</span>
-            {isOOP && <span className="text-[8px] text-red-500 font-bold animate-pulse flex-shrink-0">⚠️ OOP</span>}
-          </div>
-
-          {/* Right: OVR */}
-          <div className="flex items-center gap-3 flex-shrink-0 ml-2">
-            <div className={`text-lg font-black ${isOOP ? 'text-red-500' : 'text-white'} drop-shadow-[0_0_5px_rgba(255,255,255,0.3)] leading-none`}>
-              {displayOvr}
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Tier */}
-        <div className="flex justify-between items-end w-full mt-1.5">
-          {/* Left: Stamina + Injury */}
-          <div className="flex flex-col w-24 gap-1 flex-shrink-0">
-             <div className="flex justify-between items-center">
-               <span className={`text-[10px] font-mono font-bold leading-none ${player.stamina > 70 ? 'text-neon-green' : player.stamina > 30 ? 'text-yellow-500' : 'text-red-500'}`}>
-                 ⚡ {player.stamina}
-               </span>
-               {player.is_injured && <span className="text-[8px] bg-red-900/50 text-red-300 px-1 rounded-sm leading-none py-0.5">🚑 {player.injury_matches_left}M</span>}
-             </div>
-             {/* Stamina bar visual */}
-             <div className="w-full h-1 bg-gray-900 rounded-full overflow-hidden border border-gray-700">
-                <div className={`h-full ${player.stamina > 70 ? 'bg-neon-green' : player.stamina > 30 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${player.stamina}%` }}></div>
-             </div>
-          </div>
-
-          {/* Right: Stats row */}
-          {player.stats && (
-            <div className="flex items-center gap-2.5 flex-wrap justify-end pl-2">
-              <div className="flex items-baseline gap-1"><span className="text-gray-400 text-[10px]">PAC</span><span className="text-white font-mono text-[11px]">{player.stats.pace}</span></div>
-              <div className="flex items-baseline gap-1"><span className="text-gray-400 text-[10px]">SHO</span><span className="text-white font-mono text-[11px]">{player.stats.shooting}</span></div>
-              <div className="flex items-baseline gap-1"><span className="text-gray-400 text-[10px]">PAS</span><span className="text-white font-mono text-[11px]">{player.stats.passing}</span></div>
-              <div className="flex items-baseline gap-1"><span className="text-gray-400 text-[10px]">DEF</span><span className="text-white font-mono text-[11px]">{player.stats.defending}</span></div>
-              <div className="flex items-baseline gap-1"><span className="text-gray-400 text-[10px]">PHY</span><span className="text-white font-mono text-[11px]">{player.stats.physical}</span></div>
-            </div>
-          )}
-        </div>
-
-      </div>
-    );
-  };
   
   let averageOvr = 50;
   let starterCount = 0;
@@ -560,33 +494,7 @@ export default function LineupPage() {
         </div>
       </div>
 
-      {/* TAB NAVIGATION */}
-      <div className="flex bg-black/50 p-1 rounded-lg border border-gray-800">
-        <button
-          onClick={() => setActiveTab('pitch')}
-          className={`flex-1 py-2 text-sm font-black uppercase tracking-wider rounded-md transition-all ${
-            activeTab === 'pitch'
-              ? 'bg-neon-cyan text-black shadow-[0_0_10px_rgba(0,240,255,0.4)]'
-              : 'text-gray-400 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          Тактика (Pitch)
-        </button>
-        <button
-          onClick={() => setActiveTab('roster')}
-          className={`flex-1 py-2 text-sm font-black uppercase tracking-wider rounded-md transition-all ${
-            activeTab === 'roster'
-              ? 'bg-neon-pink text-white shadow-[0_0_10px_rgba(255,0,60,0.4)]'
-              : 'text-gray-400 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          Тренировка (Roster)
-        </button>
-      </div>
-
-      {/* CONDITIONAL RENDER: PITCH VIEW */}
-      {activeTab === 'pitch' && (
-        <div className="flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+      <div className="flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
           
           {/* VIEW MODE TOGGLE */}
           <div className="flex justify-center mt-2 mb-1">
@@ -680,57 +588,6 @@ export default function LineupPage() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* CONDITIONAL RENDER: LIST VIEW (ROSTER / TRAINING) */}
-      {activeTab === 'roster' && (
-        <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-200">
-          
-          {/* STARTING XI BLOCK */}
-          <div>
-            <h3 className="text-sm font-black text-neon-cyan mb-3 uppercase tracking-widest border-b border-neon-cyan/30 pb-1 flex items-center justify-between">
-              <span>Starting XI</span>
-              <button 
-                onClick={() => setIsStatsModalOpen(true)}
-                className="text-neon-cyan/70 hover:text-white transition-colors p-1"
-              >
-                <CircleHelp className="w-4 h-4" />
-              </button>
-            </h3>
-            <div className="flex flex-col">
-              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(renderListRow)}
-            </div>
-          </div>
-
-          {/* BENCH BLOCK */}
-          <div>
-            <h3 className="text-sm font-black text-white mb-3 uppercase tracking-widest border-b border-gray-700 pb-1 mt-2">
-              Bench / Reserves
-            </h3>
-            <div className="flex flex-col">
-              {[11, 12, 13, 14, 15].map(renderListRow)}
-            </div>
-          </div>
-          
-          {/* STAFF / EVOLVED COACHES (Shown only in Roster view ideally, or both. Let's show here) */}
-          {coaches.length > 0 && (
-            <div className="mt-2">
-              <h3 className="text-xs font-bold text-neon-pink mb-2 uppercase tracking-widest border-b border-neon-pink/30 pb-1 flex items-center justify-between">
-                <span>Staff Roster</span>
-                <span className="text-[10px] text-gray-500">Passive Boosts Active</span>
-              </h3>
-              <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
-                {coaches.map(coach => (
-                  <div key={coach.id} className="min-w-[110px] bg-black/40 border border-neon-pink/30 p-2 rounded-lg flex flex-col items-center flex-shrink-0 shadow-[0_0_10px_rgba(255,0,60,0.1)]">
-                    <span className="text-[10px] font-black text-neon-pink uppercase tracking-widest mb-1">NFT Coach</span>
-                    <span className="text-xs font-bold text-white truncate w-full text-center">{coach.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* SUBMISSION & ACTIONS AREA (GLOBAL) */}
       <div className="mt-auto flex flex-col gap-3 pt-4">
@@ -778,57 +635,7 @@ export default function LineupPage() {
         </button>
       </div>
 
-      {/* STATS INFO MODAL */}
-      {isStatsModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-4">
-          <div className="bg-gray-900 border-2 border-neon-cyan/50 rounded-xl w-full max-w-sm overflow-hidden shadow-[0_0_30px_rgba(0,240,255,0.15)] animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-4 border-b border-gray-800 bg-black/50">
-              <h2 className="text-lg font-black text-white uppercase tracking-wider flex items-center gap-2">
-                <CircleHelp className="w-5 h-5 text-neon-cyan" />
-                Player Stats
-              </h2>
-              <button 
-                onClick={() => setIsStatsModalOpen(false)}
-                className="text-gray-400 hover:text-white transition-colors p-1"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="p-5 flex flex-col gap-4 text-sm bg-gray-900/90">
-              <div>
-                <span className="font-mono font-bold text-neon-cyan">PAC (Pace):</span>
-                <span className="text-gray-300 ml-2">Скорость игрока. Влияет на успешность отрывов и перемещение по полю.</span>
-              </div>
-              <div>
-                <span className="font-mono font-bold text-neon-cyan">SHO (Shooting):</span>
-                <span className="text-gray-300 ml-2">Удары. Определяет шанс забить гол при создании голевого момента.</span>
-              </div>
-              <div>
-                <span className="font-mono font-bold text-neon-cyan">PAS (Passing):</span>
-                <span className="text-gray-300 ml-2">Пасы. Влияет на контроль мяча (Владение) в центре поля и создание моментов.</span>
-              </div>
-              <div>
-                <span className="font-mono font-bold text-neon-cyan">DEF (Defending):</span>
-                <span className="text-gray-300 ml-2">Защита. Шанс отобрать мяч и прервать атаку соперника.</span>
-              </div>
-              <div>
-                <span className="font-mono font-bold text-neon-cyan">PHY (Physical):</span>
-                <span className="text-gray-300 ml-2">Физика. Влияет на борьбу за мяч и выносливость в стыках.</span>
-              </div>
-            </div>
-            
-            <div className="p-4 bg-black/50 border-t border-gray-800">
-              <button 
-                onClick={() => setIsStatsModalOpen(false)}
-                className="w-full py-3 rounded-lg font-black uppercase tracking-widest bg-gray-800 text-white hover:bg-gray-700 transition-colors border border-gray-600"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* FLOATING HUD: Player Context Menu */}
       <AnimatePresence>
