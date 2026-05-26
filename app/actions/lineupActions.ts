@@ -93,10 +93,25 @@ export async function updatePlayers(payload: { id: string; lineup_status: string
       return { success: false, error: 'Unauthorized' };
     }
 
-    const { error: bulkError } = await supabase.rpc('bulk_update_lineup', { payload });
+    console.log('Sending payload to Supabase:', JSON.stringify(payload, null, 2));
 
-    if (bulkError) {
-      return { success: false, error: bulkError.message };
+    const updatePromises = payload.map(p => 
+      supabase
+        .from('players')
+        .update({
+          lineup_status: p.lineup_status,
+          lineup_slot: p.lineup_slot !== null && p.lineup_slot !== undefined ? String(p.lineup_slot) : null
+        })
+        .eq('id', p.id)
+    );
+
+    const results = await Promise.all(updatePromises);
+    
+    // Check for any errors in the batch
+    const errors = results.filter(r => r.error).map(r => r.error);
+    if (errors.length > 0) {
+      console.error("Supabase bulk update errors:", errors);
+      throw new Error(`Database error: Failed to update ${errors.length} players. First error: ${errors[0]?.message}`);
     }
 
     revalidatePath('/lineup');
