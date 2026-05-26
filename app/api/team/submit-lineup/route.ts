@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { cookies } from 'next/headers';
 
 export interface SubmitLineupRequest {
-  userId: string;
   teamId: string;
 }
 
@@ -11,13 +11,20 @@ const TAX_RATE_PER_OVR = 50;
 
 export async function POST(req: Request) {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized: Missing valid session' }, { status: 401 });
+    }
+
     const body: Partial<SubmitLineupRequest> = await req.json();
-    const { userId, teamId } = body;
+    const { teamId } = body;
 
     // 1. Validation
-    if (!userId || !teamId) {
+    if (!teamId) {
       return NextResponse.json(
-        { error: 'Missing required payload fields: userId or teamId' },
+        { error: 'Missing required payload field: teamId' },
         { status: 400 }
       );
     }

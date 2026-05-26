@@ -93,6 +93,17 @@ export async function updatePlayers(payload: { id: string; lineup_status: string
       return { success: false, error: 'Unauthorized' };
     }
 
+    // 1. Verify user's team
+    const { data: team, error: teamError } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('user_id', tgUserId)
+      .single();
+
+    if (teamError || !team) {
+      return { success: false, error: 'Team not found' };
+    }
+
     console.log('Sending payload to Supabase:', JSON.stringify(payload, null, 2));
 
     const updatePromises = payload.map(p => 
@@ -103,6 +114,7 @@ export async function updatePlayers(payload: { id: string; lineup_status: string
           lineup_slot: p.lineup_slot !== null && p.lineup_slot !== undefined ? String(p.lineup_slot) : null
         })
         .eq('id', p.id)
+        .eq('team_id', team.id)
     );
 
     const results = await Promise.all(updatePromises);

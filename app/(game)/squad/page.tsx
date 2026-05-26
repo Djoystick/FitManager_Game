@@ -1,11 +1,11 @@
 import React from 'react';
 import { supabase } from '@/lib/supabase';
 import { SquadManager } from '@/components/squad/SquadManager';
+import { cookies } from 'next/headers';
 
-export default async function SquadPage({ searchParams }: { searchParams: Promise<{ userId?: string }> | { userId?: string } }) {
-  // Await searchParams for Next.js 15+ compatibility
-  const resolvedParams = await searchParams;
-  const userId = resolvedParams.userId;
+export default async function SquadPage() {
+  const cookieStore = await cookies();
+  const userId = cookieStore.get('tg_user_id')?.value;
 
   if (!userId) {
     return (

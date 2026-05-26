@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { cookies } from 'next/headers';
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId');
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
 
     if (!userId) {
-      return NextResponse.json({ error: 'Missing userId parameter' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing or invalid user session' }, { status: 401 });
     }
 
-    // 1. Fetch the team metadata for the user
+    // 1. Fetch the team metadata for the user securely
     const { data: team, error: teamError } = await supabase
       .from('teams')
       .select('id, name, logo_url, is_ready_for_match')
@@ -21,10 +22,10 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: true, team: null, players: [] }, { status: 200 });
     }
 
-    // 2. Fetch all players (active and coaches) belonging to this team
+    // 2. Fetch all players (active and coaches) belonging to this team. STRICT FILTER APPLIED.
     const { data: players, error: playersError } = await supabase
       .from('players')
-      .select('id, name, age, ovr, is_nft_coach, perks, position, stats, stamina, lineup_status')
+      .select('id, name, age, ovr, is_nft_coach, perks, position, stats, stamina, lineup_status, lineup_slot')
       .eq('team_id', team.id);
 
     if (playersError) {
