@@ -110,88 +110,25 @@ export default function LineupPage() {
 
   const currentFormation = team?.formation || '4-4-2';
 
-  const getLineForSlot = (slotIndex: number, formation: string) => {
+  const getIdealLineForSlot = (slotIndex: number, formation: string) => {
     const layout = FORMATIONS[formation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2'];
     if (layout.FWD.includes(slotIndex)) return 'FWD';
     if (layout.MID.includes(slotIndex)) return 'MID';
     if (layout.DEF.includes(slotIndex)) return 'DEF';
     if (layout.GK.includes(slotIndex)) return 'GK';
-    return 'MID';
+    return ''; // For Bench slots
   };
 
-  const reassignSlots = async (formation: string, currentPlayers: Player[]) => {
-    const newPlayers = currentPlayers.map(p => ({ ...p }));
-    const starters = newPlayers.filter(p => p.lineup_status === 'starting' && !p.is_nft_coach);
-    
-    // Sort starters by OVR descending so better players get priority for their slots
-    starters.sort((a, b) => b.ovr - a.ovr);
-    
-    // Reset their slots to undefined temporarily
-    starters.forEach(p => p.lineup_slot = undefined);
-
-    const layout = FORMATIONS[formation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2'];
-    const availableSlots = {
-      GK: [...layout.GK],
-      DEF: [...layout.DEF],
-      MID: [...layout.MID],
-      FWD: [...layout.FWD]
-    };
-    
-    // 1. Assign native positions first
-    starters.forEach(p => {
-       const pos = p.position;
-       if (pos === 'GK' && availableSlots.GK.length > 0) {
-         p.lineup_slot = availableSlots.GK.shift()!.toString();
-       } else if (['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(pos) && availableSlots.DEF.length > 0) {
-         p.lineup_slot = availableSlots.DEF.shift()!.toString();
-       } else if (['CAM', 'CDM', 'CM', 'RM', 'LM'].includes(pos) && availableSlots.MID.length > 0) {
-         p.lineup_slot = availableSlots.MID.shift()!.toString();
-       } else if (['LWF', 'RWF', 'ST', 'CF'].includes(pos) && availableSlots.FWD.length > 0) {
-         p.lineup_slot = availableSlots.FWD.shift()!.toString();
-       }
-    });
-
-    // 2. Assign leftovers to any remaining slots
-    const allRemainingSlots = [
-      ...availableSlots.GK,
-      ...availableSlots.DEF,
-      ...availableSlots.MID,
-      ...availableSlots.FWD
-    ];
-
-    starters.filter(p => p.lineup_slot === undefined).forEach(p => {
-      p.lineup_slot = allRemainingSlots.shift()?.toString() || '0';
-    });
-
-    return newPlayers;
+  const isCompatible = (natural: string, idealLine: string) => {
+    if (!idealLine) return true;
+    if (natural === idealLine) return true;
+    if (['LWF', 'RWF', 'ST', 'CF'].includes(natural) && idealLine === 'FWD') return true;
+    if (['CAM', 'CDM', 'CM', 'RM', 'LM'].includes(natural) && idealLine === 'MID') return true;
+    if (['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(natural) && idealLine === 'DEF') return true;
+    return false;
   };
-
-  useEffect(() => {
-    if (!team || players.length === 0 || hasCheckedCorruption) return;
-    const formation = team.formation || '4-4-2';
-    
-    const startingPlayersList = players.filter(p => p.lineup_status === 'starting' && !p.is_nft_coach);
-    const validSlots = new Set(['0','1','2','3','4','5','6','7','8','9','10']);
-    const hasCorrupted = startingPlayersList.some(p => !validSlots.has(p.lineup_slot || ''));
-    
-    if (hasCorrupted && startingPlayersList.length > 0) {
-      const runRecovery = async () => {
-         const newPlayers = await reassignSlots(formation, players);
-         setPlayers(newPlayers);
-         const payload = newPlayers.filter(p => p.lineup_status === 'starting').map(p => ({
-            id: p.id,
-            lineup_status: p.lineup_status,
-            lineup_slot: p.lineup_slot || null
-         }));
-         await updatePlayers(payload);
-      };
-      runRecovery();
-    }
-    setHasCheckedCorruption(true);
-  }, [team, players, hasCheckedCorruption]);
 
   const handlePlayerClick = async (player: Player) => {
-    // Only allow swapping in pitch view
     if (activeTab !== 'pitch') return;
 
     if (!selectedPlayerId) {
@@ -204,34 +141,28 @@ export default function LineupPage() {
       return;
     }
 
-    const player1 = activePlayers.find(p => p.id === selectedPlayerId);
-    const player2 = player;
-
-    if (!player1 || !player2) {
-      setSelectedPlayerId(null);
-      return;
-    }
-
     setIsSwapping(true);
     setSubmitMessage(null);
     try {
-      const newPlayers = players.map(p => ({ ...p })); // Deep copy
-      const p1Index = newPlayers.findIndex(p => p.id === player1.id);
-      const p2Index = newPlayers.findIndex(p => p.id === player2.id);
+      const newPlayers = [...players];
+      const p1Index = newPlayers.findIndex(p => p.id === selectedPlayerId);
+      const p2Index = newPlayers.findIndex(p => p.id === player.id);
       
       if (p1Index !== -1 && p2Index !== -1) {
-        const p1 = newPlayers[p1Index];
-        const p2 = newPlayers[p2Index];
+        const p1 = { ...newPlayers[p1Index] };
+        const p2 = { ...newPlayers[p2Index] };
         
         const tempSlot = p1.lineup_slot;
         const tempStatus = p1.lineup_status;
         
-        p1.lineup_slot = p2.lineup_slot || undefined;
+        p1.lineup_slot = p2.lineup_slot;
         p1.lineup_status = p2.lineup_status;
         
-        p2.lineup_slot = tempSlot || undefined;
+        p2.lineup_slot = tempSlot;
         p2.lineup_status = tempStatus;
 
+        newPlayers[p1Index] = p1;
+        newPlayers[p2Index] = p2;
         setPlayers(newPlayers);
 
         // Auto-Save instantly to DB
@@ -244,12 +175,10 @@ export default function LineupPage() {
         
         if (!res.success) {
           toast.error(res.error || 'Failed to auto-save swap');
-          setSubmitMessage({ text: res.error || 'Failed to auto-save swap', type: 'error' });
         }
       }
     } catch (err: any) {
-      toast.error(err.message || 'Network error during swap.');
-      setSubmitMessage({ text: 'Network error during swap.', type: 'error' });
+      toast.error('Network error during swap.');
     } finally {
       setIsSwapping(false);
       setSelectedPlayerId(null);
@@ -283,7 +212,6 @@ export default function LineupPage() {
     if (!userId || !team || team.formation === newFormation) return;
     
     setIsFormationLoading(true);
-    setSubmitMessage(null);
     try {
       const res = await fetch('/api/lineup/formation', {
         method: 'PUT',
@@ -293,43 +221,40 @@ export default function LineupPage() {
       const data = await res.json();
       if (res.ok && data.success) {
         setTeam(prev => prev ? { ...prev, formation: newFormation } : prev);
-        
-        const reassignedPlayers = await reassignSlots(newFormation, players);
-        setPlayers(reassignedPlayers);
-        
-        const payload = reassignedPlayers.filter(p => p.lineup_status === 'starting').map(p => ({
-          id: p.id,
-          lineup_status: p.lineup_status,
-          lineup_slot: p.lineup_slot || null
-        }));
-        await updatePlayers(payload);
-        
-        await fetchTeamData();
+        // DB stores formation strictly as string. Slot architecture ensures decoupling.
       } else {
         toast.error(data.error || 'Failed to change formation');
-        setSubmitMessage({ text: data.error || 'Failed to change formation', type: 'error' });
       }
     } catch (err: any) {
-      toast.error(err.message || 'Network error during formation change.');
-      setSubmitMessage({ text: 'Network error during formation change.', type: 'error' });
+      toast.error('Network error during formation change.');
     } finally {
       setIsFormationLoading(false);
     }
   };
 
-  const isCompatible = (natural: string, slot: string) => {
-    if (!slot) return true;
-    if (natural === slot) return true;
-    if (['LWF', 'RWF', 'ST', 'CF'].includes(natural) && slot === 'FWD') return true;
-    if (['CAM', 'CDM', 'CM', 'RM', 'LM'].includes(natural) && slot === 'MID') return true;
-    if (['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(natural) && slot === 'DEF') return true;
-    return false;
+  const getPlayerInSlot = (slotIndex: number) => {
+    return activePlayers.find(p => parseInt(p.lineup_slot || '-1', 10) === slotIndex);
   };
 
-  // Compact Marker for Pitch View
-  const renderPitchMarker = (player: Player, targetLine: string = '') => {
+  const renderPitchMarker = (slotIndex: number) => {
+    const player = getPlayerInSlot(slotIndex);
+    const idealLine = getIdealLineForSlot(slotIndex, currentFormation);
+
+    if (!player) {
+      return (
+        <div 
+          key={`empty-${slotIndex}`} 
+          className="relative flex flex-col items-center justify-center p-1 w-14 h-[84px] cursor-not-allowed transition-all rounded-md border border-dashed border-gray-600/50 bg-black/20"
+        >
+          <div className="w-8 h-8 rounded-full border border-gray-700/50 flex items-center justify-center bg-gray-800/30 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
+            <span className="text-gray-500 font-black text-[10px] opacity-40">{idealLine || 'BN'}</span>
+          </div>
+        </div>
+      );
+    }
+
     const isSelected = selectedPlayerId === player.id;
-    const isOOP = !isCompatible(player.position, targetLine) && player.lineup_status === 'starting';
+    const isOOP = !isCompatible(player.position, idealLine) && slotIndex <= 10;
     const displayOvr = isOOP ? Math.floor(player.ovr * 0.8) : player.ovr;
 
     return (
@@ -373,25 +298,13 @@ export default function LineupPage() {
     );
   };
 
-  const renderEmptySlot = (slotIndex: number, targetLine: string) => (
-    <div 
-      key={`empty-${slotIndex}`} 
-      className="relative flex flex-col items-center justify-center p-1 w-14 h-[84px] cursor-not-allowed transition-all rounded-md border border-dashed border-gray-600/50 bg-black/20"
-    >
-      <div className="w-8 h-8 rounded-full border border-gray-700/50 flex items-center justify-center bg-gray-800/30 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
-        <span className="text-gray-500 font-black text-[10px] opacity-40">{targetLine}</span>
-      </div>
-    </div>
-  );
-
   // Detailed Row for List View
-  const renderListRow = (player: Player) => {
-    let targetLine = '';
-    if (player.lineup_status === 'starting') {
-      const idx = parseInt(player.lineup_slot || '-1', 10);
-      targetLine = getLineForSlot(idx, currentFormation);
-    }
-    const isOOP = !isCompatible(player.position, targetLine) && player.lineup_status === 'starting';
+  const renderListRow = (slotIndex: number) => {
+    const player = getPlayerInSlot(slotIndex);
+    if (!player) return null;
+
+    const idealLine = getIdealLineForSlot(slotIndex, currentFormation);
+    const isOOP = !isCompatible(player.position, idealLine) && slotIndex <= 10;
     const displayOvr = isOOP ? Math.floor(player.ovr * 0.8) : player.ovr;
 
     return (
@@ -454,16 +367,22 @@ export default function LineupPage() {
     );
   };
   
-  // Calculate Average OVR exclusively for the starting pitch lineup
   let averageOvr = 50;
-  if (startingPlayers.length > 0) {
-    const sum = startingPlayers.reduce((acc, p) => {
-       const idx = parseInt(p.lineup_slot || '-1', 10);
-       const targetLine = getLineForSlot(idx, currentFormation);
-       const oop = !isCompatible(p.position, targetLine) && p.lineup_status === 'starting';
-       return acc + (oop ? Math.floor(p.ovr * 0.8) : p.ovr);
-    }, 0);
-    averageOvr = Math.max(1, Math.round(sum / startingPlayers.length));
+  let starterCount = 0;
+  let totalStarterOvr = 0;
+
+  for (let i = 0; i <= 10; i++) {
+    const p = getPlayerInSlot(i);
+    if (p) {
+      const idealLine = getIdealLineForSlot(i, currentFormation);
+      const isOOP = !isCompatible(p.position, idealLine);
+      totalStarterOvr += isOOP ? Math.floor(p.ovr * 0.8) : p.ovr;
+      starterCount++;
+    }
+  }
+
+  if (starterCount > 0) {
+    averageOvr = Math.max(1, Math.round(totalStarterOvr / starterCount));
   }
 
   // Calculate projected Luxury Tax
@@ -604,49 +523,35 @@ export default function LineupPage() {
               
               {/* FWD Line */}
               <div className="w-full flex justify-around items-center h-[20%]">
-                 {(FORMATIONS[currentFormation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2']).FWD.map(idx => {
-                   const p = startingPlayers.find(sp => parseInt(sp.lineup_slot || '-1', 10) === idx);
-                   return p ? renderPitchMarker(p, 'FWD') : renderEmptySlot(idx, 'FWD');
-                 })}
+                 {(FORMATIONS[currentFormation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2']).FWD.map(idx => renderPitchMarker(idx))}
               </div>
               
               {/* MID Line */}
               <div className="w-full flex justify-around items-center h-[20%]">
-                 {(FORMATIONS[currentFormation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2']).MID.map(idx => {
-                   const p = startingPlayers.find(sp => parseInt(sp.lineup_slot || '-1', 10) === idx);
-                   return p ? renderPitchMarker(p, 'MID') : renderEmptySlot(idx, 'MID');
-                 })}
+                 {(FORMATIONS[currentFormation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2']).MID.map(idx => renderPitchMarker(idx))}
               </div>
               
               {/* DEF Line */}
               <div className="w-full flex justify-around items-center h-[20%]">
-                 {(FORMATIONS[currentFormation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2']).DEF.map(idx => {
-                   const p = startingPlayers.find(sp => parseInt(sp.lineup_slot || '-1', 10) === idx);
-                   return p ? renderPitchMarker(p, 'DEF') : renderEmptySlot(idx, 'DEF');
-                 })}
+                 {(FORMATIONS[currentFormation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2']).DEF.map(idx => renderPitchMarker(idx))}
               </div>
               
               {/* GK Line */}
               <div className="w-full flex justify-around items-center h-[20%]">
-                 {(FORMATIONS[currentFormation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2']).GK.map(idx => {
-                   const p = startingPlayers.find(sp => parseInt(sp.lineup_slot || '-1', 10) === idx);
-                   return p ? renderPitchMarker(p, 'GK') : renderEmptySlot(idx, 'GK');
-                 })}
+                 {(FORMATIONS[currentFormation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2']).GK.map(idx => renderPitchMarker(idx))}
               </div>
             </div>
           </div>
 
           {/* BENCH / SUBSTITUTES (PITCH VIEW) */}
-          {benchPlayers.length > 0 && (
-            <div className="mt-2">
-              <h3 className="text-xs font-bold text-white mb-2 uppercase tracking-widest border-b border-gray-800 pb-1">
-                Substitutes Bench
-              </h3>
-              <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                {benchPlayers.map(p => renderPitchMarker(p, ''))}
-              </div>
+          <div className="mt-2">
+            <h3 className="text-xs font-bold text-white mb-2 uppercase tracking-widest border-b border-gray-800 pb-1">
+              Substitutes Bench
+            </h3>
+            <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+              {[11, 12, 13, 14, 15].map(idx => renderPitchMarker(idx))}
             </div>
-          )}
+          </div>
         </div>
       )}
 
@@ -666,11 +571,7 @@ export default function LineupPage() {
               </button>
             </h3>
             <div className="flex flex-col">
-              {startingPlayers.length > 0 ? (
-                startingPlayers.map(renderListRow)
-              ) : (
-                <div className="text-center text-gray-500 py-4 text-xs font-mono">No starting players.</div>
-              )}
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(renderListRow)}
             </div>
           </div>
 
@@ -680,11 +581,7 @@ export default function LineupPage() {
               Bench / Reserves
             </h3>
             <div className="flex flex-col">
-              {benchPlayers.length > 0 ? (
-                benchPlayers.map(renderListRow)
-              ) : (
-                <div className="text-center text-gray-500 py-4 text-xs font-mono">No bench players.</div>
-              )}
+              {[11, 12, 13, 14, 15].map(renderListRow)}
             </div>
           </div>
           
@@ -739,9 +636,9 @@ export default function LineupPage() {
         {/* Submit Lineup Button (Only makes sense if starting players > 0 and maybe mostly for pitch, but keeping global) */}
         <button 
           onClick={handleSubmitLineup}
-          disabled={isSubmitting || isSwapping || startingPlayers.length === 0}
+          disabled={isSubmitting || isSwapping || starterCount === 0}
           className={`w-full py-4 rounded-lg font-black uppercase tracking-widest transition-all duration-300 ${
-            isSubmitting || isSwapping || startingPlayers.length === 0
+            isSubmitting || isSwapping || starterCount === 0
                 ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
                 : 'bg-neon-cyan text-black hover:bg-white hover:text-neon-cyan shadow-[0_0_20px_rgba(0,240,255,0.4)]'
           }`}
