@@ -215,29 +215,37 @@ export default function LineupPage() {
     setIsSwapping(true);
     setSubmitMessage(null);
     try {
-      const res = await swapPlayers(player1.id, player2.id);
+      const newPlayers = players.map(p => ({ ...p })); // Deep copy
+      const p1Index = newPlayers.findIndex(p => p.id === player1.id);
+      const p2Index = newPlayers.findIndex(p => p.id === player2.id);
+      
+      if (p1Index !== -1 && p2Index !== -1) {
+        const p1 = newPlayers[p1Index];
+        const p2 = newPlayers[p2Index];
+        
+        const tempSlot = p1.lineup_slot;
+        const tempStatus = p1.lineup_status;
+        
+        p1.lineup_slot = p2.lineup_slot || undefined;
+        p1.lineup_status = p2.lineup_status;
+        
+        p2.lineup_slot = tempSlot || undefined;
+        p2.lineup_status = tempStatus;
 
-      if (res.success) {
-        setPlayers(prev => {
-          const newPlayers = prev.map(p => ({ ...p })); // Deep copy
-          const p1 = newPlayers.find(p => p.id === player1.id);
-          const p2 = newPlayers.find(p => p.id === player2.id);
-          
-          if (p1 && p2) {
-            const tempSlot = p1.lineup_slot;
-            const tempStatus = p1.lineup_status;
-            
-            p1.lineup_slot = p2.lineup_slot || undefined;
-            p1.lineup_status = p2.lineup_status;
-            
-            p2.lineup_slot = tempSlot || undefined;
-            p2.lineup_status = tempStatus;
-          }
-          return newPlayers;
-        });
-      } else {
-        toast.error(res.error || 'Swap failed');
-        setSubmitMessage({ text: res.error || 'Swap failed', type: 'error' });
+        setPlayers(newPlayers);
+
+        // Auto-Save instantly to DB
+        const payload = [
+          { id: p1.id, lineup_status: p1.lineup_status, lineup_slot: p1.lineup_slot || null },
+          { id: p2.id, lineup_status: p2.lineup_status, lineup_slot: p2.lineup_slot || null }
+        ];
+        
+        const res = await updatePlayers(payload);
+        
+        if (!res.success) {
+          toast.error(res.error || 'Failed to auto-save swap');
+          setSubmitMessage({ text: res.error || 'Failed to auto-save swap', type: 'error' });
+        }
       }
     } catch (err: any) {
       toast.error(err.message || 'Network error during swap.');
