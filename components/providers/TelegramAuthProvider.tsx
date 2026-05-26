@@ -17,6 +17,8 @@ export const TelegramAuthContext = createContext<TelegramAuthContextType>({
   error: null,
 });
 
+export const useTelegramAuth = () => useContext(TelegramAuthContext);
+
 export function TelegramAuthProvider({ children }: { children: ReactNode }) {
   const [isMounted, setIsMounted] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);

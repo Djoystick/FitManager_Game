@@ -7,10 +7,10 @@ import toast from 'react-hot-toast';
 
 export function HardResetButton() {
   const [isResetting, setIsResetting] = useState(false);
-  const { user } = useTelegramAuth();
+  const { userId } = useTelegramAuth();
 
   const handleHardReset = async () => {
-    if (!user?.id) {
+    if (!userId) {
       toast.error('User not authenticated');
       return;
     }
@@ -21,7 +21,7 @@ export function HardResetButton() {
 
     setIsResetting(true);
     try {
-      const res = await hardResetUserTeam(user.id);
+      const res = await hardResetUserTeam(userId);
       if (res.success) {
         toast.success(res.message || 'Hard reset successful');
         // Wait a moment then reload to trigger onboarding flow

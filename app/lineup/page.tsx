@@ -4,12 +4,11 @@ import { useContext, useEffect, useState } from 'react';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import { useRouter } from 'next/navigation';
 import { BackButton } from '@/components/ui/BackButton';
-import { PlayerTrainingModal } from '@/components/PlayerTrainingModal';
 import { swapPlayers, updatePlayers, updateTeamFormation } from '@/app/actions/lineupActions';
 import { healAllPlayersStamina } from '@/app/actions/playerActions';
 import toast from 'react-hot-toast';
 import { CyberLoader } from '@/components/ui/CyberLoader';
-import { Shirt, Dumbbell, CircleHelp, X, RefreshCw, User } from 'lucide-react';
+import { Shirt, CircleHelp, X, RefreshCw, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlayerProfileModal } from '@/components/PlayerProfileModal';
 
@@ -401,17 +400,11 @@ export default function LineupPage() {
             {isOOP && <span className="text-[8px] text-red-500 font-bold animate-pulse flex-shrink-0">⚠️ OOP</span>}
           </div>
 
-          {/* Right: OVR + Train Button */}
+          {/* Right: OVR */}
           <div className="flex items-center gap-3 flex-shrink-0 ml-2">
             <div className={`text-lg font-black ${isOOP ? 'text-red-500' : 'text-white'} drop-shadow-[0_0_5px_rgba(255,255,255,0.3)] leading-none`}>
               {displayOvr}
             </div>
-            <button
-              onClick={() => setTrainingPlayer(player)}
-              className="bg-neon-pink/10 hover:bg-neon-pink text-neon-pink hover:text-white border border-neon-pink/40 text-[10px] font-bold p-1.5 rounded transition-all shadow-[0_0_10px_rgba(255,0,60,0.1)] hover:shadow-[0_0_15px_rgba(255,0,60,0.4)]"
-            >
-              <Dumbbell className="w-4 h-4" />
-            </button>
           </div>
         </div>
 
