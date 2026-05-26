@@ -140,10 +140,77 @@ export default function LineupPage() {
   };
   
   const currentFormation = team?.formation || '4-4-2';
-  const fwds = startingPlayers.filter(p => getLineFromSlot(p, currentFormation) === 'FWD').sort(sortBySlot);
-  const mids = startingPlayers.filter(p => getLineFromSlot(p, currentFormation) === 'MID').sort(sortBySlot);
-  const defs = startingPlayers.filter(p => getLineFromSlot(p, currentFormation) === 'DEF').sort(sortBySlot);
-  const gks = startingPlayers.filter(p => getLineFromSlot(p, currentFormation) === 'GK').sort(sortBySlot);
+
+  const getLineForRender = (p: Player, formation: string = '4-4-2') => {
+    const slotLine = getLineFromSlot(p, formation);
+    if (slotLine) return slotLine;
+    
+    // Auto-Recovery: if slot is broken, fallback to native position's line mapping
+    const pos = p.position;
+    if (['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(pos)) return 'DEF';
+    if (['CAM', 'CDM', 'CM', 'RM', 'LM'].includes(pos)) return 'MID';
+    if (['LWF', 'RWF', 'ST', 'CF'].includes(pos)) return 'FWD';
+    if (pos === 'GK') return 'GK';
+    
+    return 'MID'; // Ultimate fallback
+  };
+
+  const fwds = startingPlayers.filter(p => getLineForRender(p, currentFormation) === 'FWD').sort(sortBySlot);
+  const mids = startingPlayers.filter(p => getLineForRender(p, currentFormation) === 'MID').sort(sortBySlot);
+  const defs = startingPlayers.filter(p => getLineForRender(p, currentFormation) === 'DEF').sort(sortBySlot);
+  const gks = startingPlayers.filter(p => getLineForRender(p, currentFormation) === 'GK').sort(sortBySlot);
+
+  // Auto-Recovery Effect: Give broken starters a valid slot index in local state so swaps work
+  useEffect(() => {
+    if (!team) return;
+    const formation = team.formation || '4-4-2';
+    
+    const brokenStarters = players.filter(p => p.lineup_status === 'starting' && !getLineFromSlot(p, formation));
+    
+    if (brokenStarters.length > 0) {
+      setPlayers(prev => {
+        const newPlayers = prev.map(p => ({ ...p })); // deep copy
+        let changed = false;
+        
+        brokenStarters.forEach(brokenPlayer => {
+          const pIndex = newPlayers.findIndex(p => p.id === brokenPlayer.id);
+          if (pIndex !== -1) {
+            const targetLine = getLineForRender(brokenPlayer, formation);
+            let min = 0, max = 0;
+            
+            if (targetLine === 'GK') { min = 0; max = 0; }
+            else if (formation === '4-4-2') {
+               if (targetLine === 'DEF') { min = 1; max = 4; }
+               if (targetLine === 'MID') { min = 5; max = 8; }
+               if (targetLine === 'FWD') { min = 9; max = 10; }
+            }
+            else if (formation === '4-3-3') {
+               if (targetLine === 'DEF') { min = 1; max = 4; }
+               if (targetLine === 'MID') { min = 5; max = 7; }
+               if (targetLine === 'FWD') { min = 8; max = 10; }
+            }
+            else if (formation === '3-5-2') {
+               if (targetLine === 'DEF') { min = 1; max = 3; }
+               if (targetLine === 'MID') { min = 4; max = 8; }
+               if (targetLine === 'FWD') { min = 9; max = 10; }
+            }
+
+            for (let i = min; i <= max; i++) {
+               const idxStr = i.toString();
+               const isOccupied = newPlayers.some(p => p.lineup_status === 'starting' && p.lineup_slot === idxStr);
+               if (!isOccupied) {
+                 newPlayers[pIndex].lineup_slot = idxStr;
+                 changed = true;
+                 break;
+               }
+            }
+          }
+        });
+        
+        return changed ? newPlayers : prev;
+      });
+    }
+  }, [players, team]);
 
   const handlePlayerClick = async (player: Player) => {
     // Only allow swapping in pitch view
@@ -265,7 +332,7 @@ export default function LineupPage() {
   // Compact Marker for Pitch View
   const renderPitchMarker = (player: Player) => {
     const isSelected = selectedPlayerId === player.id;
-    const slotPos = getLineFromSlot(player, team?.formation);
+    const slotPos = getLineForRender(player, team?.formation);
     const isOOP = !isCompatible(player.position, slotPos) && player.lineup_status === 'starting';
     const displayOvr = isOOP ? Math.floor(player.ovr * 0.8) : player.ovr;
 
@@ -312,7 +379,7 @@ export default function LineupPage() {
 
   // Detailed Row for List View
   const renderListRow = (player: Player) => {
-    const slotPos = getLineFromSlot(player, team?.formation);
+    const slotPos = getLineForRender(player, team?.formation);
     const isOOP = !isCompatible(player.position, slotPos) && player.lineup_status === 'starting';
     const displayOvr = isOOP ? Math.floor(player.ovr * 0.8) : player.ovr;
 
@@ -380,7 +447,7 @@ export default function LineupPage() {
   let averageOvr = 50;
   if (startingPlayers.length > 0) {
     const sum = startingPlayers.reduce((acc, p) => {
-       const slotPos = getLineFromSlot(p, team?.formation);
+       const slotPos = getLineForRender(p, team?.formation);
        const oop = !isCompatible(p.position, slotPos) && p.lineup_status === 'starting';
        return acc + (oop ? Math.floor(p.ovr * 0.8) : p.ovr);
     }, 0);
