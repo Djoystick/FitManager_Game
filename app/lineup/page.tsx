@@ -58,6 +58,7 @@ export default function LineupPage() {
   
   // New State for Tabs
   const [activeTab, setActiveTab] = useState<'pitch' | 'roster'>('pitch');
+  const [viewMode, setViewMode] = useState<'tactics' | 'fitness'>('tactics');
   const [activeFormation, setActiveFormation] = useState('4-4-2');
   const [hasCheckedCorruption, setHasCheckedCorruption] = useState(false);
   
@@ -306,28 +307,41 @@ export default function LineupPage() {
       <div 
         key={player.id} 
         onClick={() => handlePlayerClick(player)}
-        className={`relative flex flex-col items-center justify-center p-1 w-14 cursor-pointer transition-all rounded-md ${
+        className={`relative flex flex-col items-center justify-center p-1 w-14 cursor-pointer transition-all duration-300 rounded-md ${
           isSelected 
             ? 'ring-2 ring-neon-pink scale-110 z-20 bg-neon-pink/20 shadow-[0_0_15px_rgba(255,0,60,0.6)]' 
-            : isOOP
+            : isOOP && viewMode === 'tactics'
               ? 'ring-1 ring-red-500 bg-red-900/40 hover:bg-red-900/60 shadow-[0_0_10px_rgba(255,0,0,0.4)]'
               : 'hover:bg-white/10'
         }`}
       >
         {/* Position Badge & Injury */}
-        <div className="flex gap-0.5 items-center mb-0.5 z-10">
-          <span className={`text-[8px] font-black px-1 rounded-sm uppercase tracking-tighter shadow-sm ${isOOP ? 'bg-red-500 text-white' : 'bg-neon-cyan text-black'}`}>
+        <div className="flex gap-0.5 items-center mb-0.5 z-10 transition-opacity duration-300">
+          <span className={`text-[8px] font-black px-1 rounded-sm uppercase tracking-tighter shadow-sm ${isOOP && viewMode === 'tactics' ? 'bg-red-500 text-white' : 'bg-neon-cyan text-black'}`}>
             {player.position}
           </span>
           {player.is_injured && <span className="text-[8px] drop-shadow-[0_0_2px_rgba(255,0,0,0.8)]">🚑</span>}
         </div>
 
-        {/* Shirt Icon / OVR */}
-        <div className="relative flex items-center justify-center">
-          <Shirt className={`w-9 h-9 drop-shadow-md ${isOOP ? 'text-red-500' : 'text-white'}`} fill={isOOP ? '#ef4444' : '#ffffff'} fillOpacity={0.2} strokeWidth={1.5} />
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none mt-1">
-            <span className={`text-[11px] font-black drop-shadow-md ${isOOP ? 'text-red-500' : 'text-neon-cyan'}`}>{displayOvr}</span>
-          </div>
+        {/* Dynamic Center Content based on View Mode */}
+        <div className="relative flex flex-col items-center justify-center h-10 w-full transition-all duration-300">
+          {viewMode === 'tactics' ? (
+            <div className="relative flex items-center justify-center animate-in fade-in zoom-in duration-300">
+              <Shirt className={`w-9 h-9 drop-shadow-md ${isOOP ? 'text-red-500' : 'text-white'} transition-colors duration-300`} fill={isOOP ? '#ef4444' : '#ffffff'} fillOpacity={0.2} strokeWidth={1.5} />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none mt-1">
+                <span className={`text-[11px] font-black drop-shadow-md ${isOOP ? 'text-red-500' : 'text-neon-cyan'}`}>{displayOvr}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="w-full flex flex-col items-center justify-center gap-1 animate-in fade-in zoom-in duration-300">
+              <span className={`text-[13px] font-black drop-shadow-md ${player.stamina > 70 ? 'text-neon-green' : player.stamina > 30 ? 'text-yellow-500' : 'text-red-500 animate-pulse'}`}>
+                {player.stamina}
+              </span>
+              <div className={`w-10 h-1.5 rounded-full overflow-hidden border bg-black/50 ${player.stamina > 70 ? 'border-neon-green/50 shadow-[0_0_8px_rgba(57,255,20,0.6)]' : player.stamina > 30 ? 'border-yellow-500/50 shadow-[0_0_8px_rgba(234,179,8,0.6)]' : 'border-red-500/80 shadow-[0_0_10px_rgba(239,68,68,0.8)] bg-red-900/40'}`}>
+                <div className={`h-full transition-all duration-1000 ${player.stamina > 70 ? 'bg-neon-green' : player.stamina > 30 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${player.stamina}%` }}></div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Name */}
@@ -335,10 +349,12 @@ export default function LineupPage() {
           {player.name.split(' ').pop()}
         </span>
         
-        {/* Stamina Bar */}
-        <div className="w-10 h-1 mt-1 bg-gray-900 rounded-full overflow-hidden border border-gray-700">
-          <div className={`h-full ${player.stamina > 70 ? 'bg-neon-green' : player.stamina > 30 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${player.stamina}%` }}></div>
-        </div>
+        {/* Old Stamina Bar (Hidden in fitness mode since we have a bigger one) */}
+        {viewMode === 'tactics' && (
+          <div className="w-10 h-1 mt-1 bg-gray-900 rounded-full overflow-hidden border border-gray-700 animate-in fade-in duration-300">
+            <div className={`h-full ${player.stamina > 70 ? 'bg-neon-green' : player.stamina > 30 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${player.stamina}%` }}></div>
+          </div>
+        )}
       </div>
     );
   };
@@ -563,6 +579,36 @@ export default function LineupPage() {
       {/* CONDITIONAL RENDER: PITCH VIEW */}
       {activeTab === 'pitch' && (
         <div className="flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+          
+          {/* VIEW MODE TOGGLE */}
+          <div className="flex justify-center mt-2 mb-1">
+            <div className="bg-black/40 p-1 rounded-full border border-gray-800 flex shadow-[0_0_15px_rgba(0,240,255,0.05)] backdrop-blur-md relative overflow-hidden">
+              <div 
+                className={`absolute top-1 bottom-1 w-[48%] bg-white/10 rounded-full transition-transform duration-300 ease-out border border-white/20 ${viewMode === 'tactics' ? 'translate-x-0' : 'translate-x-[104%]'}`}
+              ></div>
+              <button
+                onClick={() => setViewMode('tactics')}
+                className={`relative px-5 py-1.5 text-[10px] z-10 font-black uppercase tracking-widest rounded-full transition-colors duration-300 w-24 ${
+                  viewMode === 'tactics'
+                    ? 'text-neon-cyan drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]'
+                    : 'text-gray-500 hover:text-white'
+                }`}
+              >
+                Tactics
+              </button>
+              <button
+                onClick={() => setViewMode('fitness')}
+                className={`relative px-5 py-1.5 text-[10px] z-10 font-black uppercase tracking-widest rounded-full transition-colors duration-300 w-24 ${
+                  viewMode === 'fitness'
+                    ? 'text-neon-green drop-shadow-[0_0_8px_rgba(57,255,20,0.8)]'
+                    : 'text-gray-500 hover:text-white'
+                }`}
+              >
+                Fitness
+              </button>
+            </div>
+          </div>
+
           {/* TACTICAL PITCH UI */}
           <div className="flex justify-center gap-2 mb-[-10px] z-20">
             {['4-4-2', '4-3-3', '3-5-2'].map(f => {
