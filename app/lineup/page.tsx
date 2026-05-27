@@ -12,6 +12,7 @@ import { Shirt, X, RefreshCw, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlayerProfileModal } from '@/components/PlayerProfileModal';
 import { InfoPopover } from '@/components/ui/InfoPopover';
+import { ChemistryOverlay } from '@/components/ChemistryOverlay';
 
 interface PlayerStats {
   pace: number;
@@ -562,6 +563,8 @@ export default function LineupPage() {
             <div className="absolute bottom-0 w-1/2 h-16 border-2 border-b-0 border-neon-green/20 rounded-t-md"></div>
             <div className="absolute top-1/2 left-0 w-full border-t-2 border-neon-green/20"></div>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 border-2 border-neon-green/20 rounded-full"></div>
+
+            <ChemistryOverlay formation={currentFormation} players={activePlayers} />
 
             {/* Player Mapping (Tactical Layout) */}
             <div className="relative z-10 w-full h-full flex flex-col justify-between px-2 py-4">
