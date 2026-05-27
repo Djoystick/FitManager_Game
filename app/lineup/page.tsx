@@ -8,7 +8,7 @@ import { swapPlayers, updatePlayers, updateTeamFormation } from '@/app/actions/l
 import { healAllPlayersStamina } from '@/app/actions/playerActions';
 import toast from 'react-hot-toast';
 import { CyberLoader } from '@/components/ui/CyberLoader';
-import { Shirt, X, RefreshCw, User } from 'lucide-react';
+import { Shirt, X, RefreshCw, User, Eye, EyeOff, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlayerProfileModal } from '@/components/PlayerProfileModal';
 import { InfoPopover } from '@/components/ui/InfoPopover';
@@ -64,6 +64,7 @@ export default function LineupPage() {
   const [hasCheckedCorruption, setHasCheckedCorruption] = useState(false);
   const [activeHUD, setActiveHUD] = useState<{player: Player, x: number, y: number, isBelow?: boolean} | null>(null);
   const [profilePlayer, setProfilePlayer] = useState<Player | null>(null);
+  const [showChemistry, setShowChemistry] = useState(false);
   
   const router = useRouter();
 
@@ -528,14 +529,24 @@ export default function LineupPage() {
           </div>
 
           {/* TACTICAL PITCH UI */}
-          <div className="flex justify-center items-center mb-1">
-            <div className="flex items-center gap-2 bg-black/40 px-3 py-1 rounded-full border border-gray-800">
-              <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Chemistry</span>
-              <InfoPopover 
-                title="Сыгранность (Chemistry)"
-                content="Сыгранность (Chemistry) строится на совместных матчах, совместимости стилей (Traits) и совместных тренировках реальными шагами (Sweat Points)."
-              />
-            </div>
+          <div className="flex justify-center items-center mb-1 gap-2">
+            <button
+              onClick={() => setShowChemistry(!showChemistry)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-300 ${
+                showChemistry 
+                  ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]' 
+                  : 'bg-black/50 text-gray-400 border-gray-800 hover:text-white hover:bg-black/70'
+              }`}
+            >
+              {showChemistry ? <EyeOff size={14} /> : <Zap size={14} />}
+              <span className="text-[10px] uppercase tracking-widest font-black">
+                {showChemistry ? 'Hide Links' : 'Chemistry'}
+              </span>
+            </button>
+            <InfoPopover 
+              title="Сыгранность (Chemistry)"
+              content="Сыгранность (Chemistry) строится на совместных матчах, совместимости стилей (Traits) и совместных тренировках реальными шагами (Sweat Points)."
+            />
           </div>
           <div className="flex justify-center gap-2 mb-[-10px] z-20">
             {['4-4-2', '4-3-3', '3-5-2'].map(f => {
@@ -564,7 +575,7 @@ export default function LineupPage() {
             <div className="absolute top-1/2 left-0 w-full border-t-2 border-neon-green/20"></div>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 border-2 border-neon-green/20 rounded-full"></div>
 
-            <ChemistryOverlay formation={currentFormation} players={activePlayers} />
+            {showChemistry && <ChemistryOverlay formation={currentFormation} players={activePlayers} />}
 
             {/* Player Mapping (Tactical Layout) */}
             <div className="relative z-10 w-full h-full flex flex-col justify-between px-2 py-4">
