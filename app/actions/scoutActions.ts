@@ -24,8 +24,20 @@ export interface ScoutReport {
   players: ScoutedPlayer[];
 }
 
-export async function getUpcomingOpponentScoutReport(userTeamId: string): Promise<{ success: boolean; data?: ScoutReport; error?: string }> {
+export async function getUpcomingOpponentScoutReport(userId: string): Promise<{ success: boolean; data?: ScoutReport; error?: string }> {
   try {
+    // 0. Get user's team ID
+    const { data: teamData, error: teamError } = await supabaseAdmin
+      .from('teams')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+      
+    if (teamError || !teamData) {
+      return { success: false, error: 'Failed to find user team.' };
+    }
+    const userTeamId = teamData.id;
+
     // 1. Find the next pending match for the user's team
     const { data: match, error: matchError } = await supabaseAdmin
       .from('league_matches')

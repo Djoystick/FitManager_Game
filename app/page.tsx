@@ -12,7 +12,8 @@ import { MatchHistoryWidget } from '@/components/MatchHistoryWidget';
 import { CyberLoader } from '@/components/ui/CyberLoader';
 import { Users, Trophy, ShoppingCart, Building2, User, BookOpen } from 'lucide-react';
 import { getUnviewedMatch } from '@/app/actions/matchActions';
-import { MatchReportModal, MatchReport } from '@/components/MatchReportModal';
+import { MatchReport } from '@/components/MatchReportModal';
+import { UpcomingMatchWidget } from '@/components/UpcomingMatchWidget';
 
 interface UserData {
   wallet_address: string | null;
@@ -150,6 +151,9 @@ export default function DashboardPage() {
       <section className="flex flex-col gap-4 mt-2">
         {/* Match History Widget */}
         {userId && <MatchHistoryWidget userId={userId} teamName={teamName} />}
+
+        {/* Scout / Upcoming Match Widget */}
+        {userId && <UpcomingMatchWidget userId={userId} />}
 
         {/* Team Status Card */}
         <Link 
