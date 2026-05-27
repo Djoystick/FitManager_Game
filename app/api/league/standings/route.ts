@@ -6,10 +6,10 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
 
-    // 1. Fetch Standings from the dynamically generated view
-    const { data: standings, error: standingsError } = await supabase
-      .from('league_standings_view')
-      .select('*')
+    // 1. Fetch Standings from the physical table
+    const { data: standingsData, error: standingsError } = await supabase
+      .from('league_standings')
+      .select('*, team:teams(name)')
       .order('points', { ascending: false })
       .order('wins', { ascending: false })
       .order('matches_played', { ascending: true });
@@ -19,18 +19,25 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Failed to fetch standings' }, { status: 500 });
     }
 
+    // Map to include team_name directly to preserve frontend compatibility
+    const standings = standingsData?.map(s => ({
+      ...s,
+      team_name: (s.team as any)?.name || 'Unknown'
+    })) || [];
+
     // 2. Fetch Recent Match History
     const { data: matches, error: matchesError } = await supabase
-      .from('matches')
+      .from('league_matches')
       .select(`
         id, 
         home_score, 
         away_score, 
-        match_date,
-        home_team:teams!home_team_id (id, name),
-        away_team:teams!away_team_id (id, name)
+        created_at,
+        home_team:teams!league_matches_home_team_id_fkey (id, name),
+        away_team:teams!league_matches_away_team_id_fkey (id, name)
       `)
-      .order('match_date', { ascending: false })
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
       .limit(20);
 
     if (matchesError) {

@@ -123,18 +123,18 @@ export const matchService = {
    */
   async fetchPendingMatches() {
     const { data, error } = await supabase
-      .from('matches')
+      .from('league_matches')
       .select(`
         id,
         home_team_id,
         away_team_id,
-        match_date,
-        home_team:teams!home_team_id(name),
-        away_team:teams!away_team_id(name)
+        created_at,
+        home_team:teams!league_matches_home_team_id_fkey(name),
+        away_team:teams!league_matches_away_team_id_fkey(name)
       `)
-      .eq('is_simulated', false)
-      .lte('match_date', new Date().toISOString())
-      .order('match_date', { ascending: true });
+      .eq('status', 'pending')
+      .lte('created_at', new Date().toISOString())
+      .order('created_at', { ascending: true });
 
     if (error) {
       console.error('[matchService] fetchPendingMatches error:', error.message);

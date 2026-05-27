@@ -84,14 +84,15 @@ export async function GET(req: Request) {
 
       // 6. Insert match result
       const { error: matchInsertError } = await supabase
-        .from("matches")
+        .from("league_matches")
         .insert({
           home_team_id: match.homeTeam.id,
           away_team_id: match.awayTeam.id,
           home_score: homeScore,
           away_score: awayScore,
-          match_date: new Date().toISOString(),
-          is_simulated: true,
+          status: 'completed',
+          is_played: true,
+          events: [],
         });
 
       if (matchInsertError) throw new Error(`Failed to insert match: ${matchInsertError.message}`);

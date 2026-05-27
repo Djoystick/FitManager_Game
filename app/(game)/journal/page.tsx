@@ -60,16 +60,17 @@ export default async function MatchCenterDashboard() {
 
   // Fetch recent matches
   const { data: matchesData } = await supabase
-    .from('matches')
+    .from('league_matches')
     .select(`
       id, 
       home_score, 
       away_score, 
-      match_date,
-      home_team:teams!home_team_id (id, name),
-      away_team:teams!away_team_id (id, name)
+      created_at,
+      home_team:teams!league_matches_home_team_id_fkey (id, name),
+      away_team:teams!league_matches_away_team_id_fkey (id, name)
     `)
-    .order('match_date', { ascending: false })
+    .eq('status', 'completed')
+    .order('created_at', { ascending: false })
     .limit(20);
 
   const matches = matchesData || [];
@@ -119,7 +120,7 @@ export default async function MatchCenterDashboard() {
             return (
               <div key={match.id} className="bg-black/40 backdrop-blur-md border border-gray-800 rounded-lg p-4 flex flex-col gap-2 shadow-[0_5px_15px_rgba(0,0,0,0.5)] hover:border-gray-700 transition-colors">
                 <span className="text-[10px] text-gray-500 font-mono text-center uppercase tracking-widest">
-                  {new Date(match.match_date).toLocaleString()}
+                  {new Date(match.created_at).toLocaleString()}
                 </span>
                 <div className="flex justify-between items-center mt-2">
                   <div className={`flex-1 text-xs font-bold truncate text-right pr-4 ${(match.home_team as any)?.id === tgUserId ? 'text-neon-purple' : isHomeWin ? 'text-white' : isDraw ? 'text-gray-400' : 'text-gray-500'}`}>

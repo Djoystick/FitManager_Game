@@ -5,9 +5,10 @@ export async function GET() {
   try {
     // 1. Fetch latest 10 matches
     const { data: matches, error: matchError } = await supabase
-      .from('matches')
-      .select('id, home_team_id, away_team_id, home_score, away_score, match_date')
-      .order('match_date', { ascending: false })
+      .from('league_matches')
+      .select('id, home_team_id, away_team_id, home_score, away_score, created_at')
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
       .limit(10);
 
     if (matchError) {
@@ -40,7 +41,7 @@ export async function GET() {
       id: m.id,
       home_score: m.home_score,
       away_score: m.away_score,
-      match_date: m.match_date,
+      match_date: (m as any).created_at,
       home_team_name: teamMap[m.home_team_id] || 'Unknown Home',
       away_team_name: teamMap[m.away_team_id] || 'Unknown Away',
     }));
