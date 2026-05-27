@@ -10,7 +10,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Effort validation and duplicate/fraud detection.
 -- ================================================
 CREATE TABLE IF NOT EXISTS public.training_sessions (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id         UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     
     -- MET (Metabolic Equivalent of Task) value for the reported activity type.
