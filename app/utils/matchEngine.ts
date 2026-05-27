@@ -17,7 +17,7 @@ export interface MatchPlayer {
 }
 
 export interface MatchEvent {
-  type: 'goal' | 'breakthrough_failed' | 'save';
+  type: 'goal' | 'breakthrough_failed' | 'save' | 'yellow_card' | 'red_card' | 'injury' | 'info';
   minute: number;
   player_id: string;
   player_name: string;
