@@ -464,42 +464,29 @@ export default function LineupPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 p-4 gap-4 pb-12 bg-space-dark min-h-screen">
-      {/* HEADER */}
-      <header className="flex justify-between items-end border-b border-gray-800 pb-2">
-        <div>
-          <BackButton />
-          <h1 className="text-2xl font-black text-white tracking-tight uppercase">Squad</h1>
-          <p className="text-xs text-gray-400 font-mono tracking-widest">{team.name}</p>
+    <div className="flex flex-col flex-1 p-3 gap-2 pb-6 bg-space-dark min-h-screen">
+      {/* COMPACT PREMIUM HEADER */}
+      <header className="grid grid-cols-3 gap-2 bg-black/40 border border-gray-800 p-3 rounded-xl shadow-lg backdrop-blur-md">
+        <div className="col-span-2 flex flex-col justify-center">
+          <h1 className="text-lg font-black text-white tracking-tight uppercase leading-none">{team.name}</h1>
+          <p className="text-[10px] text-neon-cyan uppercase tracking-widest mt-1">Squad Management</p>
         </div>
-        <div className="text-right">
-          <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">Squad Power</div>
-          <div className="text-3xl font-black text-neon-green drop-shadow-[0_0_5px_rgba(57,255,20,0.5)]">{averageOvr}</div>
+        <div className="col-span-1 flex flex-col items-end justify-center border-l border-gray-800 pl-2">
+          <div className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Power</div>
+          <div className="text-xl font-black text-neon-green drop-shadow-[0_0_5px_rgba(57,255,20,0.5)] leading-none">{averageOvr}</div>
+        </div>
+        {/* Luxury Tax Mini-Bar inside the same block */}
+        <div className={`col-span-3 mt-1 flex items-center justify-between px-2 py-1.5 rounded-lg border text-[10px] uppercase tracking-widest font-bold ${
+          expectedTax > 0 
+            ? 'bg-red-900/20 border-neon-pink/50 text-neon-pink shadow-[0_0_10px_rgba(255,0,60,0.2)]' 
+            : 'bg-green-900/20 border-neon-green/30 text-neon-green'
+        }`}>
+          <span>{expectedTax > 0 ? 'Tax Penalty' : 'Tax Exempt'}</span>
+          <span>{expectedTax > 0 ? `-${expectedTax} FC` : `Soft Cap: ${LEAGUE_OVR_CAP} OVR`}</span>
         </div>
       </header>
 
-      {/* LUXURY TAX HUD */}
-      <div className={`p-3 rounded-xl border flex items-center justify-between shadow-lg transition-colors duration-500 ${
-        expectedTax > 0 
-          ? 'bg-red-900/10 border-neon-pink shadow-[0_0_15px_rgba(255,0,60,0.2)]' 
-          : 'bg-green-900/10 border-neon-green/30'
-      }`}>
-        <div>
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider">Luxury Tax Status</h3>
-          <p className="text-[10px] text-gray-400">Soft Cap: {LEAGUE_OVR_CAP} OVR</p>
-        </div>
-        <div className="text-right">
-          {expectedTax > 0 ? (
-            <span className="text-base font-black text-neon-pink drop-shadow-[0_0_8px_rgba(255,0,60,0.8)] animate-pulse">
-              -{expectedTax} FC
-            </span>
-          ) : (
-            <span className="text-xs font-bold text-neon-green tracking-widest uppercase">Tax Exempt</span>
-          )}
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+      <div className="flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-200">
           
           {/* VIEW MODE TOGGLE */}
           <div className="flex justify-center mt-2 mb-1">
@@ -704,49 +691,47 @@ export default function LineupPage() {
     </div>
 
       {/* SUBMISSION & ACTIONS AREA (GLOBAL) */}
-      <div className="mt-auto flex flex-col gap-3 pt-4">
-        
-        {/* Mass Heal Button */}
-        {players.filter(p => p.stamina < 100).length > 0 && (
-          <button 
-            onClick={handleMassHeal}
-            disabled={isHealingAll || isSubmitting || isSwapping}
-            className={`w-full py-2.5 rounded-lg font-bold text-sm uppercase tracking-wider flex justify-between items-center px-4 transition-all ${
-              isHealingAll || isSubmitting || isSwapping
-                ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 hover:bg-yellow-500 hover:text-black shadow-[0_0_10px_rgba(234,179,8,0.2)]'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-lg">⚡</span>
-              <span>Mass Heal Roster</span>
-            </div>
-            <span className="font-mono">-{players.filter(p => p.stamina < 100).length * 50} TP</span>
-          </button>
-        )}
-
+      <div className="mt-auto flex flex-col gap-2 pt-2">
         {submitMessage && (
-          <div className={`p-3 rounded text-sm text-center border font-semibold ${submitMessage.type === 'error' ? 'bg-red-900/20 text-red-400 border-red-900/50' : 'bg-green-900/20 text-neon-green border-neon-green/40 shadow-[0_0_10px_rgba(57,255,20,0.2)]'}`}>
+          <div className={`p-2 rounded text-[10px] uppercase tracking-widest text-center border font-semibold ${submitMessage.type === 'error' ? 'bg-red-900/20 text-red-400 border-red-900/50' : 'bg-green-900/20 text-neon-green border-neon-green/40 shadow-[0_0_10px_rgba(57,255,20,0.2)]'}`}>
             {submitMessage.text}
           </div>
         )}
 
-        {/* Submit Lineup Button (Only makes sense if starting players > 0 and maybe mostly for pitch, but keeping global) */}
-        <button 
-          onClick={handleSubmitLineup}
-          disabled={isSubmitting || isSwapping || starterCount === 0}
-          className={`w-full py-4 rounded-lg font-black uppercase tracking-widest transition-all duration-300 ${
-            isSubmitting || isSwapping || starterCount === 0
-                ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                : 'bg-neon-cyan text-black hover:bg-white hover:text-neon-cyan shadow-[0_0_20px_rgba(0,240,255,0.4)]'
-          }`}
-        >
-          {isSubmitting 
-              ? 'Processing Transaction...' 
-              : isSwapping
-                ? 'Swapping...'
-                : 'Submit Lineup'}
-        </button>
+        <div className="flex gap-2">
+          {/* Mass Heal Button */}
+          {players.filter(p => p.stamina < 100).length > 0 && (
+            <button 
+              onClick={handleMassHeal}
+              disabled={isHealingAll || isSubmitting || isSwapping}
+              className={`flex-1 py-3 rounded-lg font-bold text-[10px] uppercase tracking-wider flex justify-center items-center gap-1.5 transition-all ${
+                isHealingAll || isSubmitting || isSwapping
+                  ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                  : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 hover:bg-yellow-500 hover:text-black shadow-[0_0_10px_rgba(234,179,8,0.2)]'
+              }`}
+            >
+              <span className="text-sm">⚡</span>
+              <span>Heal (-{players.filter(p => p.stamina < 100).length * 50})</span>
+            </button>
+          )}
+
+          {/* Submit Lineup Button */}
+          <button 
+            onClick={handleSubmitLineup}
+            disabled={isSubmitting || isSwapping || starterCount === 0}
+            className={`flex-1 py-3 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all duration-300 ${
+              isSubmitting || isSwapping || starterCount === 0
+                  ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                  : 'bg-neon-cyan text-black hover:bg-white hover:text-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.4)]'
+            }`}
+          >
+            {isSubmitting 
+                ? 'Wait...' 
+                : isSwapping
+                  ? 'Swapping...'
+                  : 'Submit'}
+          </button>
+        </div>
       </div>
 
 
