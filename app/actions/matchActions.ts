@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { MatchReport } from '@/components/MatchReportModal';
 import { createClient } from '@supabase/supabase-js';
+import { simulateMatch as runMatchEngine, MatchPlayer } from '@/app/utils/matchEngine';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -242,5 +243,129 @@ export async function getMatchHistory(userId: string): Promise<{ success: boolea
   } catch (err: any) {
     console.error("Match history error:", err);
     return { success: false, error: err.message || 'Unknown server error.' };
+  }
+}
+
+export async function resolveMatch(matchId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    // ШАГ А: Загрузка данных матча
+    const { data: match, error: matchError } = await supabaseAdmin
+      .from('league_matches')
+      .select('*')
+      .eq('id', matchId)
+      .single();
+    
+    if (matchError || !match) return { success: false, error: 'Match not found' };
+    if (match.status === 'completed' || match.is_played) return { success: false, error: 'Match already completed' };
+
+    // Загрузка составов
+    const { data: homePlayers, error: hpError } = await supabaseAdmin
+      .from('players')
+      .select('*')
+      .eq('team_id', match.home_team_id)
+      .eq('lineup_status', 'starting');
+    
+    const { data: awayPlayers, error: apError } = await supabaseAdmin
+      .from('players')
+      .select('*')
+      .eq('team_id', match.away_team_id)
+      .eq('lineup_status', 'starting');
+
+    if (hpError || apError || !homePlayers || !awayPlayers) return { success: false, error: 'Failed to load lineups' };
+    
+    if (homePlayers.length !== 11 || awayPlayers.length !== 11) {
+      console.warn(`Lineups incomplete. Home: ${homePlayers?.length}, Away: ${awayPlayers?.length}. Match ${matchId}`);
+    }
+
+    // Загрузка сыгранности (Chemistry)
+    const { data: homeChem } = await supabaseAdmin.from('player_chemistry').select('*').eq('team_id', match.home_team_id);
+    const { data: awayChem } = await supabaseAdmin.from('player_chemistry').select('*').eq('team_id', match.away_team_id);
+
+    // Рассчитываем кто имеет зеленую связь
+    const getGreenLinks = (chemRecords: any[]) => {
+      const greenMap: Record<string, boolean> = {};
+      if (!chemRecords) return greenMap;
+      
+      chemRecords.forEach(c => {
+         // Упрощенный расчет: если очков >= 70, связь зеленая
+         const score = (c.matches_together || 0) + ((c.sweat_points || 0) * 5);
+         if (score >= 70) { 
+            greenMap[c.player_1_id] = true;
+            greenMap[c.player_2_id] = true;
+         }
+      });
+      return greenMap;
+    };
+    const homeGreen = getGreenLinks(homeChem || []);
+    const awayGreen = getGreenLinks(awayChem || []);
+
+    // ШАГ Б: Прогон через Ядро
+    const mapToMatchPlayer = (p: any): MatchPlayer => ({
+      id: p.id,
+      name: p.name,
+      position: p.lineup_slot?.split('_')[0] || p.position,
+      stats: p.stats,
+      stamina: p.stamina,
+      traits: p.traits || []
+    });
+
+    const homeLineup = homePlayers.map(mapToMatchPlayer);
+    const awayLineup = awayPlayers.map(mapToMatchPlayer);
+
+    const result = runMatchEngine(homeLineup, awayLineup, homeGreen, awayGreen);
+
+    // ШАГ В: Обновление матча
+    const { error: updateMatchError } = await supabaseAdmin
+      .from('league_matches')
+      .update({
+        home_score: result.score.home,
+        away_score: result.score.away,
+        status: 'completed',
+        is_played: true, // for backwards compatibility
+        events: result.events,
+        stamina_drain: result.staminaDrain
+      })
+      .eq('id', matchId);
+
+    if (updateMatchError) return { success: false, error: 'Failed to save match result' };
+
+    // ШАГ Г: Обновление стамины
+    const updateStamina = async (drainMap: Record<string, number>) => {
+      const promises = Object.entries(drainMap).map(([pId, newStam]) => 
+        supabaseAdmin.from('players').update({ stamina: Math.max(0, newStam) }).eq('id', pId)
+      );
+      await Promise.all(promises);
+    };
+    await updateStamina(result.staminaDrain.home);
+    await updateStamina(result.staminaDrain.away);
+
+    // ШАГ Д: Обновление Standings
+    const updateStandings = async (teamId: string, gf: number, ga: number) => {
+      const { data: st } = await supabaseAdmin.from('league_standings').select('*').eq('team_id', teamId).single();
+      if (!st) return;
+      let wins = st.wins || 0;
+      let draws = st.draws || 0;
+      let losses = st.losses || 0;
+      let points = st.points || 0;
+
+      if (gf > ga) { wins++; points += 3; }
+      else if (gf === ga) { draws++; points += 1; }
+      else { losses++; }
+
+      await supabaseAdmin.from('league_standings').update({
+        matches_played: (st.matches_played || 0) + 1,
+        wins, draws, losses, points,
+        goals_for: (st.goals_for || 0) + gf,
+        goals_against: (st.goals_against || 0) + ga
+      }).eq('team_id', teamId);
+    };
+
+    await updateStandings(match.home_team_id, result.score.home, result.score.away);
+    await updateStandings(match.away_team_id, result.score.away, result.score.home);
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Match Resolve Error:', error);
+    return { success: false, error: error.message };
   }
 }
