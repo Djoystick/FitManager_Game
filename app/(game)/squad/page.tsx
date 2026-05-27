@@ -3,6 +3,8 @@ import { supabase } from '@/lib/supabase';
 import { SquadManager } from '@/components/squad/SquadManager';
 import { cookies } from 'next/headers';
 
+import { SquadTabs } from '@/components/squad/SquadTabs';
+
 export default async function SquadPage() {
   const cookieStore = await cookies();
   const userId = cookieStore.get('tg_user_id')?.value;
@@ -44,18 +46,15 @@ export default async function SquadPage() {
     .order('ovr', { ascending: false });
 
   return (
-    <div className="flex flex-col flex-1 p-4 gap-8 pb-24 h-full overflow-y-auto custom-scrollbar">
-      {/* Header */}
-      <header className="flex flex-col gap-1 border-b border-gray-800 pb-4">
-        <h1 className="text-2xl font-bold font-orbitron text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] uppercase tracking-wider">
-          Squad Builder
+    <div className="flex flex-col flex-1 p-4 gap-4 pb-24 h-full overflow-y-auto custom-scrollbar">
+      {/* Tight Header */}
+      <header className="flex flex-col gap-1 pb-2">
+        <h1 className="text-xl font-bold font-orbitron text-white uppercase tracking-wider">
+          {team.name} Squad
         </h1>
-        <p className="text-sm text-neon-cyan font-bold drop-shadow-[0_0_5px_rgba(0,240,255,0.5)]">
-          {team.name}
-        </p>
       </header>
 
-      <SquadManager initialPlayers={players || []} teamId={team.id} />
+      <SquadTabs initialPlayers={players || []} teamId={team.id} userId={userId} />
     </div>
   );
 }
