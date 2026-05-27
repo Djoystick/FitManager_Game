@@ -15,7 +15,7 @@ function getRandomInt(min: number, max: number) {
 
 const AVAILABLE_TRAITS = ['Sniper', 'Playmaker', 'Wall', 'Speedster', 'Anchor', 'Poacher', 'Engine'];
 
-function generatePlayer(teamId: string, position: string, lineup_status: string = 'starting') {
+function generatePlayer(teamId: string, position: string, lineup_status: string = 'starting', lineup_slot: string | null = null) {
   const stats: PlayerStats = {
     pace: getRandomInt(45, 65),
     shooting: getRandomInt(45, 65),
@@ -57,6 +57,7 @@ function generatePlayer(teamId: string, position: string, lineup_status: string 
     stats,
     stamina: 100,
     lineup_status,
+    lineup_slot,
     traits
   };
 }
@@ -107,7 +108,7 @@ export async function POST(req: Request) {
       { pos: 'FWD', status: 'bench' }
     ];
 
-    const playersToInsert = positions.map(p => generatePlayer(newTeam.id, p.pos, p.status));
+    const playersToInsert = positions.map((p, index) => generatePlayer(newTeam.id, p.pos, p.status, index.toString()));
 
     // 4. Batch Insert Players
     const { data: players, error: playersError } = await supabase

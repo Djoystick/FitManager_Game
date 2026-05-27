@@ -131,6 +131,7 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
           },
           stamina: 100,
           lineup_status: 'starting',
+          lineup_slot: i.toString(),
           is_nft_coach: false,
           traits
         });
