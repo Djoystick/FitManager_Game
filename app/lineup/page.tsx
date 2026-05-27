@@ -545,7 +545,49 @@ export default function LineupPage() {
             </button>
             <InfoPopover 
               title="Сыгранность (Chemistry)"
-              content="Сыгранность (Chemistry) строится на совместных матчах, совместимости стилей (Traits) и совместных тренировках реальными шагами (Sweat Points)."
+              content={
+                <div className="space-y-4">
+                  <p>Сыгранность (Chemistry) строится на совместных матчах, совместимости стилей (Traits) и совместных тренировках (Sweat Points).</p>
+                  
+                  <div>
+                    <h4 className="text-xs font-bold text-emerald-400 mb-2 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
+                      СИНЕРГИЯ (+30 очков, без лимита)
+                    </h4>
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between text-[10px] bg-black/40 p-1.5 rounded border border-gray-800">
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold uppercase tracking-wider">Playmaker</span>
+                        <span className="text-gray-500">+</span>
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold uppercase tracking-wider">Poacher</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] bg-black/40 p-1.5 rounded border border-gray-800">
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold uppercase tracking-wider">Engine</span>
+                        <span className="text-gray-500">+</span>
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold uppercase tracking-wider">Speedster</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] bg-black/40 p-1.5 rounded border border-gray-800">
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold uppercase tracking-wider">Anchor</span>
+                        <span className="text-gray-500">+</span>
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold uppercase tracking-wider">Wall</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-bold text-rose-400 mb-2 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
+                      КОНФЛИКТ (-20 очков)
+                    </h4>
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between text-[10px] bg-black/40 p-1.5 rounded border border-rose-900/30">
+                        <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 font-bold uppercase tracking-wider">Leader</span>
+                        <span className="text-rose-500/50 text-xs font-bold font-mono">VS</span>
+                        <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 font-bold uppercase tracking-wider">Leader</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
             />
           </div>
           <div className="flex justify-center gap-2 mb-[-10px] z-20">
