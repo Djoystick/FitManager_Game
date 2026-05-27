@@ -52,6 +52,7 @@ export const getIdealLineForSlot = (slotIndex: number, formation: string) => {
 export interface PlayerRef {
   id: string;
   position: string;
+  traits?: string[];
 }
 
 export interface ChemistryRecord {
@@ -68,26 +69,51 @@ export function calculateLinkStrength(
 ): 'red' | 'yellow' | 'green' | 'none' {
   if (!player1 || !player2) return 'none';
   
-  // Base strength from DB or mock
-  let rawScore = 0;
-  if (chemistryRecord) {
-    rawScore = chemistryRecord.matches_together + Math.floor(chemistryRecord.sweat_points / 10);
+  let score = (chemistryRecord?.matches_together || 0) + ((chemistryRecord?.sweat_points || 0) * 5);
+  
+  const traits1 = player1.traits || [];
+  const traits2 = player2.traits || [];
+  
+  let hasSynergy = false;
+  let hasConflict = false;
+  
+  const synergyPairs = [
+    ['Playmaker', 'Poacher'],
+    ['Engine', 'Speedster'],
+    ['Anchor', 'Wall']
+  ];
+  
+  for (const [tA, tB] of synergyPairs) {
+    if ((traits1.includes(tA) && traits2.includes(tB)) || 
+        (traits1.includes(tB) && traits2.includes(tA))) {
+      hasSynergy = true;
+      break;
+    }
+  }
+  
+  if (traits1.includes('Leader') && traits2.includes('Leader')) {
+    hasConflict = true;
+  }
+  
+  if (hasSynergy) {
+    score += 30;
   } else {
-    rawScore = 50; // Temporary Mock
+    score = Math.min(score, 69);
+  }
+  
+  if (hasConflict) {
+    score -= 20;
   }
   
   const isOOP1 = !isCompatible(player1.position, idealPos1);
   const isOOP2 = !isCompatible(player2.position, idealPos2);
   
-  let multiplier = 1.0;
   if (isOOP1 || isOOP2) {
-    multiplier = 0.5; // OOP Rule Penalty
+    score *= 0.5;
   }
   
-  const finalScore = rawScore * multiplier;
-  
-  if (finalScore >= 70) return 'green';
-  if (finalScore >= 30) return 'yellow';
+  if (score >= 70) return 'green';
+  if (score >= 30) return 'yellow';
   return 'red';
 }
 
