@@ -85,7 +85,7 @@ export function MatchHistoryWidget({ userId, teamName }: { userId: string; teamN
 
               return (
                 <button
-                  key={match.match_id}
+                  key={match.id}
                   onClick={() => setSelectedReport(match)}
                   className="flex items-center justify-between p-3 hover:bg-gray-800/50 transition-colors text-left active:bg-gray-800"
                 >

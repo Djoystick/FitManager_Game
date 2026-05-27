@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { Shield, Activity, Users, X } from 'lucide-react';
-import { PlayMatchButton } from './PlayMatchButton';
 
 interface Player {
   name: string;
@@ -58,8 +57,11 @@ export function NextOpponentCard({ opponentTeamName, opponentLogoUrl, averageOvr
             Analyze Opponent
           </button>
           
-          <div className="flex-1 sm:flex-none flex">
-            <PlayMatchButton />
+          <div className="flex-1 sm:flex-none flex items-center justify-center bg-gray-800 border border-gray-600 rounded px-4 py-2">
+            <span className="text-sm font-bold text-gray-400 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span>
+              Match Pending...
+            </span>
           </div>
         </div>
       </div>

@@ -89,14 +89,13 @@ export async function getMatchHistory(userId: string): Promise<{ success: boolea
     }
 
     const history: MatchReport[] = matches.map(match => ({
-      match_id: match.id,
+      id: match.id,
       home_team_id: match.home_team_id,
       home_team_name: teamNames[match.home_team_id] || 'Unknown Home Team',
       away_team_id: match.away_team_id,
       away_team_name: teamNames[match.away_team_id] || 'Unknown Away Team',
       home_score: match.home_score || 0,
       away_score: match.away_score || 0,
-      is_knockout: match.is_knockout || false,
       events: match.match_events || []
     }));
 
