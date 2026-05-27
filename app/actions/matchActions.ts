@@ -145,8 +145,15 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
     const getStarters = (players: any[]) => {
       let starters = players.filter(p => p.lineup_slot !== null && parseInt(p.lineup_slot) <= 10);
       if (starters.length < 11) {
-        console.warn(`[resolveMatch] Lineup incomplete (${starters.length}). Using OVR fallback.`);
-        starters = [...players].sort((a, b) => (b.ovr || 0) - (a.ovr || 0)).slice(0, 11);
+        console.warn(`[resolveMatch] Lineup incomplete (${starters.length}). Using Iron GK OVR fallback.`);
+        const gks = players.filter(p => p.position === 'GK').sort((a, b) => (b.ovr || 0) - (a.ovr || 0));
+        const fields = players.filter(p => p.position !== 'GK').sort((a, b) => (b.ovr || 0) - (a.ovr || 0));
+        
+        if (gks.length > 0) {
+          starters = [gks[0], ...fields.slice(0, 10)];
+        } else {
+          starters = fields.slice(0, 11);
+        }
       }
       return starters;
     };
