@@ -333,7 +333,10 @@ export async function simulateNextPendingMatch(userId: string) {
     const result = await resolveMatch(match.id);
     console.log('[simulateNextPendingMatch] resolveMatch result:', result);
     
-    if (result.success) revalidatePath('/');
+    if (result.success) {
+      revalidatePath('/', 'page');
+      revalidatePath('/', 'layout');
+    }
     return result;
   } catch (error: any) {
     console.error('[simulateNextPendingMatch] Exception:', error);

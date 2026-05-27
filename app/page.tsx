@@ -111,36 +111,8 @@ export default function DashboardPage() {
     return <OnboardingFlow userId={userId} onSuccess={() => fetchUserData(userId)} />;
   }
 
-  const handleForceOpen = () => {
-    setUnviewedMatch({
-      id: 'test-match-123',
-      home_team_id: 'test-user-team',
-      away_team_id: 'test-bot-team',
-      home_team_name: 'DEBUG TEAM',
-      away_team_name: 'BOT TEAM',
-      home_score: 2,
-      away_score: 1,
-      events: [{ type: 'goal', minute: 15, team: 'home', player_id: 'debug-player-id', player_name: 'Debug Player', details: 'Test event' }]
-    });
-    setModalUserTeamId('test-user-team');
-  };
-
   return (
     <div className="flex flex-col flex-1 p-6 gap-8">
-      {process.env.NODE_ENV === 'development' && (
-        <div className="border-2 border-red-500 bg-black/90 p-3 rounded-lg text-xs font-mono text-gray-300 shadow-[0_0_15px_rgba(255,0,0,0.3)]">
-          <div className="font-bold text-red-500 mb-2 tracking-widest uppercase">Debug Overlay</div>
-          <div>Status: <span className="text-white">{isDataLoading ? 'Loading...' : unviewedMatch ? 'Match Found' : 'No Match'}</span></div>
-          <div>Match ID: <span className="text-white">{unviewedMatch?.id || 'none'}</span></div>
-          <div>Modal State: <span className="text-white">{unviewedMatch ? 'Open' : 'Hidden'}</span></div>
-          <button 
-            onClick={handleForceOpen}
-            className="mt-3 w-full py-1.5 bg-red-900/50 hover:bg-red-800 transition-colors border border-red-500 rounded text-white uppercase font-bold tracking-wider"
-          >
-            Force Open Modal
-          </button>
-        </div>
-      )}
 
       {/* HEADER SECTION */}
       <header className="bg-black/60 border border-gray-800 rounded-xl p-4 shadow-[0_4px_20px_rgba(0,0,0,0.5)] flex items-center justify-between">

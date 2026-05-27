@@ -23,7 +23,7 @@ export function AdminConsoleClient({ userId }: Props) {
     if (result && !result.success) {
       alert(`Simulation failed: ${result.error}`);
     } else if (result && result.success) {
-      window.location.href = '/';
+      window.location.href = '/?report=ready&t=' + Date.now();
     }
   };
 
