@@ -120,7 +120,7 @@ export default function DashboardPage() {
       away_team_name: 'BOT TEAM',
       home_score: 2,
       away_score: 1,
-      events: [{ type: 'goal', minute: 15, team: 'home', player_name: 'Debug Player', details: 'Test event' }]
+      events: [{ type: 'goal', minute: 15, team: 'home', player_id: 'debug-player-id', player_name: 'Debug Player', details: 'Test event' }]
     });
     setModalUserTeamId('test-user-team');
   };
