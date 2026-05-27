@@ -60,14 +60,6 @@ export default function RootLayout({
       className={`${inter.variable} ${orbitron.variable} ${russoOne.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
-        {process.env.NODE_ENV === 'development' && (
-          <>
-            <Script src="https://cdn.jsdelivr.net/npm/eruda" strategy="beforeInteractive" />
-            <Script id="eruda-init" strategy="afterInteractive">
-              {`if (typeof eruda !== 'undefined') eruda.init();`}
-            </Script>
-          </>
-        )}
         <LanguageProvider>
           <TelegramAuthProvider>
             <TonProvider>
