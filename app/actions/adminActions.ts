@@ -59,16 +59,27 @@ export async function executeBotSeeding(supabaseAdmin: any): Promise<AdminAction
     return { success: false, error: 'Failed to insert bot teams.' };
   }
 
-  // 3. Generate 11 Players for each of the 13 teams (143 players total)
+  // 3. Generate 16 Players for each of the 13 teams (208 players total)
   const playersToInsert: any[] = [];
   
   const pFirst = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Charles', 'Daniel', 'Matthew'];
   const pLast = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez'];
 
+  const BOT_POSITIONS = [
+    { pos: 'GK', status: 'starting' },
+    { pos: 'DEF', status: 'starting' }, { pos: 'DEF', status: 'starting' }, { pos: 'DEF', status: 'starting' }, { pos: 'DEF', status: 'starting' },
+    { pos: 'MID', status: 'starting' }, { pos: 'MID', status: 'starting' }, { pos: 'MID', status: 'starting' }, { pos: 'MID', status: 'starting' },
+    { pos: 'FWD', status: 'starting' }, { pos: 'FWD', status: 'starting' },
+    { pos: 'GK', status: 'bench' },
+    { pos: 'DEF', status: 'bench' },
+    { pos: 'MID', status: 'bench' }, { pos: 'MID', status: 'bench' },
+    { pos: 'FWD', status: 'bench' }
+  ];
+
   insertedTeams.forEach((team: any) => {
     const teamBaseOvr = Math.floor(Math.random() * 26) + 60;
     
-    for (let i = 0; i < 11; i++) {
+    for (let i = 0; i < 16; i++) {
       const ovr = Math.max(1, Math.min(99, teamBaseOvr + Math.floor(Math.random() * 10 - 5)));
       const generateStat = () => Math.max(1, Math.min(99, Math.round(ovr + (Math.random() * 14 - 7))));
       
@@ -90,7 +101,7 @@ export async function executeBotSeeding(supabaseAdmin: any): Promise<AdminAction
         age: Math.floor(Math.random() * 15) + 18,
         ovr,
         potential_limit: Math.max(ovr, Math.floor(Math.random() * 10) + ovr),
-        position: POSITIONS[i],
+        position: BOT_POSITIONS[i].pos,
         stats: {
           pace: generateStat(),
           shooting: generateStat(),
@@ -100,7 +111,7 @@ export async function executeBotSeeding(supabaseAdmin: any): Promise<AdminAction
           physical: generateStat(),
         },
         stamina: 100,
-        lineup_status: 'starting',
+        lineup_status: BOT_POSITIONS[i].status,
         lineup_slot: i.toString(),
         is_nft_coach: false,
         traits

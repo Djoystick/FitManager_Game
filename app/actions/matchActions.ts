@@ -127,18 +127,20 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
 
     console.log(`[resolveMatch] Match loaded. Home: ${match.home_team_id}, Away: ${match.away_team_id}`);
 
-    // Загрузка составов
+    // Загрузка составов по слотам 0-10 (строго стартовый состав)
+    const startingSlots = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+
     const { data: homePlayers, error: hpError } = await supabaseAdmin
       .from('players')
       .select('*')
       .eq('team_id', match.home_team_id)
-      .eq('lineup_status', 'starting');
+      .in('lineup_slot', startingSlots);
     
     const { data: awayPlayers, error: apError } = await supabaseAdmin
       .from('players')
       .select('*')
       .eq('team_id', match.away_team_id)
-      .eq('lineup_status', 'starting');
+      .in('lineup_slot', startingSlots);
 
     if (hpError || apError || !homePlayers || !awayPlayers) {
       console.log(`[resolveMatch] Failed to load lineups`);
