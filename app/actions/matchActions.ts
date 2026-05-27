@@ -125,39 +125,37 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       return { success: false, error: 'Match already completed' };
     }
 
-    console.log(`[resolveMatch] Match loaded. Home: ${match.home_team_id}, Away: ${match.away_team_id}`);
-
-    // Загрузка составов по слотам 0-10 (строго стартовый состав)
-    const startingSlots = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
-
-    let { data: homePlayers, error: hpError } = await supabaseAdmin
+    // Загрузка всех игроков обеих команд
+    const { data: homePlayersData, error: hpError } = await supabaseAdmin
       .from('players')
       .select('*')
-      .eq('team_id', match.home_team_id)
-      .in('lineup_slot', startingSlots);
+      .eq('team_id', match.home_team_id);
     
-    let { data: awayPlayers, error: apError } = await supabaseAdmin
+    const { data: awayPlayersData, error: apError } = await supabaseAdmin
       .from('players')
       .select('*')
-      .eq('team_id', match.away_team_id)
-      .in('lineup_slot', startingSlots);
+      .eq('team_id', match.away_team_id);
 
-    if (hpError || apError) {
-      console.log(`[resolveMatch] Failed to load lineups`);
-      return { success: false, error: 'Failed to load lineups' };
-    }
-    
-    if (!homePlayers || homePlayers.length < 11) {
-      console.warn(`[resolveMatch] Home lineup incomplete (${homePlayers?.length}). Using fallback to select any 11 players.`);
-      const { data: fallbackHome } = await supabaseAdmin.from('players').select('*').eq('team_id', match.home_team_id).limit(11);
-      homePlayers = fallbackHome || [];
+    if (hpError || apError || !homePlayersData || !awayPlayersData) {
+      console.log(`[resolveMatch] Failed to load players`);
+      return { success: false, error: 'Failed to load players' };
     }
 
-    if (!awayPlayers || awayPlayers.length < 11) {
-      console.warn(`[resolveMatch] Away lineup incomplete (${awayPlayers?.length}). Using fallback to select any 11 players.`);
-      const { data: fallbackAway } = await supabaseAdmin.from('players').select('*').eq('team_id', match.away_team_id).limit(11);
-      awayPlayers = fallbackAway || [];
-    }
+    // Вспомогательная функция для выделения стартового состава
+    const getStarters = (players: any[]) => {
+      let starters = players.filter(p => p.lineup_slot !== null && parseInt(p.lineup_slot) <= 10);
+      if (starters.length < 11) {
+        console.warn(`[resolveMatch] Lineup incomplete (${starters.length}). Using OVR fallback.`);
+        starters = [...players].sort((a, b) => {
+          const getOvr = (p: any) => p.stats ? (p.stats.pace + p.stats.shooting + p.stats.passing + p.stats.dribbling + p.stats.defending + p.stats.physical) : 0;
+          return getOvr(b) - getOvr(a);
+        }).slice(0, 11);
+      }
+      return starters;
+    };
+
+    const homePlayers = getStarters(homePlayersData);
+    const awayPlayers = getStarters(awayPlayersData);
 
     if (homePlayers.length < 11 || awayPlayers.length < 11) {
       console.warn(`[resolveMatch] Critical: Cannot find 11 players even with fallback. Home: ${homePlayers.length}, Away: ${awayPlayers.length}`);
