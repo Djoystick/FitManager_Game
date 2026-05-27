@@ -199,6 +199,7 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
         away_score: result.score.away,
         status: 'completed',
         is_played: true, // for backwards compatibility
+        is_viewed: false,
         events: result.events,
         stamina_drain: result.staminaDrain
       })

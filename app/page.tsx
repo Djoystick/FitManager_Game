@@ -79,11 +79,18 @@ export default function DashboardPage() {
   useEffect(() => {
     if (isAuthenticated && userId) {
       fetchUserData(userId);
+      console.log('Checking for unviewed matches...');
       getUnviewedMatch(userId).then(res => {
+        console.log('getUnviewedMatch result:', res);
         if (res.success && res.data) {
+          console.log('Found unviewed match:', res.data);
           setUnviewedMatch(res.data as MatchReport);
           setModalUserTeamId(res.userTeamId as string);
+        } else {
+          console.log('No unviewed matches found.');
         }
+      }).catch(err => {
+        console.error('getUnviewedMatch failed:', err);
       });
     } else if (!isAuthLoading && !isAuthenticated) {
       // Allow the loading state to resolve if running outside Telegram
