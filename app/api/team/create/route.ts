@@ -35,7 +35,7 @@ function generatePlayer(teamId: string, position: string, lineup_status: string 
   let numTraits = 0;
   if (traitsRoll >= 0.85) {
     numTraits = 2;
-  } else if (traitsRoll >= 0.50) {
+  } else if (traitsRoll >= 0.30) {
     numTraits = 1;
   }
 

@@ -105,7 +105,7 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
         const traitsRoll = Math.random();
         let numTraits = 0;
         if (traitsRoll >= 0.85) numTraits = 2;
-        else if (traitsRoll >= 0.50) numTraits = 1;
+        else if (traitsRoll >= 0.30) numTraits = 1;
 
         const traits: string[] = [];
         const availableTraits = ['Sniper', 'Playmaker', 'Wall', 'Speedster', 'Anchor', 'Poacher', 'Engine'];
