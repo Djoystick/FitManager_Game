@@ -180,6 +180,28 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
   }
 }
 
+export async function addSweatPoints(amount: number): Promise<AdminActionResult> {
+  try {
+    const cookieStore = await cookies();
+    const sessionUuid = cookieStore.get('tg_user_id')?.value;
+    if (!sessionUuid) return { success: false, error: 'Unauthorized' };
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: teamData } = await supabaseAdmin.from('teams').select('id, sweat_points').eq('user_id', sessionUuid).single();
+    if (!teamData) return { success: false, error: 'Team not found' };
+
+    const { error } = await supabaseAdmin.from('teams').update({ sweat_points: (teamData.sweat_points || 0) + amount }).eq('id', teamData.id);
+    if (error) return { success: false, error: error.message };
+
+    return { success: true, message: `Added ${amount} SP` };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
 export async function hardResetUserTeam(userId: string): Promise<AdminActionResult> {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;

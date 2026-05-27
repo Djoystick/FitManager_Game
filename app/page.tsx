@@ -11,6 +11,8 @@ import { FitnessSyncWidget } from '@/components/FitnessSyncWidget';
 import { MatchHistoryWidget } from '@/components/MatchHistoryWidget';
 import { CyberLoader } from '@/components/ui/CyberLoader';
 import { Users, Trophy, ShoppingCart, Building2, User, BookOpen } from 'lucide-react';
+import { getUnviewedMatch } from '@/app/actions/matchActions';
+import { MatchReportModal, MatchReport } from '@/components/MatchReportModal';
 
 interface UserData {
   wallet_address: string | null;
@@ -27,6 +29,8 @@ export default function DashboardPage() {
   const [hasTeam, setHasTeam] = useState<boolean | null>(null);
   const [teamName, setTeamName] = useState<string | null>(null);
   const [isDataLoading, setIsDataLoading] = useState(true);
+  const [unviewedMatch, setUnviewedMatch] = useState<MatchReport | null>(null);
+  const [modalUserTeamId, setModalUserTeamId] = useState<string>('');
 
   const [firstName, setFirstName] = useState('Manager');
 
@@ -75,6 +79,12 @@ export default function DashboardPage() {
   useEffect(() => {
     if (isAuthenticated && userId) {
       fetchUserData(userId);
+      getUnviewedMatch(userId).then(res => {
+        if (res.success && res.data) {
+          setUnviewedMatch(res.data as MatchReport);
+          setModalUserTeamId(res.userTeamId as string);
+        }
+      });
     } else if (!isAuthLoading && !isAuthenticated) {
       // Allow the loading state to resolve if running outside Telegram
       setIsDataLoading(false); 
@@ -186,6 +196,14 @@ export default function DashboardPage() {
       <section className="mt-2 w-full">
         <FitnessSyncWidget />
       </section>
+
+      {unviewedMatch && (
+        <MatchReportModal
+          report={unviewedMatch}
+          userTeamId={modalUserTeamId}
+          onClose={() => setUnviewedMatch(null)}
+        />
+      )}
     </div>
   );
 }
