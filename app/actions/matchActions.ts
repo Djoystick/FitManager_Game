@@ -216,15 +216,19 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       .eq('id', matchId);
 
     if (updateMatchError) {
-      console.log(`[resolveMatch] Failed to save match result`, updateMatchError);
-      return { success: false, error: 'Failed to save match result' };
+      console.error(`[resolveMatch] CRITICAL DB ERROR (league_matches):`, updateMatchError);
+      throw new Error(`DB Write Failed: ${updateMatchError.message} (Details: ${updateMatchError.details})`);
     }
 
     // ШАГ Г: Обновление стамины
     const updateStamina = async (drainMap: Record<string, number>) => {
-      const promises = Object.entries(drainMap).map(([pId, newStam]) => 
-        supabaseAdmin.from('players').update({ stamina: Math.max(0, newStam) }).eq('id', pId)
-      );
+      const promises = Object.entries(drainMap).map(async ([pId, newStam]) => {
+        const { error } = await supabaseAdmin.from('players').update({ stamina: Math.max(0, newStam) }).eq('id', pId);
+        if (error) {
+          console.error(`[resolveMatch] CRITICAL DB ERROR (players stamina):`, error);
+          throw new Error(`DB Write Failed for stamina: ${error.message}`);
+        }
+      });
       await Promise.all(promises);
     };
     await updateStamina(result.staminaDrain.home);
@@ -232,8 +236,12 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
 
     // ШАГ Д: Обновление Standings
     const updateStandings = async (teamId: string, gf: number, ga: number) => {
-      const { data: st } = await supabaseAdmin.from('league_standings').select('*').eq('team_id', teamId).single();
-      if (!st) return;
+      const { data: st, error: stError } = await supabaseAdmin.from('league_standings').select('*').eq('team_id', teamId).single();
+      if (stError || !st) {
+        console.warn(`[resolveMatch] Could not find standings for team ${teamId}, skipping.`);
+        return;
+      }
+      
       let wins = st.wins || 0;
       let draws = st.draws || 0;
       let losses = st.losses || 0;
@@ -243,12 +251,17 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       else if (gf === ga) { draws++; points += 1; }
       else { losses++; }
 
-      await supabaseAdmin.from('league_standings').update({
+      const { error: updateStError } = await supabaseAdmin.from('league_standings').update({
         matches_played: (st.matches_played || 0) + 1,
         wins, draws, losses, points,
         goals_for: (st.goals_for || 0) + gf,
         goals_against: (st.goals_against || 0) + ga
       }).eq('team_id', teamId);
+      
+      if (updateStError) {
+        console.error(`[resolveMatch] CRITICAL DB ERROR (league_standings):`, updateStError);
+        throw new Error(`DB Write Failed for standings: ${updateStError.message}`);
+      }
     };
 
     await updateStandings(match.home_team_id, result.score.home, result.score.away);
