@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Activity, Zap, Dumbbell, User, Crosshair } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { bulkTrainPlayer, healPlayerStamina } from '@/app/actions/playerActions';
+import { InfoPopover } from '@/components/ui/InfoPopover';
 
 interface PlayerStats {
   pace: number;
@@ -271,6 +272,18 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                 <div>
                   <h3 className="text-[10px] uppercase tracking-widest text-gray-500 mb-3 flex items-center gap-2">
                     <Zap size={12} className="text-neon-pink" /> Detailed Stats
+                    <InfoPopover 
+                      title="Характеристики"
+                      content={
+                        <div className="space-y-2">
+                          <p><strong className="text-neon-cyan">PAC:</strong> Скорость игрока. Влияет на перемещение по полю.</p>
+                          <p><strong className="text-neon-pink">SHO:</strong> Удары. Точность и сила ударов по воротам.</p>
+                          <p><strong className="text-yellow-400">PAS:</strong> Пасы. Успешность передач и видение поля.</p>
+                          <p><strong className="text-blue-500">DEF:</strong> Защита. Отбор мяча и перехваты.</p>
+                          <p><strong className="text-green-500">PHY:</strong> Физика. Выносливость и игра корпусом.</p>
+                        </div>
+                      }
+                    />
                   </h3>
                   <div className="flex flex-col gap-3">
                     {(Object.keys(statLabels) as Array<keyof PlayerStats>).map(key => (

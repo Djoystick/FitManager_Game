@@ -11,6 +11,7 @@ import { CyberLoader } from '@/components/ui/CyberLoader';
 import { Shirt, X, RefreshCw, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlayerProfileModal } from '@/components/PlayerProfileModal';
+import { InfoPopover } from '@/components/ui/InfoPopover';
 
 interface PlayerStats {
   pace: number;
@@ -526,6 +527,15 @@ export default function LineupPage() {
           </div>
 
           {/* TACTICAL PITCH UI */}
+          <div className="flex justify-center items-center mb-1">
+            <div className="flex items-center gap-2 bg-black/40 px-3 py-1 rounded-full border border-gray-800">
+              <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Chemistry</span>
+              <InfoPopover 
+                title="Сыгранность (Chemistry)"
+                content="Сыгранность (Chemistry) строится на совместных матчах, совместимости стилей (Traits) и совместных тренировках реальными шагами (Sweat Points)."
+              />
+            </div>
+          </div>
           <div className="flex justify-center gap-2 mb-[-10px] z-20">
             {['4-4-2', '4-3-3', '3-5-2'].map(f => {
               const isRealActive = currentFormation === f;
