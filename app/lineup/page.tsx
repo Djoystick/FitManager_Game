@@ -328,14 +328,14 @@ export default function LineupPage() {
         className={`relative flex flex-col items-center justify-center p-1 w-14 cursor-pointer transition-all duration-300 rounded-md ${
           isSelected 
             ? 'ring-2 ring-neon-pink scale-110 z-20 bg-neon-pink/20 shadow-[0_0_15px_rgba(255,0,60,0.6)]' 
-            : isOOP && viewMode === 'tactics'
+            : isOOP && viewMode === 'lineup'
               ? 'ring-1 ring-red-500 bg-red-900/40 hover:bg-red-900/60 shadow-[0_0_10px_rgba(255,0,0,0.4)]'
               : 'hover:bg-white/10'
         }`}
       >
         {/* Position Badge & Injury */}
         <div className="flex gap-0.5 items-center mb-0.5 z-10 transition-opacity duration-300">
-          <span className={`text-[8px] font-black px-1 rounded-sm uppercase tracking-tighter shadow-sm ${isOOP && viewMode === 'tactics' ? 'bg-red-500 text-white' : 'bg-neon-cyan text-black'}`}>
+          <span className={`text-[8px] font-black px-1 rounded-sm uppercase tracking-tighter shadow-sm ${isOOP && viewMode === 'lineup' ? 'bg-red-500 text-white' : 'bg-neon-cyan text-black'}`}>
             {player.position}
           </span>
           {player.is_injured && <span className="text-[8px] drop-shadow-[0_0_2px_rgba(255,0,0,0.8)]">🚑</span>}
@@ -343,7 +343,7 @@ export default function LineupPage() {
 
         {/* Dynamic Center Content based on View Mode */}
         <div className="relative flex flex-col items-center justify-center h-10 w-full transition-all duration-300">
-          {viewMode === 'tactics' ? (
+          {viewMode === 'lineup' ? (
             <div className="relative flex items-center justify-center animate-in fade-in zoom-in duration-300">
               <Shirt className={`w-9 h-9 drop-shadow-md ${isOOP ? 'text-red-500' : 'text-white'} transition-colors duration-300`} fill={isOOP ? '#ef4444' : '#ffffff'} fillOpacity={0.2} strokeWidth={1.5} />
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none mt-1">
@@ -368,7 +368,7 @@ export default function LineupPage() {
         </span>
         
         {/* Old Stamina Bar (Hidden in fitness mode since we have a bigger one) */}
-        {viewMode === 'tactics' && (
+        {viewMode === 'lineup' && (
           <div className="w-10 h-1 mt-1 bg-gray-900 rounded-full overflow-hidden border border-gray-700 animate-in fade-in duration-300">
             <div className={`h-full ${player.stamina > 70 ? 'bg-neon-green' : player.stamina > 30 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${player.stamina}%` }}></div>
           </div>
@@ -523,7 +523,7 @@ export default function LineupPage() {
                   if (!scoutReport) {
                     setIsLoadingScout(true);
                     import('@/app/actions/scoutActions').then(({ getUpcomingOpponentScoutReport }) => {
-                      getUpcomingOpponentScoutReport(userId).then(res => {
+                      getUpcomingOpponentScoutReport(userId!).then(res => {
                         if (res.success && res.data) setScoutReport(res.data);
                         setIsLoadingScout(false);
                       });
@@ -699,6 +699,9 @@ export default function LineupPage() {
             </div>
           </div>
         </div>
+        )}
+      </div>
+    </div>
 
       {/* SUBMISSION & ACTIONS AREA (GLOBAL) */}
       <div className="mt-auto flex flex-col gap-3 pt-4">
