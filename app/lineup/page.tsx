@@ -238,6 +238,8 @@ export default function LineupPage() {
         
         if (!res.success) {
           toast.error(res.error || 'Failed to auto-save swap');
+        } else {
+          toast.success('Lineup Saved', { position: 'top-center', duration: 1500 });
         }
       }
     } catch (err: any) {
@@ -282,6 +284,7 @@ export default function LineupPage() {
       const res = await updateTeamFormation(team.id, newFormation);
       if (res.success) {
         setTeam(prev => prev ? { ...prev, formation: newFormation } : prev);
+        toast.success('Formation Saved', { position: 'top-center', duration: 1500 });
       } else {
         toast.error(res.error || 'Failed to change formation');
         // Rollback on error
@@ -402,34 +405,6 @@ export default function LineupPage() {
   const TAX_RATE_PER_OVR = 50;
   const expectedTax = Math.max(0, (averageOvr - LEAGUE_OVR_CAP) * TAX_RATE_PER_OVR);
 
-  const handleSubmitLineup = async () => {
-    if (!userId || !team) return;
-    setIsSubmitting(true);
-    setSubmitMessage(null);
-
-    try {
-      const res = await fetch('/api/team/submit-lineup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, teamId: team.id }),
-      });
-
-      const json = await res.json();
-      if (res.ok && json.success) {
-        toast.success(json.message || 'Lineup submitted');
-        setSubmitMessage({ text: json.message, type: 'success' });
-        setTeam(prev => prev ? { ...prev, is_ready_for_match: true } : prev);
-      } else {
-        toast.error(json.error || 'Failed to submit lineup');
-        setSubmitMessage({ text: json.error || 'Failed to submit lineup', type: 'error' });
-      }
-    } catch (err: any) {
-      toast.error(err.message || 'Network error connecting to backend servers.');
-      setSubmitMessage({ text: 'Network error connecting to backend servers.', type: 'error' });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   if (isAuthLoading || isLoading || !team) {
     return <CyberLoader fullScreen />;
@@ -464,32 +439,28 @@ export default function LineupPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 p-3 gap-2 pb-6 bg-space-dark min-h-screen">
-      {/* COMPACT PREMIUM HEADER */}
-      <header className="grid grid-cols-3 gap-2 bg-black/40 border border-gray-800 p-3 rounded-xl shadow-lg backdrop-blur-md">
-        <div className="col-span-2 flex flex-col justify-center">
-          <h1 className="text-lg font-black text-white tracking-tight uppercase leading-none">{team.name}</h1>
+    <div className="flex flex-col min-h-[calc(100vh-80px)] bg-[#0B0E14] overflow-hidden">
+      {/* SHAPKA */}
+      <header className="bg-gray-900/50 rounded-2xl p-4 m-4 mb-2 flex justify-between items-center border border-white/5 shadow-lg backdrop-blur-md shrink-0">
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-black text-white tracking-tight uppercase leading-none">{team.name}</h1>
+            {expectedTax > 0 ? (
+               <span className="text-[10px] bg-red-900/40 text-neon-pink border border-neon-pink/30 px-1.5 py-0.5 rounded uppercase font-bold animate-pulse">Tax (-{expectedTax})</span>
+            ) : (
+               <span className="text-[10px] bg-green-900/40 text-neon-green border border-neon-green/30 px-1.5 py-0.5 rounded uppercase font-bold">Tax Exempt</span>
+            )}
+          </div>
           <p className="text-[10px] text-neon-cyan uppercase tracking-widest mt-1">Squad Management</p>
         </div>
-        <div className="col-span-1 flex flex-col items-end justify-center border-l border-gray-800 pl-2">
+        <div className="flex flex-col items-end justify-center">
           <div className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Power</div>
           <div className="text-xl font-black text-neon-green drop-shadow-[0_0_5px_rgba(57,255,20,0.5)] leading-none">{averageOvr}</div>
         </div>
-        {/* Luxury Tax Mini-Bar inside the same block */}
-        <div className={`col-span-3 mt-1 flex items-center justify-between px-2 py-1.5 rounded-lg border text-[10px] uppercase tracking-widest font-bold ${
-          expectedTax > 0 
-            ? 'bg-red-900/20 border-neon-pink/50 text-neon-pink shadow-[0_0_10px_rgba(255,0,60,0.2)]' 
-            : 'bg-green-900/20 border-neon-green/30 text-neon-green'
-        }`}>
-          <span>{expectedTax > 0 ? 'Tax Penalty' : 'Tax Exempt'}</span>
-          <span>{expectedTax > 0 ? `-${expectedTax} FC` : `Soft Cap: ${LEAGUE_OVR_CAP} OVR`}</span>
-        </div>
       </header>
 
-      <div className="flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-200">
-          
-          {/* VIEW MODE TOGGLE */}
-          <div className="flex justify-center mt-2 mb-1">
+      {/* TABS */}
+      <div className="flex justify-center mt-2 mb-1 z-10 relative shrink-0">
             <div className="bg-black/40 p-1 rounded-full border border-gray-800 flex shadow-[0_0_15px_rgba(0,240,255,0.05)] backdrop-blur-md relative overflow-hidden">
               <div 
                 className={`absolute top-1 bottom-1 w-[48%] bg-white/10 rounded-full transition-transform duration-500 ease-out border border-white/20 ${viewMode === 'lineup' ? 'translate-x-0' : 'translate-x-[104%]'}`}
@@ -528,9 +499,10 @@ export default function LineupPage() {
             </div>
           </div>
 
-          <div className="relative min-h-[400px]">
+      {/* PITCH */}
+      <div className="flex-1 relative overflow-hidden w-full mt-2">
           {viewMode === 'scout' ? (
-            <div className="absolute inset-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="absolute inset-0 animate-in fade-in p-4 overflow-y-auto">
               <div className="flex flex-col border border-gray-800 bg-black/60 rounded-xl overflow-hidden min-h-[300px]">
                 {isLoadingScout ? (
                   <div className="flex-1 flex justify-center items-center py-12">
@@ -560,8 +532,8 @@ export default function LineupPage() {
               </div>
             </div>
           ) : (
-            <div className="animate-in fade-in slide-in-from-top-4 duration-500">
-          <div className="flex justify-center items-center mb-1 gap-2">
+            <div className="absolute inset-0 flex flex-col animate-in fade-in duration-500">
+          <div className="flex justify-center items-center mb-1 gap-2 shrink-0">
             <button
               onClick={() => setShowChemistry(!showChemistry)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-300 ${
@@ -622,7 +594,7 @@ export default function LineupPage() {
               }
             />
           </div>
-          <div className="flex justify-center gap-2 mb-[-10px] z-20">
+          <div className="flex justify-center gap-2 shrink-0 z-20 mt-1 mb-2">
             {['4-4-2', '4-3-3', '3-5-2'].map(f => {
               const isRealActive = currentFormation === f;
               return (
@@ -642,7 +614,7 @@ export default function LineupPage() {
             })}
           </div>
 
-          <div className={`relative w-full aspect-[3/4] bg-green-950/30 border-2 border-neon-green/40 rounded-lg overflow-hidden shadow-[inset_0_0_40px_rgba(57,255,20,0.05)] flex flex-col items-center justify-around transition-opacity duration-300 ${isFormationLoading ? 'opacity-50 blur-sm' : 'opacity-100'}`}>
+          <div className={`flex-1 relative w-[96%] mx-auto bg-green-950/30 border-2 border-neon-green/40 rounded-lg overflow-hidden shadow-[inset_0_0_40px_rgba(57,255,20,0.05)] flex flex-col items-center justify-around transition-opacity duration-300 ${isFormationLoading ? 'opacity-50 blur-sm' : 'opacity-100'}`}>
             {/* Abstract Pitch Markings */}
             <div className="absolute top-0 w-1/2 h-16 border-2 border-t-0 border-neon-green/20 rounded-b-md"></div>
             <div className="absolute bottom-0 w-1/2 h-16 border-2 border-b-0 border-neon-green/20 rounded-t-md"></div>
@@ -676,62 +648,34 @@ export default function LineupPage() {
             </div>
           </div>
 
-          {/* BENCH / SUBSTITUTES (PITCH VIEW) */}
-          <div className="mt-2">
-            <h3 className="text-xs font-bold text-white mb-2 uppercase tracking-widest border-b border-gray-800 pb-1">
-              Substitutes Bench
-            </h3>
-            <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-              {[11, 12, 13, 14, 15].map(idx => renderPitchMarker(idx))}
-            </div>
-          </div>
         </div>
         )}
       </div>
-    </div>
 
-      {/* SUBMISSION & ACTIONS AREA (GLOBAL) */}
-      <div className="mt-auto flex flex-col gap-2 pt-2">
-        {submitMessage && (
-          <div className={`p-2 rounded text-[10px] uppercase tracking-widest text-center border font-semibold ${submitMessage.type === 'error' ? 'bg-red-900/20 text-red-400 border-red-900/50' : 'bg-green-900/20 text-neon-green border-neon-green/40 shadow-[0_0_10px_rgba(57,255,20,0.2)]'}`}>
-            {submitMessage.text}
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          {/* Mass Heal Button */}
-          {players.filter(p => p.stamina < 100).length > 0 && (
-            <button 
-              onClick={handleMassHeal}
-              disabled={isHealingAll || isSubmitting || isSwapping}
-              className={`flex-1 py-3 rounded-lg font-bold text-[10px] uppercase tracking-wider flex justify-center items-center gap-1.5 transition-all ${
-                isHealingAll || isSubmitting || isSwapping
-                  ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                  : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 hover:bg-yellow-500 hover:text-black shadow-[0_0_10px_rgba(234,179,8,0.2)]'
-              }`}
-            >
-              <span className="text-sm">⚡</span>
-              <span>Heal (-{players.filter(p => p.stamina < 100).length * 50})</span>
-            </button>
-          )}
-
-          {/* Submit Lineup Button */}
-          <button 
-            onClick={handleSubmitLineup}
-            disabled={isSubmitting || isSwapping || starterCount === 0}
-            className={`flex-1 py-3 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all duration-300 ${
-              isSubmitting || isSwapping || starterCount === 0
-                  ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                  : 'bg-neon-cyan text-black hover:bg-white hover:text-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.4)]'
-            }`}
-          >
-            {isSubmitting 
-                ? 'Wait...' 
-                : isSwapping
-                  ? 'Swapping...'
-                  : 'Submit'}
-          </button>
-        </div>
+      {/* PODVAL */}
+      <div className="shrink-0 bg-black/60 border-t border-white/5 p-3 flex flex-col gap-2 z-20 pb-4">
+         {submitMessage && (
+           <div className={`p-1.5 rounded text-[10px] uppercase tracking-widest text-center border font-semibold ${submitMessage.type === 'error' ? 'bg-red-900/20 text-red-400 border-red-900/50' : 'bg-green-900/20 text-neon-green border-neon-green/40'}`}>
+             {submitMessage.text}
+           </div>
+         )}
+         <div className="flex gap-2 overflow-x-auto custom-scrollbar justify-center">
+           {[11, 12, 13, 14, 15].map(idx => renderPitchMarker(idx))}
+         </div>
+         {players.filter(p => p.stamina < 100).length > 0 && (
+           <button 
+             onClick={handleMassHeal}
+             disabled={isHealingAll || isSubmitting || isSwapping}
+             className={`w-full py-2.5 rounded-lg font-bold text-[10px] uppercase tracking-wider flex justify-center items-center gap-1.5 transition-all ${
+               isHealingAll || isSubmitting || isSwapping
+                 ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                 : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 hover:bg-yellow-500 hover:text-black shadow-[0_0_10px_rgba(234,179,8,0.2)]'
+             }`}
+           >
+             <span className="text-sm">⚡</span>
+             <span>Heal (-{players.filter(p => p.stamina < 100).length * 50})</span>
+           </button>
+         )}
       </div>
 
 
