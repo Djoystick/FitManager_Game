@@ -10,9 +10,9 @@ import { OnboardingFlow } from '@/components/OnboardingFlow';
 import { FitnessSyncWidget } from '@/components/FitnessSyncWidget';
 import { MatchHistoryWidget } from '@/components/MatchHistoryWidget';
 import { CyberLoader } from '@/components/ui/CyberLoader';
-import { Users, Trophy, ShoppingCart, Building2, User, BookOpen } from 'lucide-react';
+import { Users, Trophy, User, Shield, Activity, Coins, Gem } from 'lucide-react';
 import { getUnviewedMatch } from '@/app/actions/matchActions';
-import { MatchReportModal, MatchReport } from '@/components/MatchReportModal';
+import { MatchReport } from '@/components/MatchReportModal';
 
 interface UserData {
   wallet_address: string | null;
@@ -28,11 +28,8 @@ export default function DashboardPage() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [hasTeam, setHasTeam] = useState<boolean | null>(null);
   const [teamName, setTeamName] = useState<string | null>(null);
+  const [players, setPlayers] = useState<any[]>([]);
   const [isDataLoading, setIsDataLoading] = useState(true);
-  const [unviewedMatch, setUnviewedMatch] = useState<MatchReport | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalUserTeamId, setModalUserTeamId] = useState<string>('');
-
   const [firstName, setFirstName] = useState('Manager');
 
   useEffect(() => {
@@ -65,39 +62,22 @@ export default function DashboardPage() {
         } else {
           setHasTeam(true);
           setTeamName(teamJson.team.name);
+          setPlayers(teamJson.players || []);
         }
       } else {
-        setHasTeam(true); // Fallback to allow dashboard to render, or could handle error
+        setHasTeam(true);
       }
     } catch (error) {
       console.error("Failed to fetch user data", error);
-      setHasTeam(true); // Fallback
+      setHasTeam(true);
     } finally {
       setIsDataLoading(false);
     }
   };
 
-  const handleMatchClick = (match: MatchReport, teamId: string) => {
-    setModalUserTeamId(teamId);
-    setUnviewedMatch(match);
-  };
-
-  const [hasUnviewedMatch, setHasUnviewedMatch] = useState(false);
-
   useEffect(() => {
     if (isAuthenticated && userId) {
       fetchUserData(userId);
-      console.log('Checking for unviewed matches...');
-      getUnviewedMatch(userId).then(res => {
-        if (res.success && res.data) {
-          console.log('Found unviewed match:', res.data);
-          setHasUnviewedMatch(true);
-        } else {
-          setHasUnviewedMatch(false);
-        }
-      }).catch(err => {
-        console.error('getUnviewedMatch failed:', err);
-      });
     } else if (!isAuthLoading && !isAuthenticated) {
       setIsDataLoading(false); 
       setHasTeam(true); 
@@ -116,118 +96,65 @@ export default function DashboardPage() {
     return <OnboardingFlow userId={userId} onSuccess={() => fetchUserData(userId)} />;
   }
 
-  return (
-    <div className="flex flex-col flex-1 p-6 gap-8">
+  const teamOvr = players.length ? Math.round(players.reduce((sum, p) => sum + (p.ovr || 0), 0) / players.length) : 0;
+  const avgStamina = players.length ? Math.round(players.reduce((sum, p) => sum + (p.stamina || 0), 0) / players.length) : 0;
 
-      {/* HEADER SECTION */}
-      <header className="bg-black/60 border border-gray-800 rounded-xl p-4 shadow-[0_4px_20px_rgba(0,0,0,0.5)] flex items-center justify-between">
+  return (
+    <div className="flex flex-col flex-1 p-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+      {/* PREMIUM TOP BAR */}
+      <header className="flex items-center justify-between bg-black/60 border border-gray-800 rounded-2xl p-3 shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neon-pink to-neon-cyan flex items-center justify-center shadow-[0_0_10px_rgba(255,0,100,0.3)]">
-            <Trophy className="text-white w-5 h-5" />
+          <div className="w-10 h-10 rounded-full bg-gray-900 border border-neon-cyan flex items-center justify-center shadow-[0_0_10px_rgba(0,240,255,0.3)]">
+            <User className="text-neon-cyan w-5 h-5" />
           </div>
-          <div>
-            <h1 className={`text-lg font-bold text-white tracking-wider uppercase ${headerFontClass}`}>
-              {teamName || 'Manager Dashboard'}
+          <div className="flex flex-col">
+            <h1 className={`text-sm font-black text-white uppercase tracking-wider ${headerFontClass}`}>
+              {teamName || 'Unknown Team'}
             </h1>
-            <p className="text-xs text-gray-400 font-mono mt-0.5">Manager: <span className="text-neon-pink">{firstName}</span></p>
+            <span className="text-[10px] text-gray-500 font-mono">ID: {firstName}</span>
           </div>
         </div>
-        <div>
-          {userData?.wallet_address ? (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-black/80 border border-neon-green/30">
-              <div className="w-1.5 h-1.5 rounded-full bg-neon-green animate-pulse"></div>
-              <span className="text-[10px] font-mono text-neon-green">{shortenAddress(userData.wallet_address)}</span>
-            </div>
-          ) : (
-            <div className="scale-75 origin-right opacity-80 hover:opacity-100 transition-opacity">
-              <WalletConnect />
-            </div>
-          )}
+        
+        <div className="flex gap-2">
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-yellow-900/20 border border-yellow-500/30">
+            <Coins className="w-3.5 h-3.5 text-yellow-500" />
+            <span className="text-xs font-black text-yellow-500">1,250</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-purple-900/20 border border-purple-500/30">
+            <Gem className="w-3.5 h-3.5 text-purple-500" />
+            <span className="text-xs font-black text-purple-500">14</span>
+          </div>
         </div>
       </header>
 
-      {/* MANAGER DASHBOARD */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-        {/* Match History Widget */}
-        <div className="md:col-span-2 bg-black/20 rounded-xl p-2 border border-gray-800/50 shadow-inner">
-          {userId && <MatchHistoryWidget userId={userId} teamName={teamName} />}
+      {/* TEAM STATUS WIDGET */}
+      <section className="grid grid-cols-2 gap-4">
+        <div className="bg-gradient-to-br from-black to-gray-900 border border-gray-800 rounded-2xl p-4 flex flex-col items-center justify-center relative overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.3)] group">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-neon-cyan/5 rounded-full blur-2xl group-hover:bg-neon-cyan/10 transition-colors" />
+          <Shield className="w-6 h-6 text-neon-cyan mb-2 opacity-80" />
+          <span className="text-3xl font-black text-white drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]">{teamOvr}</span>
+          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Team OVR</span>
         </div>
 
-        {/* Team Status Card */}
-        <Link 
-          href="/base" 
-          className="relative overflow-hidden group p-5 rounded-xl shadow-[0_4px_20px_rgba(0,240,255,0.15)] border border-neon-cyan/40 bg-gradient-to-br from-cyan-950/80 to-black hover:border-neon-cyan transition-all active:scale-95 flex flex-col justify-between min-h-[140px]"
-        >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-neon-cyan/10 rounded-full blur-3xl group-hover:bg-neon-cyan/30 transition-all -mr-10 -mt-10" />
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="text-neon-cyan w-5 h-5" />
-              <span className={`text-neon-cyan text-[10px] uppercase tracking-widest font-bold ${buttonFontClass}`}>{t.team_status}</span>
-            </div>
-            <div className="bg-neon-cyan/10 p-2 rounded-full border border-neon-cyan/30 group-hover:bg-neon-cyan group-hover:text-black transition-colors text-neon-cyan relative z-10">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            </div>
-          </div>
-          <div>
-            <h3 className={`text-white text-lg font-bold uppercase tracking-wider ${buttonFontClass} drop-shadow-[0_0_5px_rgba(0,240,255,0.3)]`}>
-              {t.training_base}
-            </h3>
-            <p className="text-xs text-gray-400 mt-1 flex items-center gap-2 font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
-              {t.watch_stamina}
-            </p>
-          </div>
-        </Link>
-
-        {/* League Mini-Card */}
-        <Link 
-          href="/league" 
-          className="relative overflow-hidden group p-5 rounded-xl shadow-[0_4px_15px_rgba(188,19,254,0.15)] border border-neon-purple/40 bg-gradient-to-br from-purple-950/80 to-black hover:border-neon-purple transition-all active:scale-95 flex flex-col justify-between min-h-[140px]"
-        >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-neon-purple/10 rounded-full blur-3xl group-hover:bg-neon-purple/30 transition-all -mr-10 -mt-10" />
-          <div className="flex justify-between items-start relative z-10">
-            <div className="flex items-center gap-2 mb-2">
-               <Trophy className="text-neon-purple w-5 h-5" />
-               <span className={`text-neon-purple text-[10px] uppercase tracking-widest font-bold ${buttonFontClass}`}>Ranking</span>
-            </div>
-            <div className="text-gray-500 group-hover:text-neon-purple transition-colors bg-neon-purple/5 group-hover:bg-neon-purple/20 p-2 rounded-full border border-transparent group-hover:border-neon-purple/50 relative z-10">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            </div>
-          </div>
-          <div className="relative z-10">
-            <h3 className={`text-white text-lg font-bold uppercase tracking-wider ${buttonFontClass} drop-shadow-[0_0_5px_rgba(188,19,254,0.3)]`}>
-              {t.league_standings}
-            </h3>
-            <p className="text-xs text-gray-400 mt-1 font-mono">
-              {t.view_global_rankings}
-            </p>
-          </div>
-        </Link>
+        <div className="bg-gradient-to-br from-black to-gray-900 border border-gray-800 rounded-2xl p-4 flex flex-col items-center justify-center relative overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.3)] group">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-green-500/5 rounded-full blur-2xl group-hover:bg-green-500/10 transition-colors" />
+          <Activity className="w-6 h-6 text-green-500 mb-2 opacity-80" />
+          <span className="text-3xl font-black text-white drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]">{avgStamina}%</span>
+          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Avg Stamina</span>
+        </div>
       </section>
 
-      {/* Secondary Actions */}
-      <section className="flex flex-col gap-4 mt-1">
-        <Link href="/profile" className="flex items-center justify-center gap-2 p-3 rounded-lg border border-gray-800 bg-black/40 hover:bg-gray-900 hover:border-gray-700 transition-colors active:scale-95 text-gray-400 hover:text-white">
-          <User size={16} />
-          <span className={`text-xs uppercase font-bold tracking-widest ${buttonFontClass}`}>Profile</span>
-        </Link>
+      {/* MATCH JOURNAL (RESTRICTED TO 3 ITEMS) */}
+      <section className="bg-black/40 rounded-2xl p-2 border border-gray-800/50 shadow-inner">
+        {userId && <MatchHistoryWidget userId={userId} teamName={teamName} />}
       </section>
 
       {/* FITNESS SYNC WIDGET SECTION */}
-      <section className="mt-2 w-full">
+      <section className="mt-2 w-full animate-in fade-in slide-in-from-bottom-6 duration-700">
         <FitnessSyncWidget />
       </section>
 
-      {isModalOpen && unviewedMatch && (
-        <MatchReportModal
-          report={unviewedMatch}
-          userTeamId={modalUserTeamId}
-          onClose={() => {
-            setIsModalOpen(false);
-            setUnviewedMatch(null);
-          }}
-        />
-      )}
     </div>
   );
 }

@@ -59,7 +59,9 @@ export default function LineupPage() {
   const [isHealingAll, setIsHealingAll] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
-  const [viewMode, setViewMode] = useState<'tactics' | 'fitness'>('tactics');
+  const [viewMode, setViewMode] = useState<'lineup' | 'scout'>('lineup');
+  const [scoutReport, setScoutReport] = useState<any>(null);
+  const [isLoadingScout, setIsLoadingScout] = useState(false);
   const [activeFormation, setActiveFormation] = useState('4-4-2');
   const [hasCheckedCorruption, setHasCheckedCorruption] = useState(false);
   const [activeHUD, setActiveHUD] = useState<{player: Player, x: number, y: number, isBelow?: boolean} | null>(null);
@@ -503,32 +505,75 @@ export default function LineupPage() {
           <div className="flex justify-center mt-2 mb-1">
             <div className="bg-black/40 p-1 rounded-full border border-gray-800 flex shadow-[0_0_15px_rgba(0,240,255,0.05)] backdrop-blur-md relative overflow-hidden">
               <div 
-                className={`absolute top-1 bottom-1 w-[48%] bg-white/10 rounded-full transition-transform duration-300 ease-out border border-white/20 ${viewMode === 'tactics' ? 'translate-x-0' : 'translate-x-[104%]'}`}
+                className={`absolute top-1 bottom-1 w-[48%] bg-white/10 rounded-full transition-transform duration-500 ease-out border border-white/20 ${viewMode === 'lineup' ? 'translate-x-0' : 'translate-x-[104%]'}`}
               ></div>
               <button
-                onClick={() => setViewMode('tactics')}
-                className={`relative px-5 py-1.5 text-[10px] z-10 font-black uppercase tracking-widest rounded-full transition-colors duration-300 w-24 ${
-                  viewMode === 'tactics'
+                onClick={() => setViewMode('lineup')}
+                className={`relative px-5 py-1.5 text-[10px] z-10 font-black uppercase tracking-widest rounded-full transition-colors duration-300 w-28 ${
+                  viewMode === 'lineup'
                     ? 'text-neon-cyan drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]'
                     : 'text-gray-500 hover:text-white'
                 }`}
               >
-                Tactics
+                Lineup
               </button>
               <button
-                onClick={() => setViewMode('fitness')}
-                className={`relative px-5 py-1.5 text-[10px] z-10 font-black uppercase tracking-widest rounded-full transition-colors duration-300 w-24 ${
-                  viewMode === 'fitness'
-                    ? 'text-neon-green drop-shadow-[0_0_8px_rgba(57,255,20,0.8)]'
+                onClick={() => {
+                  setViewMode('scout');
+                  if (!scoutReport) {
+                    setIsLoadingScout(true);
+                    import('@/app/actions/scoutActions').then(({ getUpcomingOpponentScoutReport }) => {
+                      getUpcomingOpponentScoutReport(userId).then(res => {
+                        if (res.success && res.data) setScoutReport(res.data);
+                        setIsLoadingScout(false);
+                      });
+                    });
+                  }
+                }}
+                className={`relative px-5 py-1.5 text-[10px] z-10 font-black uppercase tracking-widest rounded-full transition-colors duration-300 w-28 ${
+                  viewMode === 'scout'
+                    ? 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]'
                     : 'text-gray-500 hover:text-white'
                 }`}
               >
-                Fitness
+                Scout Intel
               </button>
             </div>
           </div>
 
-          {/* TACTICAL PITCH UI */}
+          <div className="relative min-h-[400px]">
+          {viewMode === 'scout' ? (
+            <div className="absolute inset-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex flex-col border border-gray-800 bg-black/60 rounded-xl overflow-hidden min-h-[300px]">
+                {isLoadingScout ? (
+                  <div className="flex-1 flex justify-center items-center py-12">
+                     <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                ) : !scoutReport || scoutReport.players.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center py-12 text-gray-500">
+                    <p className="text-sm uppercase tracking-widest font-bold">Scouts found no intel</p>
+                    <p className="text-xs mt-2 text-center max-w-xs">Data is restricted or opponent roster is empty.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col">
+                    <div className="bg-gradient-to-r from-red-900/30 to-transparent p-4 border-b border-red-900/30">
+                      <h3 className="text-white text-lg font-black uppercase tracking-wider">{scoutReport.opponent_team_name}</h3>
+                      <p className="text-[10px] text-red-400 uppercase tracking-widest">Next Target (Round {scoutReport.round_number})</p>
+                    </div>
+                    <div className="p-4 flex flex-col gap-2">
+                      {scoutReport.players.sort((a: any, b: any) => b.ovr_estimated - a.ovr_estimated).map((player: any) => (
+                        <div key={player.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-900/50 border border-gray-800">
+                          <div className="text-sm font-bold text-white">{player.name}</div>
+                          <div className="text-lg font-black text-red-500">{player.ovr_estimated}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="animate-in fade-in slide-in-from-top-4 duration-500">
           <div className="flex justify-center items-center mb-1 gap-2">
             <button
               onClick={() => setShowChemistry(!showChemistry)}

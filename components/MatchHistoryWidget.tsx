@@ -76,7 +76,7 @@ export function MatchHistoryWidget({ userId, teamName }: { userId: string; teamN
           </div>
         ) : (
           <div className="flex flex-col divide-y divide-gray-800/50 max-h-[180px] overflow-y-auto custom-scrollbar">
-            {history.map((match) => {
+            {history.slice(0, 3).map((match) => {
               const isHome = match.home_team_id === userTeamId;
               const isWin = isHome ? match.home_score > match.away_score : match.away_score > match.home_score;
               const isDraw = match.home_score === match.away_score;
