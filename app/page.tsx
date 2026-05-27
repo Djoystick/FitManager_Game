@@ -12,7 +12,7 @@ import { MatchHistoryWidget } from '@/components/MatchHistoryWidget';
 import { CyberLoader } from '@/components/ui/CyberLoader';
 import { Users, Trophy, ShoppingCart, Building2, User, BookOpen } from 'lucide-react';
 import { getUnviewedMatch } from '@/app/actions/matchActions';
-import { MatchReport } from '@/components/MatchReportModal';
+import { MatchReportModal, MatchReport } from '@/components/MatchReportModal';
 import { UpcomingMatchWidget } from '@/components/UpcomingMatchWidget';
 
 interface UserData {
