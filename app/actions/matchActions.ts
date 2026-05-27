@@ -130,26 +130,38 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
     // Загрузка составов по слотам 0-10 (строго стартовый состав)
     const startingSlots = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 
-    const { data: homePlayers, error: hpError } = await supabaseAdmin
+    let { data: homePlayers, error: hpError } = await supabaseAdmin
       .from('players')
       .select('*')
       .eq('team_id', match.home_team_id)
       .in('lineup_slot', startingSlots);
     
-    const { data: awayPlayers, error: apError } = await supabaseAdmin
+    let { data: awayPlayers, error: apError } = await supabaseAdmin
       .from('players')
       .select('*')
       .eq('team_id', match.away_team_id)
       .in('lineup_slot', startingSlots);
 
-    if (hpError || apError || !homePlayers || !awayPlayers) {
+    if (hpError || apError) {
       console.log(`[resolveMatch] Failed to load lineups`);
       return { success: false, error: 'Failed to load lineups' };
     }
     
-    if (homePlayers.length !== 11 || awayPlayers.length !== 11) {
-      console.warn(`[resolveMatch] Lineups incomplete. Home: ${homePlayers?.length}, Away: ${awayPlayers?.length}. Match ${matchId}`);
-      return { success: false, error: `Incomplete lineup. Home has ${homePlayers?.length}, Away has ${awayPlayers?.length}. Exact 11 required.` };
+    if (!homePlayers || homePlayers.length < 11) {
+      console.warn(`[resolveMatch] Home lineup incomplete (${homePlayers?.length}). Using fallback to select any 11 players.`);
+      const { data: fallbackHome } = await supabaseAdmin.from('players').select('*').eq('team_id', match.home_team_id).limit(11);
+      homePlayers = fallbackHome || [];
+    }
+
+    if (!awayPlayers || awayPlayers.length < 11) {
+      console.warn(`[resolveMatch] Away lineup incomplete (${awayPlayers?.length}). Using fallback to select any 11 players.`);
+      const { data: fallbackAway } = await supabaseAdmin.from('players').select('*').eq('team_id', match.away_team_id).limit(11);
+      awayPlayers = fallbackAway || [];
+    }
+
+    if (homePlayers.length < 11 || awayPlayers.length < 11) {
+      console.warn(`[resolveMatch] Critical: Cannot find 11 players even with fallback. Home: ${homePlayers.length}, Away: ${awayPlayers.length}`);
+      return { success: false, error: `Critical: Cannot find 11 players for teams. Home: ${homePlayers.length}, Away: ${awayPlayers.length}` };
     }
     console.log(`[resolveMatch] Lineups loaded successfully (11 vs 11).`);
 

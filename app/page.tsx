@@ -76,6 +76,11 @@ export default function DashboardPage() {
     }
   };
 
+  const handleMatchClick = (match: MatchReport, teamId: string) => {
+    setModalUserTeamId(teamId);
+    setUnviewedMatch(match);
+  };
+
   useEffect(() => {
     if (isAuthenticated && userId) {
       fetchUserData(userId);
@@ -84,8 +89,7 @@ export default function DashboardPage() {
         console.log('getUnviewedMatch result:', res);
         if (res.success && res.data) {
           console.log('Found unviewed match:', res.data);
-          setUnviewedMatch(res.data as MatchReport);
-          setModalUserTeamId(res.userTeamId as string);
+          handleMatchClick(res.data as MatchReport, res.userTeamId as string);
         } else {
           console.log('No unviewed matches found.');
         }
