@@ -89,22 +89,20 @@ export function MatchHistoryWidget({ userId, teamName }: { userId: string; teamN
                   onClick={() => setSelectedReport(match)}
                   className="flex items-center justify-between p-3 hover:bg-gray-800/50 transition-colors text-left active:bg-gray-800"
                 >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="flex items-center gap-3 w-full">
                     <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-black shrink-0 ${isDraw ? 'bg-gray-800 text-gray-400' : isWin ? 'bg-green-900/30 text-neon-green border border-neon-green/30' : 'bg-red-900/30 text-red-500 border border-red-500/30'}`}>
                       {resultLetter}
                     </div>
-                    <div className="flex flex-col flex-1 min-w-0">
-                      <div className="flex justify-between items-center gap-2">
-                        <span className={`text-xs font-bold truncate ${isHome ? 'text-white' : 'text-gray-400'}`}>
-                          {match.home_team_name}
-                        </span>
-                        <span className="text-xs font-black text-white shrink-0 font-orbitron w-10 text-center">
-                          {match.home_score} - {match.away_score}
-                        </span>
-                        <span className={`text-xs font-bold truncate text-right ${!isHome ? 'text-white' : 'text-gray-400'}`}>
-                          {match.away_team_name}
-                        </span>
-                      </div>
+                    <div className="flex flex-1 items-center gap-1 min-w-0">
+                      <span className={`flex-1 text-xs font-bold truncate text-right ${isHome ? 'text-white' : 'text-gray-400'}`}>
+                        {match.home_team_name}
+                      </span>
+                      <span className="w-14 shrink-0 text-xs font-black text-white font-orbitron text-center">
+                        {match.home_score} - {match.away_score}
+                      </span>
+                      <span className={`flex-1 text-xs font-bold truncate text-left ${!isHome ? 'text-white' : 'text-gray-400'}`}>
+                        {match.away_team_name}
+                      </span>
                     </div>
                   </div>
                 </button>

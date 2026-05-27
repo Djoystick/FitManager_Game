@@ -461,13 +461,13 @@ export default function LineupPage() {
 
       {/* TABS */}
       <div className="flex justify-center mt-2 mb-1 z-10 relative shrink-0">
-            <div className="bg-black/40 p-1 rounded-full border border-gray-800 flex shadow-[0_0_15px_rgba(0,240,255,0.05)] backdrop-blur-md relative overflow-hidden">
+            <div className="bg-black/40 p-0.5 rounded-full border border-gray-800 flex shadow-sm backdrop-blur-md relative overflow-hidden">
               <div 
-                className={`absolute top-1 bottom-1 w-[48%] bg-white/10 rounded-full transition-transform duration-500 ease-out border border-white/20 ${viewMode === 'lineup' ? 'translate-x-0' : 'translate-x-[104%]'}`}
+                className={`absolute top-0.5 bottom-0.5 w-[48%] bg-white/10 rounded-full transition-transform duration-300 ease-out border border-white/20 ${viewMode === 'lineup' ? 'translate-x-[2%]' : 'translate-x-[102%]'}`}
               ></div>
               <button
                 onClick={() => setViewMode('lineup')}
-                className={`relative px-5 py-1.5 text-[10px] z-10 font-black uppercase tracking-widest rounded-full transition-colors duration-300 w-28 ${
+                className={`relative px-4 py-1 text-[10px] z-10 font-black uppercase tracking-widest rounded-full transition-colors duration-300 w-24 ${
                   viewMode === 'lineup'
                     ? 'text-neon-cyan drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]'
                     : 'text-gray-500 hover:text-white'
@@ -488,7 +488,7 @@ export default function LineupPage() {
                     });
                   }
                 }}
-                className={`relative px-5 py-1.5 text-[10px] z-10 font-black uppercase tracking-widest rounded-full transition-colors duration-300 w-28 ${
+                className={`relative px-4 py-1 text-[10px] z-10 font-black uppercase tracking-widest rounded-full transition-colors duration-300 w-24 ${
                   viewMode === 'scout'
                     ? 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]'
                     : 'text-gray-500 hover:text-white'
@@ -519,11 +519,11 @@ export default function LineupPage() {
                       <h3 className="text-white text-lg font-black uppercase tracking-wider">{scoutReport.opponent_team_name}</h3>
                       <p className="text-[10px] text-red-400 uppercase tracking-widest">Next Target (Round {scoutReport.round_number})</p>
                     </div>
-                    <div className="p-4 flex flex-col gap-2">
+                    <div className="p-2 flex flex-col gap-1">
                       {scoutReport.players.sort((a: any, b: any) => b.ovr_estimated - a.ovr_estimated).map((player: any) => (
-                        <div key={player.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-900/50 border border-gray-800">
-                          <div className="text-sm font-bold text-white">{player.name}</div>
-                          <div className="text-lg font-black text-red-500">{player.ovr_estimated}</div>
+                        <div key={player.id} className="flex items-center justify-between py-1 px-3 rounded bg-gray-900/50 border border-gray-800">
+                          <div className="text-xs font-bold text-white">{player.name}</div>
+                          <div className="text-sm font-black text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.4)]">{player.ovr_estimated}</div>
                         </div>
                       ))}
                     </div>
@@ -653,30 +653,32 @@ export default function LineupPage() {
       </div>
 
       {/* PODVAL */}
-      <div className="shrink-0 bg-black/60 border-t border-white/5 p-3 flex flex-col gap-2 z-20 pb-4">
-         {submitMessage && (
-           <div className={`p-1.5 rounded text-[10px] uppercase tracking-widest text-center border font-semibold ${submitMessage.type === 'error' ? 'bg-red-900/20 text-red-400 border-red-900/50' : 'bg-green-900/20 text-neon-green border-neon-green/40'}`}>
-             {submitMessage.text}
+      {viewMode === 'lineup' && (
+        <div className="shrink-0 bg-black/60 border-t border-white/5 p-3 flex flex-col gap-2 z-20 pb-4">
+           {submitMessage && (
+             <div className={`p-1.5 rounded text-[10px] uppercase tracking-widest text-center border font-semibold ${submitMessage.type === 'error' ? 'bg-red-900/20 text-red-400 border-red-900/50' : 'bg-green-900/20 text-neon-green border-neon-green/40'}`}>
+               {submitMessage.text}
+             </div>
+           )}
+           <div className="flex gap-2 overflow-x-auto custom-scrollbar justify-center">
+             {[11, 12, 13, 14, 15].map(idx => renderPitchMarker(idx))}
            </div>
-         )}
-         <div className="flex gap-2 overflow-x-auto custom-scrollbar justify-center">
-           {[11, 12, 13, 14, 15].map(idx => renderPitchMarker(idx))}
-         </div>
-         {players.filter(p => p.stamina < 100).length > 0 && (
-           <button 
-             onClick={handleMassHeal}
-             disabled={isHealingAll || isSubmitting || isSwapping}
-             className={`w-full py-2.5 rounded-lg font-bold text-[10px] uppercase tracking-wider flex justify-center items-center gap-1.5 transition-all ${
-               isHealingAll || isSubmitting || isSwapping
-                 ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                 : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 hover:bg-yellow-500 hover:text-black shadow-[0_0_10px_rgba(234,179,8,0.2)]'
-             }`}
-           >
-             <span className="text-sm">⚡</span>
-             <span>Heal (-{players.filter(p => p.stamina < 100).length * 50})</span>
-           </button>
-         )}
-      </div>
+           {players.filter(p => p.stamina < 100).length > 0 && (
+             <button 
+               onClick={handleMassHeal}
+               disabled={isHealingAll || isSubmitting || isSwapping}
+               className={`w-full py-2.5 rounded-lg font-bold text-[10px] uppercase tracking-wider flex justify-center items-center gap-1.5 transition-all ${
+                 isHealingAll || isSubmitting || isSwapping
+                   ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                   : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 hover:bg-yellow-500 hover:text-black shadow-[0_0_10px_rgba(234,179,8,0.2)]'
+               }`}
+             >
+               <span className="text-sm">⚡</span>
+               <span>Heal (-{players.filter(p => p.stamina < 100).length * 50})</span>
+             </button>
+           )}
+        </div>
+      )}
 
 
 
