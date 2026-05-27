@@ -147,54 +147,61 @@ export default function DashboardPage() {
       </header>
 
       {/* MANAGER DASHBOARD */}
-      <section className="flex flex-col gap-4 mt-2">
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
         {/* Match History Widget */}
-        {userId && <MatchHistoryWidget userId={userId} teamName={teamName} />}
-
+        <div className="md:col-span-2 bg-black/20 rounded-xl p-2 border border-gray-800/50 shadow-inner">
+          {userId && <MatchHistoryWidget userId={userId} teamName={teamName} />}
+        </div>
 
         {/* Team Status Card */}
         <Link 
           href="/base" 
-          className="relative overflow-hidden group p-5 rounded-xl shadow-[0_4px_20px_rgba(0,240,255,0.15)] border border-neon-cyan/40 bg-gradient-to-r from-cyan-900/40 to-black/80 hover:border-neon-cyan transition-all active:scale-95 flex items-center justify-between"
+          className="relative overflow-hidden group p-5 rounded-xl shadow-[0_4px_20px_rgba(0,240,255,0.15)] border border-neon-cyan/40 bg-gradient-to-br from-cyan-950/80 to-black hover:border-neon-cyan transition-all active:scale-95 flex flex-col justify-between min-h-[140px]"
         >
-          <div className="absolute top-0 right-0 w-24 h-24 bg-neon-cyan/20 rounded-full blur-2xl group-hover:bg-neon-cyan/40 transition-all -mr-10 -mt-10" />
-          <div>
-            <div className="flex items-center gap-2 mb-1">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-neon-cyan/10 rounded-full blur-3xl group-hover:bg-neon-cyan/30 transition-all -mr-10 -mt-10" />
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-2 mb-2">
               <Users className="text-neon-cyan w-5 h-5" />
-              <span className={`text-neon-cyan text-xs uppercase tracking-widest font-bold ${buttonFontClass}`}>{t.team_status}</span>
+              <span className={`text-neon-cyan text-[10px] uppercase tracking-widest font-bold ${buttonFontClass}`}>{t.team_status}</span>
             </div>
-            <h3 className={`text-white text-xl font-bold uppercase tracking-wider ${buttonFontClass}`}>
+            <div className="bg-neon-cyan/10 p-2 rounded-full border border-neon-cyan/30 group-hover:bg-neon-cyan group-hover:text-black transition-colors text-neon-cyan relative z-10">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </div>
+          </div>
+          <div>
+            <h3 className={`text-white text-lg font-bold uppercase tracking-wider ${buttonFontClass} drop-shadow-[0_0_5px_rgba(0,240,255,0.3)]`}>
               {t.training_base}
             </h3>
-            <p className="text-sm text-gray-400 mt-1 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span>
+            <p className="text-xs text-gray-400 mt-1 flex items-center gap-2 font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
               {t.watch_stamina}
             </p>
-          </div>
-          <div className="bg-neon-cyan/10 p-3 rounded-full border border-neon-cyan/30 group-hover:bg-neon-cyan group-hover:text-black transition-colors text-neon-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)] relative z-10">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </div>
         </Link>
 
         {/* League Mini-Card */}
         <Link 
           href="/league" 
-          className="relative overflow-hidden group p-4 rounded-xl shadow-[0_4px_15px_rgba(188,19,254,0.15)] border border-neon-purple/40 bg-gradient-to-br from-purple-900/20 to-black/60 hover:border-neon-purple transition-all active:scale-95 flex items-center justify-between"
+          className="relative overflow-hidden group p-5 rounded-xl shadow-[0_4px_15px_rgba(188,19,254,0.15)] border border-neon-purple/40 bg-gradient-to-br from-purple-950/80 to-black hover:border-neon-purple transition-all active:scale-95 flex flex-col justify-between min-h-[140px]"
         >
-          <div className="flex items-center gap-3 relative z-10">
-            <div className="bg-neon-purple/10 p-2 rounded-lg border border-neon-purple/30">
-              <Trophy className="text-neon-purple w-5 h-5" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-neon-purple/10 rounded-full blur-3xl group-hover:bg-neon-purple/30 transition-all -mr-10 -mt-10" />
+          <div className="flex justify-between items-start relative z-10">
+            <div className="flex items-center gap-2 mb-2">
+               <Trophy className="text-neon-purple w-5 h-5" />
+               <span className={`text-neon-purple text-[10px] uppercase tracking-widest font-bold ${buttonFontClass}`}>Ranking</span>
             </div>
-            <div>
-              <h3 className={`text-white font-bold uppercase tracking-wider text-sm ${buttonFontClass}`}>
-                {t.league_standings}
-              </h3>
-              <p className="text-xs text-gray-500">{t.view_global_rankings}</p>
+            <div className="text-gray-500 group-hover:text-neon-purple transition-colors bg-neon-purple/5 group-hover:bg-neon-purple/20 p-2 rounded-full border border-transparent group-hover:border-neon-purple/50 relative z-10">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </div>
           </div>
-          <span className="text-gray-500 group-hover:text-neon-purple transition-colors relative z-10">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-          </span>
+          <div className="relative z-10">
+            <h3 className={`text-white text-lg font-bold uppercase tracking-wider ${buttonFontClass} drop-shadow-[0_0_5px_rgba(188,19,254,0.3)]`}>
+              {t.league_standings}
+            </h3>
+            <p className="text-xs text-gray-400 mt-1 font-mono">
+              {t.view_global_rankings}
+            </p>
+          </div>
         </Link>
       </section>
 

@@ -1,6 +1,5 @@
 import React from 'react';
 import { supabase } from '@/lib/supabase';
-import { SquadManager } from '@/components/squad/SquadManager';
 import { cookies } from 'next/headers';
 
 import { SquadTabs } from '@/components/squad/SquadTabs';

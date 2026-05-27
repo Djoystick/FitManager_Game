@@ -58,7 +58,7 @@ export async function getMatchHistory(userId: string): Promise<{ success: boolea
       .select('*')
       .eq('is_played', true)
       .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
-      .order('created_at', { ascending: false })
+      .order('round_number', { ascending: false })
       .limit(10);
 
     if (matchesError) {
