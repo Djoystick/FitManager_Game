@@ -135,6 +135,41 @@ export function simulateMatch(
     const atkBreakthrough = getStat(attacker, atkKey, attacker.stats.pace + attacker.stats.dribbling) + (Math.random() * 20);
     const defBreakthrough = getStat(defender, defKey, defender.stats.pace + defender.stats.defending) + (Math.random() * 20);
 
+    // Cards / Injuries Logic (8% chance of hard foul)
+    const foulChance = Math.random();
+    if (foulChance < 0.08) {
+       const eventTypeRandom = Math.random();
+       if (eventTypeRandom < 0.6) {
+           events.push({
+             type: 'yellow_card',
+             minute: currentMinute,
+             player_id: defender.id,
+             player_name: defender.name,
+             team: defKey,
+             details: `ЖЕЛТАЯ КАРТОЧКА! ${defender.name} грубо фолит на ${attacker.name}.`
+           });
+       } else if (eventTypeRandom < 0.8) {
+           events.push({
+             type: 'injury',
+             minute: currentMinute,
+             player_id: attacker.id,
+             player_name: attacker.name,
+             team: atkKey,
+             details: `ТРАВМА! ${attacker.name} получает повреждение в стыке с ${defender.name}.`
+           });
+       } else {
+           events.push({
+             type: 'red_card',
+             minute: currentMinute,
+             player_id: defender.id,
+             player_name: defender.name,
+             team: defKey,
+             details: `КРАСНАЯ КАРТОЧКА! ${defender.name} удален за жесткий подкат под ${attacker.name}!`
+           });
+       }
+       return; // Attack stopped by foul
+    }
+
     if (atkBreakthrough > defBreakthrough) {
       // Micro-Duel 2: Shooting Phase (Attacker SHO+PHY vs Goalkeeper DEF+PHY) + Dice Roll
       const atkShot = getStat(attacker, atkKey, attacker.stats.shooting + attacker.stats.physical) + (Math.random() * 20);

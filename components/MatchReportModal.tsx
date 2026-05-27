@@ -51,6 +51,9 @@ export function MatchReportModal({ report, userTeamId, onClose }: MatchReportMod
   const getEventIcon = (type: string) => {
     if (type === 'goal') return <Target className="w-4 h-4 text-neon-green" />;
     if (type === 'save') return <Shield className="w-4 h-4 text-neon-cyan" />;
+    if (type === 'yellow_card') return <AlertCircle className="w-4 h-4 text-yellow-500" />;
+    if (type === 'red_card') return <AlertCircle className="w-4 h-4 text-red-500" />;
+    if (type === 'injury') return <Activity className="w-4 h-4 text-red-500" />;
     return <AlertCircle className="w-4 h-4 text-gray-500" />;
   };
 

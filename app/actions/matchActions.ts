@@ -146,10 +146,7 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       let starters = players.filter(p => p.lineup_slot !== null && parseInt(p.lineup_slot) <= 10);
       if (starters.length < 11) {
         console.warn(`[resolveMatch] Lineup incomplete (${starters.length}). Using OVR fallback.`);
-        starters = [...players].sort((a, b) => {
-          const getOvr = (p: any) => p.stats ? (p.stats.pace + p.stats.shooting + p.stats.passing + p.stats.dribbling + p.stats.defending + p.stats.physical) : 0;
-          return getOvr(b) - getOvr(a);
-        }).slice(0, 11);
+        starters = [...players].sort((a, b) => (b.ovr || 0) - (a.ovr || 0)).slice(0, 11);
       }
       return starters;
     };
@@ -157,11 +154,19 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
     const homePlayers = getStarters(homePlayersData);
     const awayPlayers = getStarters(awayPlayersData);
 
+    let isTechnicalForfeit = false;
+    let forfeitHomeScore = 0;
+    let forfeitAwayScore = 0;
+
     if (homePlayers.length < 11 || awayPlayers.length < 11) {
-      console.warn(`[resolveMatch] Critical: Cannot find 11 players even with fallback. Home: ${homePlayers.length}, Away: ${awayPlayers.length}`);
-      return { success: false, error: `Critical: Cannot find 11 players for teams. Home: ${homePlayers.length}, Away: ${awayPlayers.length}` };
+      console.warn(`[resolveMatch] Technical Forfeit. Home: ${homePlayers.length}, Away: ${awayPlayers.length}`);
+      isTechnicalForfeit = true;
+      if (homePlayers.length < 11 && awayPlayers.length >= 11) { forfeitHomeScore = 0; forfeitAwayScore = 3; }
+      else if (awayPlayers.length < 11 && homePlayers.length >= 11) { forfeitHomeScore = 3; forfeitAwayScore = 0; }
+      else { forfeitHomeScore = 0; forfeitAwayScore = 0; } // Both forfeit
+    } else {
+      console.log(`[resolveMatch] Lineups loaded successfully (11 vs 11).`);
     }
-    console.log(`[resolveMatch] Lineups loaded successfully (11 vs 11).`);
 
     // Загрузка сыгранности (Chemistry)
     const { data: homeChem } = await supabaseAdmin.from('player_chemistry').select('*').eq('team_id', match.home_team_id);
@@ -197,8 +202,18 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
     const homeLineup = homePlayers.map(mapToMatchPlayer);
     const awayLineup = awayPlayers.map(mapToMatchPlayer);
 
-    console.log(`[resolveMatch] Running Core Match Engine...`);
-    const result = runMatchEngine(homeLineup, awayLineup, homeGreen, awayGreen);
+    let result;
+    if (isTechnicalForfeit) {
+      console.log(`[resolveMatch] Bypassing Core Match Engine due to technical forfeit.`);
+      result = {
+        score: { home: forfeitHomeScore, away: forfeitAwayScore },
+        events: [{ minute: 1, type: 'info', description: 'Match awarded by technical forfeit due to incomplete squad.' }],
+        staminaDrain: { home: {}, away: {} }
+      };
+    } else {
+      console.log(`[resolveMatch] Running Core Match Engine...`);
+      result = runMatchEngine(homeLineup, awayLineup, homeGreen, awayGreen);
+    }
     console.log(`[resolveMatch] Core Engine output score: ${result.score.home}-${result.score.away}`);
 
     // ШАГ В: Обновление матча
@@ -333,9 +348,9 @@ export async function simulateNextPendingMatch(userId: string) {
 
     console.log('[simulateNextPendingMatch] Team ID:', teamData.id);
 
-    const { data: match, error: matchError } = await supabaseAdmin
+    const { data: userMatch, error: matchError } = await supabaseAdmin
       .from('league_matches')
-      .select('id')
+      .select('round_number')
       .eq('status', 'pending')
       .or(`home_team_id.eq.${teamData.id},away_team_id.eq.${teamData.id}`)
       .order('round_number', { ascending: true })
@@ -347,20 +362,35 @@ export async function simulateNextPendingMatch(userId: string) {
       return { success: false, error: matchError.message };
     }
     
-    if (!match) {
+    if (!userMatch) {
       console.log('[simulateNextPendingMatch] No pending match found');
       return { success: false, error: 'No pending matches found for this team' };
     }
 
-    console.log('[simulateNextPendingMatch] Found pending match:', match.id);
-    const result = await resolveMatch(match.id);
-    console.log('[simulateNextPendingMatch] resolveMatch result:', result);
-    
-    if (result.success) {
-      revalidatePath('/', 'page');
-      revalidatePath('/', 'layout');
+    const roundNumber = userMatch.round_number;
+    console.log(`[simulateNextPendingMatch] Simulating entire round: ${roundNumber}`);
+
+    // Fetch all pending matches for this round
+    const { data: roundMatches, error: roundError } = await supabaseAdmin
+      .from('league_matches')
+      .select('id')
+      .eq('status', 'pending')
+      .eq('round_number', roundNumber);
+
+    if (roundError || !roundMatches) {
+      return { success: false, error: 'Failed to fetch round matches' };
     }
-    return result;
+
+    console.log(`[simulateNextPendingMatch] Found ${roundMatches.length} matches to simulate.`);
+
+    // Simulate each match sequentially (could use Promise.all, but sequential is safer for DB locks)
+    for (const rm of roundMatches) {
+      await resolveMatch(rm.id);
+    }
+    
+    revalidatePath('/', 'page');
+    revalidatePath('/', 'layout');
+    return { success: true };
   } catch (error: any) {
     console.error('[simulateNextPendingMatch] Exception:', error);
     return { success: false, error: error.message || 'Unknown exception' };

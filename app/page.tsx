@@ -82,25 +82,25 @@ export default function DashboardPage() {
     setUnviewedMatch(match);
   };
 
+  const [hasUnviewedMatch, setHasUnviewedMatch] = useState(false);
+
   useEffect(() => {
     if (isAuthenticated && userId) {
       fetchUserData(userId);
       console.log('Checking for unviewed matches...');
       getUnviewedMatch(userId).then(res => {
-        console.log('getUnviewedMatch result:', res);
         if (res.success && res.data) {
           console.log('Found unviewed match:', res.data);
-          handleMatchClick(res.data as MatchReport, res.userTeamId as string);
+          setHasUnviewedMatch(true);
         } else {
-          console.log('No unviewed matches found.');
+          setHasUnviewedMatch(false);
         }
       }).catch(err => {
         console.error('getUnviewedMatch failed:', err);
       });
     } else if (!isAuthLoading && !isAuthenticated) {
-      // Allow the loading state to resolve if running outside Telegram
       setIsDataLoading(false); 
-      setHasTeam(true); // mock having team outside telegram
+      setHasTeam(true); 
     }
   }, [isAuthenticated, userId, isAuthLoading]);
 
