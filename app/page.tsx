@@ -30,6 +30,7 @@ export default function DashboardPage() {
   const [teamName, setTeamName] = useState<string | null>(null);
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [unviewedMatch, setUnviewedMatch] = useState<MatchReport | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalUserTeamId, setModalUserTeamId] = useState<string>('');
 
   const [firstName, setFirstName] = useState('Manager');
@@ -209,11 +210,14 @@ export default function DashboardPage() {
         <FitnessSyncWidget />
       </section>
 
-      {unviewedMatch && (
+      {isModalOpen && unviewedMatch && (
         <MatchReportModal
           report={unviewedMatch}
           userTeamId={modalUserTeamId}
-          onClose={() => setUnviewedMatch(null)}
+          onClose={() => {
+            setIsModalOpen(false);
+            setUnviewedMatch(null);
+          }}
         />
       )}
     </div>

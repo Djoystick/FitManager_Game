@@ -96,7 +96,7 @@ export async function getMatchHistory(userId: string): Promise<{ success: boolea
       away_team_name: teamNames[match.away_team_id] || 'Unknown Away Team',
       home_score: match.home_score || 0,
       away_score: match.away_score || 0,
-      events: match.match_events || []
+      events: match.events || []
     }));
 
     return { success: true, data: history };
