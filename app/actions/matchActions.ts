@@ -108,6 +108,7 @@ export async function getMatchHistory(userId: string): Promise<{ success: boolea
 
 export async function resolveMatch(matchId: string): Promise<{ success: boolean; error?: string }> {
   try {
+    console.log(`[resolveMatch] START for matchId: ${matchId}`);
     // ШАГ А: Загрузка данных матча
     const { data: match, error: matchError } = await supabaseAdmin
       .from('league_matches')
@@ -115,8 +116,16 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       .eq('id', matchId)
       .single();
     
-    if (matchError || !match) return { success: false, error: 'Match not found' };
-    if (match.status === 'completed' || match.is_played) return { success: false, error: 'Match already completed' };
+    if (matchError || !match) {
+      console.log(`[resolveMatch] Match not found`);
+      return { success: false, error: 'Match not found' };
+    }
+    if (match.status === 'completed' || match.is_played) {
+      console.log(`[resolveMatch] Match already completed`);
+      return { success: false, error: 'Match already completed' };
+    }
+
+    console.log(`[resolveMatch] Match loaded. Home: ${match.home_team_id}, Away: ${match.away_team_id}`);
 
     // Загрузка составов
     const { data: homePlayers, error: hpError } = await supabaseAdmin
@@ -131,11 +140,16 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       .eq('team_id', match.away_team_id)
       .eq('lineup_status', 'starting');
 
-    if (hpError || apError || !homePlayers || !awayPlayers) return { success: false, error: 'Failed to load lineups' };
+    if (hpError || apError || !homePlayers || !awayPlayers) {
+      console.log(`[resolveMatch] Failed to load lineups`);
+      return { success: false, error: 'Failed to load lineups' };
+    }
     
     if (homePlayers.length !== 11 || awayPlayers.length !== 11) {
-      console.warn(`Lineups incomplete. Home: ${homePlayers?.length}, Away: ${awayPlayers?.length}. Match ${matchId}`);
+      console.warn(`[resolveMatch] Lineups incomplete. Home: ${homePlayers?.length}, Away: ${awayPlayers?.length}. Match ${matchId}`);
+      return { success: false, error: `Incomplete lineup. Home has ${homePlayers?.length}, Away has ${awayPlayers?.length}. Exact 11 required.` };
     }
+    console.log(`[resolveMatch] Lineups loaded successfully (11 vs 11).`);
 
     // Загрузка сыгранности (Chemistry)
     const { data: homeChem } = await supabaseAdmin.from('player_chemistry').select('*').eq('team_id', match.home_team_id);
@@ -147,7 +161,6 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       if (!chemRecords) return greenMap;
       
       chemRecords.forEach(c => {
-         // Упрощенный расчет: если очков >= 70, связь зеленая
          const score = (c.matches_together || 0) + ((c.sweat_points || 0) * 5);
          if (score >= 70) { 
             greenMap[c.player_1_id] = true;
@@ -172,7 +185,9 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
     const homeLineup = homePlayers.map(mapToMatchPlayer);
     const awayLineup = awayPlayers.map(mapToMatchPlayer);
 
+    console.log(`[resolveMatch] Running Core Match Engine...`);
     const result = runMatchEngine(homeLineup, awayLineup, homeGreen, awayGreen);
+    console.log(`[resolveMatch] Core Engine output score: ${result.score.home}-${result.score.away}`);
 
     // ШАГ В: Обновление матча
     const { error: updateMatchError } = await supabaseAdmin
@@ -187,7 +202,10 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       })
       .eq('id', matchId);
 
-    if (updateMatchError) return { success: false, error: 'Failed to save match result' };
+    if (updateMatchError) {
+      console.log(`[resolveMatch] Failed to save match result`, updateMatchError);
+      return { success: false, error: 'Failed to save match result' };
+    }
 
     // ШАГ Г: Обновление стамины
     const updateStamina = async (drainMap: Record<string, number>) => {
@@ -223,10 +241,11 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
     await updateStandings(match.home_team_id, result.score.home, result.score.away);
     await updateStandings(match.away_team_id, result.score.away, result.score.home);
 
+    console.log(`[resolveMatch] SUCCESS for matchId: ${matchId}`);
     return { success: true };
   } catch (error: any) {
-    console.error('Match Resolve Error:', error);
-    return { success: false, error: error.message };
+    console.error('[resolveMatch] Exception:', error);
+    return { success: false, error: error.message || 'Unknown exception in resolveMatch' };
   }
 }
 
@@ -274,13 +293,19 @@ export async function getUnviewedMatch(userId: string) {
 
 export async function simulateNextPendingMatch(userId: string) {
   try {
+    console.log('[simulateNextPendingMatch] START for user:', userId);
     const { data: teamData, error: teamError } = await supabaseAdmin
       .from('teams')
       .select('id')
       .eq('user_id', userId)
       .single();
 
-    if (teamError || !teamData) return { success: false, error: 'Team not found' };
+    if (teamError || !teamData) {
+      console.log('[simulateNextPendingMatch] Team not found');
+      return { success: false, error: 'Team not found' };
+    }
+
+    console.log('[simulateNextPendingMatch] Team ID:', teamData.id);
 
     const { data: match, error: matchError } = await supabaseAdmin
       .from('league_matches')
@@ -291,13 +316,24 @@ export async function simulateNextPendingMatch(userId: string) {
       .limit(1)
       .maybeSingle();
 
-    if (matchError) return { success: false, error: matchError.message };
-    if (!match) return { success: false, error: 'No pending matches found for this team' };
+    if (matchError) {
+      console.error('[simulateNextPendingMatch] Error finding match:', matchError);
+      return { success: false, error: matchError.message };
+    }
+    
+    if (!match) {
+      console.log('[simulateNextPendingMatch] No pending match found');
+      return { success: false, error: 'No pending matches found for this team' };
+    }
 
+    console.log('[simulateNextPendingMatch] Found pending match:', match.id);
     const result = await resolveMatch(match.id);
+    console.log('[simulateNextPendingMatch] resolveMatch result:', result);
+    
     if (result.success) revalidatePath('/');
     return result;
   } catch (error: any) {
-    return { success: false, error: error.message };
+    console.error('[simulateNextPendingMatch] Exception:', error);
+    return { success: false, error: error.message || 'Unknown exception' };
   }
 }

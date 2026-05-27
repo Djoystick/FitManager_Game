@@ -17,8 +17,14 @@ export function AdminConsoleClient({ userId }: Props) {
 
   const handleSimulate = async () => {
     setIsSimulating(true);
-    await simulateNextPendingMatch(userId);
+    const result = await simulateNextPendingMatch(userId);
     setIsSimulating(false);
+    
+    if (result && !result.success) {
+      alert(`Simulation failed: ${result.error}`);
+    } else if (result && result.success) {
+      window.location.href = '/';
+    }
   };
 
   const handleAddSP = async () => {
