@@ -6,7 +6,6 @@ import { WalletConnect } from '@/components/WalletConnect';
 import Link from 'next/link';
 import { dict } from '@/lib/dictionaries';
 import { LanguageContext } from '@/components/LanguageContext';
-import { OnboardingFlow } from '@/components/OnboardingFlow';
 import { MatchHistoryWidget } from '@/components/MatchHistoryWidget';
 import { CyberLoader } from '@/components/ui/CyberLoader';
 import { Users, Trophy, User, Shield, Activity, Coins } from 'lucide-react';
@@ -110,7 +109,10 @@ export default function DashboardPage() {
   }
 
   if (hasTeam === false && userId) {
-    return <OnboardingFlow userId={userId} onSuccess={() => fetchUserData(userId)} />;
+    if (typeof window !== 'undefined') {
+      window.location.href = '/onboarding';
+    }
+    return <CyberLoader fullScreen />;
   }
 
   const teamOvr = players.length ? Math.round(players.reduce((sum, p) => sum + (p.ovr || 0), 0) / players.length) : 0;

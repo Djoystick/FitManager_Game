@@ -4,58 +4,22 @@ import { createClient } from '@supabase/supabase-js';
 import { Trophy, Medal, Target } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { requireTeam } from '@/lib/authGuard';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function LeagueDashboard() {
-  const cookieStore = await cookies();
-  const tgUserId = cookieStore.get('tg_user_id')?.value;
+  const team = await requireTeam();
+  if (!team) return null;
 
-  if (!tgUserId) {
-    redirect('/profile'); // Fallback if no auth
-  }
-
-  // Initialize Admin client to completely bypass RLS
+  // Initialize Admin client to fetch standings
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // 1. AUTO-REGISTER CURRENT USER TO STANDINGS
-  if (tgUserId) {
-    const { data: userTeamData } = await supabaseAdmin
-      .from('teams')
-      .select('id')
-      .eq('user_id', tgUserId)
-      .single();
-
-    if (userTeamData?.id) {
-      const { data: existingStanding } = await supabaseAdmin
-        .from('league_standings')
-        .select('id')
-        .eq('team_id', userTeamData.id)
-        .single();
-
-      if (!existingStanding) {
-        const { error: insertError } = await supabaseAdmin.from('league_standings').insert({
-          team_id: userTeamData.id,
-          matches_played: 0,
-          wins: 0,
-          draws: 0,
-          losses: 0,
-          goals_for: 0,
-          goals_against: 0,
-          points: 0
-        });
-        if (insertError) {
-          console.error("CRITICAL LEAGUE INSERT ERROR:", insertError);
-        }
-      }
-    }
-  }
-
-  // 2. Fetch all standings, sorted by points (descending)
+  // 1. Fetch all standings, sorted by points (descending)
   const { data: standingsData, error } = await supabaseAdmin
     .from('league_standings')
     .select(`
@@ -82,8 +46,7 @@ export default async function LeagueDashboard() {
   // Take top 20
   standings = standings.slice(0, 20);
 
-  // Identify Current User's Team (for highlighting in the table)
-  const currentUserTeam = standings.find((s: any) => s.teams?.user_id === tgUserId)?.teams;
+  // Identity checked in loop using team.id
 
   return (
     <div className="flex flex-col flex-1 p-4 gap-6 pb-24 h-full overflow-y-auto custom-scrollbar">
@@ -118,7 +81,7 @@ export default async function LeagueDashboard() {
               <tbody>
                 {standings.length > 0 ? (
                   standings.map((row, index) => {
-                    const isCurrentUser = row.teams?.user_id === tgUserId;
+                    const isCurrentUser = row.team_id === team.id;
                     const rank = index + 1;
                     
                     return (

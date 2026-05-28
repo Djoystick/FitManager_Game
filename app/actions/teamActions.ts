@@ -1,0 +1,153 @@
+'use server';
+
+import { createClient } from '@supabase/supabase-js';
+import { executeBotSeeding } from '@/app/actions/adminActions';
+import { generateLeagueSchedule } from '@/app/actions/calendarActions';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+
+export interface PlayerStats {
+  pace: number;
+  shooting: number;
+  passing: number;
+  defending: number;
+  physical: number;
+}
+
+function getRandomInt(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+const AVAILABLE_TRAITS = ['Sniper', 'Playmaker', 'Wall', 'Speedster', 'Anchor', 'Poacher', 'Engine'];
+
+function generatePlayer(teamId: string, position: string, lineup_status: string = 'starting', lineup_slot: string | null = null) {
+  const stats: PlayerStats = {
+    pace: getRandomInt(45, 55),
+    shooting: getRandomInt(45, 55),
+    passing: getRandomInt(45, 55),
+    defending: getRandomInt(45, 55),
+    physical: getRandomInt(45, 55),
+  };
+  
+  const ovr = Math.floor((stats.pace + stats.shooting + stats.passing + stats.defending + stats.physical) / 5);
+  const age = getRandomInt(18, 25);
+  
+  const firstNames = ['Liam', 'Noah', 'Oliver', 'Elijah', 'James', 'William', 'Benjamin', 'Lucas', 'Henry', 'Alexander', 'Mateo', 'Sebastian', 'Jack', 'Owen', 'Theodore'];
+  const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson'];
+  const name = `${firstNames[getRandomInt(0, firstNames.length - 1)]} ${lastNames[getRandomInt(0, lastNames.length - 1)]}`;
+  
+  const traitsRoll = Math.random();
+  let numTraits = 0;
+  if (traitsRoll >= 0.85) {
+    numTraits = 2;
+  } else if (traitsRoll >= 0.30) {
+    numTraits = 1;
+  }
+
+  const traits: string[] = [];
+  const available = [...AVAILABLE_TRAITS];
+  for (let i = 0; i < numTraits; i++) {
+    const idx = getRandomInt(0, available.length - 1);
+    traits.push(available.splice(idx, 1)[0]);
+  }
+  
+  return {
+    team_id: teamId,
+    name,
+    age,
+    ovr,
+    potential_limit: getRandomInt(ovr + 5, 90),
+    is_nft_coach: false,
+    position,
+    stats,
+    stamina: 100,
+    lineup_status,
+    lineup_slot,
+    traits
+  };
+}
+
+export async function createStarterFranchise(teamName: string) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+
+    if (!userId || !teamName) {
+      return { success: false, error: 'Missing userId or teamName' };
+    }
+
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // === WIPE PHASE ===
+    await supabaseAdmin.from('teams').delete().eq('user_id', userId);
+    await supabaseAdmin.from('users').delete().like('telegram_id', 'bot_%');
+    await supabaseAdmin.from('league_matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+    // === CREATE PHASE ===
+    const { data: newTeam, error: teamError } = await supabaseAdmin
+      .from('teams')
+      .insert({ user_id: userId, name: teamName })
+      .select()
+      .single();
+
+    if (teamError || !newTeam) {
+      return { success: false, error: 'Failed to create team' };
+    }
+
+    // === STARTER BONUS ===
+    const { error: bonusError } = await supabaseAdmin
+      .from('users')
+      .update({
+        balance_fancoins: 1000,
+        sweat_points: 1000
+      })
+      .eq('id', userId);
+      
+    if (bonusError) {
+      console.warn("Failed to give starter bonus:", bonusError);
+    }
+
+    // === PROCEDURAL SQUAD GENERATION (16 Players) ===
+    const positions = [
+      { pos: 'GK', status: 'starting' },
+      { pos: 'DEF', status: 'starting' }, { pos: 'DEF', status: 'starting' }, { pos: 'DEF', status: 'starting' }, { pos: 'DEF', status: 'starting' },
+      { pos: 'MID', status: 'starting' }, { pos: 'MID', status: 'starting' }, { pos: 'MID', status: 'starting' }, { pos: 'MID', status: 'starting' },
+      { pos: 'FWD', status: 'starting' }, { pos: 'FWD', status: 'starting' },
+      { pos: 'GK', status: 'bench' },
+      { pos: 'DEF', status: 'bench' },
+      { pos: 'MID', status: 'bench' }, { pos: 'MID', status: 'bench' },
+      { pos: 'FWD', status: 'bench' }
+    ];
+
+    const playersToInsert = positions.map((p, index) => generatePlayer(newTeam.id, p.pos, p.status, index.toString()));
+
+    const { error: playersError } = await supabaseAdmin
+      .from('players')
+      .insert(playersToInsert);
+
+    if (playersError) {
+      await supabaseAdmin.from('teams').delete().eq('id', newTeam.id);
+      return { success: false, error: 'Failed to generate players, team creation rolled back' };
+    }
+
+    // === STANDINGS & INFRASTRUCTURE ===
+    await supabaseAdmin.from('league_standings').insert({ team_id: newTeam.id, points: 0 });
+    await supabaseAdmin.from('infrastructure').insert({ team_id: newTeam.id });
+
+    // === COLD START PHASE ===
+    const seedRes = await executeBotSeeding(supabaseAdmin);
+    if (!seedRes.success) console.warn("Failed to seed bot league:", seedRes.error);
+
+    const calRes = await generateLeagueSchedule();
+    if (!calRes.success) console.warn("Failed to generate schedule:", calRes.error);
+
+    return { success: true };
+
+  } catch (error: any) {
+    console.error("createStarterFranchise Error:", error);
+    return { success: false, error: error.message || 'Internal Server Error' };
+  }
+}

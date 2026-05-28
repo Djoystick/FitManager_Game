@@ -1,6 +1,7 @@
 'use client';
 
 import { useContext, useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
@@ -18,6 +19,7 @@ interface UserData {
 export function GlobalHeader() {
   const { userId, isAuthenticated } = useContext(TelegramAuthContext);
   const { language } = useContext(LanguageContext);
+  const pathname = usePathname();
   const t = dict[language as keyof typeof dict];
   const [userData, setUserData] = useState<UserData | null>(null);
   const [animatingFC, setAnimatingFC] = useState(false);
@@ -55,7 +57,7 @@ export function GlobalHeader() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, userId]);
 
-  if (!isAuthenticated || !userId) return null;
+  if (!isAuthenticated || !userId || pathname === '/onboarding') return null;
 
   const fc = userData?.balance_fancoins ?? 0;
   const sp = userData?.sweat_points     ?? 0;

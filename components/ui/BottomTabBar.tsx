@@ -21,6 +21,8 @@ export function BottomTabBar() {
     { name: t.nav_league, href: '/league',  icon: Trophy       },
   ];
 
+  if (pathname === '/onboarding') return null;
+
   return (
     <div className="fixed bottom-0 w-full max-w-[480px] z-50 bg-gray-900/90 backdrop-blur-md border-t border-gray-800 pb-safe">
       {/* Horizontal scrollable tabs — 6 items, no truncation */}
