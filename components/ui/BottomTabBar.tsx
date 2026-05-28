@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, Hospital, Trophy, ShoppingCart } from 'lucide-react';
+import { Home, Users, Hospital, Trophy, ShoppingCart, Droplets } from 'lucide-react';
 import { useContext } from 'react';
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
@@ -16,9 +16,9 @@ export function BottomTabBar() {
   // For now, it will be visible globally as per request.
 
   const navItems = [
-    { name: t.nav_home, href: '/', icon: Home },
-    { name: t.nav_squad, href: '/lineup', icon: Users },
-    { name: t.nav_base, href: '/base', icon: Hospital },
+    { name: t.nav_home,   href: '/',       icon: Home },
+    { name: t.nav_squad,  href: '/lineup', icon: Users },
+    { name: 'Bank',       href: '/bank',   icon: Droplets },
     { name: t.nav_league, href: '/league', icon: Trophy },
     { name: t.nav_market, href: '/market', icon: ShoppingCart },
   ];
