@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useTransition, useContext } from 'react';
-import { BackButton } from '@/components/ui/BackButton';
 import { CyberLoader } from '@/components/ui/CyberLoader';
 import { getMarketListingsAction, buyPlayerAction, cancelListingAction } from '@/app/actions/marketActions';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
@@ -12,7 +11,7 @@ interface MarketListing {
   id: string;
   price_ton: number;
   created_at: string;
-  seller: { id: string; username: string };
+  seller: { id: string };
   player: {
     id: string;
     name: string;
@@ -102,7 +101,9 @@ export default function TransferMarketPage() {
       {/* HEADER */}
       <header className="border-b border-gray-800 pb-4">
         <div className="flex items-center justify-between">
-          <BackButton />
+          <h1 className="text-3xl font-black uppercase tracking-tighter mt-1">
+            Web3 <span className="text-neon-cyan">Market</span>
+          </h1>
           <button 
             onClick={fetchMarket}
             disabled={isLoading || isPending}
@@ -111,9 +112,7 @@ export default function TransferMarketPage() {
             <RefreshCw className={`w-4 h-4 ${(isLoading || isPending) ? 'animate-spin' : ''}`} />
           </button>
         </div>
-        <h1 className="text-3xl font-black uppercase tracking-tighter mt-1">
-          Web3 <span className="text-neon-cyan">Market</span>
-        </h1>
+
         <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-widest font-bold">
           P2P Трансферы за TON
         </p>

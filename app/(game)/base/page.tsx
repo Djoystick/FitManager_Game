@@ -15,7 +15,6 @@ import {
   Users,
   ChevronRight,
 } from 'lucide-react';
-import { BackButton } from '@/components/ui/BackButton';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import {
   getClubInfrastructureData,
@@ -304,7 +303,6 @@ export default function BaseDashboard() {
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="flex-shrink-0 px-4 pt-5 pb-3 border-b border-gray-800/60">
-        <BackButton />
 
         <div className="flex items-center justify-between mt-3 mb-3">
           <div className="flex items-center gap-2">

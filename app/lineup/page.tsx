@@ -3,7 +3,6 @@
 import { useContext, useEffect, useState } from 'react';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import { useRouter } from 'next/navigation';
-import { BackButton } from '@/components/ui/BackButton';
 import { swapPlayers, updatePlayers, updateTeamFormation } from '@/app/actions/lineupActions';
 import { healAllPlayers } from '@/app/actions/baseActions';
 import toast from 'react-hot-toast';

@@ -4,7 +4,6 @@ import { createClient } from '@supabase/supabase-js';
 import { Trophy, Medal, Target } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { BackButton } from '@/components/ui/BackButton';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -90,7 +89,6 @@ export default async function LeagueDashboard() {
     <div className="flex flex-col flex-1 p-4 gap-6 pb-24 h-full overflow-y-auto custom-scrollbar">
       {/* Header */}
       <header className="flex flex-col gap-1 border-b border-gray-800 pb-4">
-        <BackButton />
         <h1 className="text-2xl font-bold font-orbitron text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] uppercase tracking-wider flex items-center gap-2">
           <Trophy className="text-neon-purple" /> 
           Pro League Standings

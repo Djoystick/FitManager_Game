@@ -86,7 +86,7 @@ export async function getMarketListingsAction(filters?: { minOvr?: number, posit
         id,
         price_ton,
         created_at,
-        seller:seller_id ( id, username ),
+        seller:seller_id ( id ),
         player:player_id ( id, name, position, age, ovr, traits, seasons_played )
       `)
       .eq('status', 'active');
