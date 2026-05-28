@@ -8,7 +8,7 @@ import { swapPlayers, updatePlayers, updateTeamFormation } from '@/app/actions/l
 import { healAllPlayers } from '@/app/actions/baseActions';
 import toast from 'react-hot-toast';
 import { CyberLoader } from '@/components/ui/CyberLoader';
-import { Shirt, X, RefreshCw, User, Eye, EyeOff, Zap } from 'lucide-react';
+import { Shirt, X, RefreshCw, User, Eye, EyeOff, Zap, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlayerProfileModal } from '@/components/PlayerProfileModal';
 import { InfoPopover } from '@/components/ui/InfoPopover';
@@ -513,7 +513,7 @@ export default function LineupPage() {
                   <div className="flex-1 flex justify-center items-center py-12">
                      <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
                   </div>
-                ) : !scoutReport || scoutReport.players.length === 0 ? (
+                ) : !scoutReport || (scoutReport.players.length === 0 && scoutReport.fog_level !== 'hidden') ? (
                   <div className="flex-1 flex flex-col items-center justify-center py-12 text-gray-500">
                     <p className="text-sm uppercase tracking-widest font-bold">Scouts found no intel</p>
                     <p className="text-xs mt-2 text-center max-w-xs">Data is restricted or opponent roster is empty.</p>
@@ -521,17 +521,52 @@ export default function LineupPage() {
                 ) : (
                   <div className="flex flex-col">
                     <div className="bg-gradient-to-r from-red-900/30 to-transparent p-4 border-b border-red-900/30">
-                      <h3 className="text-white text-lg font-black uppercase tracking-wider">{scoutReport.opponent_team_name}</h3>
-                      <p className="text-[10px] text-red-400 uppercase tracking-widest">Next Target (Round {scoutReport.round_number})</p>
-                    </div>
-                    <div className="p-2 flex flex-col gap-1">
-                      {scoutReport.players.sort((a: any, b: any) => b.ovr_estimated - a.ovr_estimated).map((player: any) => (
-                        <div key={player.id} className="flex items-center justify-between py-1 px-3 rounded bg-gray-900/50 border border-gray-800">
-                          <div className="text-xs font-bold text-white">{player.name}</div>
-                          <div className="text-sm font-black text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.4)]">{player.ovr_estimated}</div>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="text-white text-lg font-black uppercase tracking-wider">{scoutReport.opponent_team_name}</h3>
+                          <p className="text-[10px] text-red-400 uppercase tracking-widest">Next Target (Round {scoutReport.round_number})</p>
                         </div>
-                      ))}
+                        <div className="flex flex-col items-end">
+                          <span className="text-[9px] uppercase tracking-widest text-red-500/70 font-bold">Team OVR</span>
+                          <span className="text-xl font-black text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">
+                            {scoutReport.fog_level === 'full' ? scoutReport.team_ovr_estimated : `~${scoutReport.team_ovr_estimated}`}
+                          </span>
+                        </div>
+                      </div>
                     </div>
+                    
+                    {scoutReport.fog_level === 'hidden' ? (
+                      <div className="flex-1 flex flex-col items-center justify-center py-16 text-center">
+                        <Lock className="w-10 h-10 text-red-900 mb-3" />
+                        <p className="text-sm uppercase tracking-widest font-black text-red-500">Отдел Скаутов Ур. 3</p>
+                        <p className="text-[10px] uppercase tracking-widest text-gray-500 mt-2 max-w-[200px]">
+                          Требуется для просмотра состава противника
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="p-2 flex flex-col gap-1">
+                        {scoutReport.players.sort((a: any, b: any) => b.ovr_estimated - a.ovr_estimated).map((player: any) => (
+                          <div key={player.id} className="flex items-center justify-between py-1.5 px-3 rounded bg-gray-900/50 border border-gray-800">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-white uppercase tracking-wider">{player.name}</span>
+                              <span className="text-[9px] text-gray-500 font-bold uppercase">{player.position}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              {scoutReport.fog_level === 'full' && player.traits?.length > 0 && (
+                                <div className="flex gap-1">
+                                  {player.traits.map((t: string) => (
+                                    <span key={t} className="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_5px_rgba(168,85,247,0.5)]"></span>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="text-sm font-black text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.4)] w-6 text-right">
+                                {player.ovr_estimated}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

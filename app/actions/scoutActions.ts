@@ -22,6 +22,8 @@ export interface ScoutReport {
   match_id: string;
   round_number: number;
   players: ScoutedPlayer[];
+  fog_level: 'hidden' | 'partial' | 'full';
+  team_ovr_estimated: number;
 }
 
 export async function getUpcomingOpponentScoutReport(userId: string): Promise<{ success: boolean; data?: ScoutReport; error?: string }> {
@@ -80,15 +82,38 @@ export async function getUpcomingOpponentScoutReport(userId: string): Promise<{ 
       return { success: false, error: 'Failed to load opponent players.' };
     }
 
-    // 4. Fog of War Masking (Round OVR to nearest 5)
-    const maskedPlayers: ScoutedPlayer[] = players.map(p => ({
-      id: p.id,
-      name: p.name,
-      position: p.position,
-      age: p.age,
-      traits: p.traits || [],
-      ovr_estimated: Math.round((p.ovr || 50) / 5) * 5
-    }));
+    // 3.5. Calculate Team OVR (average of top 11)
+    const sortedOvr = players.map(p => p.ovr || 50).sort((a, b) => b - a);
+    const top11 = sortedOvr.slice(0, 11);
+    const avgOvr = top11.length > 0 ? Math.round(top11.reduce((a, b) => a + b, 0) / top11.length) : 50;
+
+    // Fetch Scout Level
+    const { data: infraData } = await supabaseAdmin
+      .from('infrastructure')
+      .select('scout_level')
+      .eq('team_id', userTeamId)
+      .maybeSingle();
+    const scoutLevel = infraData?.scout_level || 1;
+
+    let fogLevel: 'hidden' | 'partial' | 'full' = 'hidden';
+    if (scoutLevel >= 5) {
+      fogLevel = 'full';
+    } else if (scoutLevel >= 3) {
+      fogLevel = 'partial';
+    }
+
+    // 4. Fog of War Masking
+    let maskedPlayers: ScoutedPlayer[] = [];
+    if (fogLevel !== 'hidden') {
+      maskedPlayers = players.map(p => ({
+        id: p.id,
+        name: fogLevel === 'partial' ? p.name : p.name,
+        position: p.position,
+        age: p.age,
+        traits: fogLevel === 'partial' ? [] : (p.traits || []),
+        ovr_estimated: fogLevel === 'full' ? (p.ovr || 50) : Math.round((p.ovr || 50) / 5) * 5
+      }));
+    }
 
     return {
       success: true,
@@ -97,7 +122,9 @@ export async function getUpcomingOpponentScoutReport(userId: string): Promise<{ 
         opponent_team_name: opponentTeamName || 'Unknown Team',
         match_id: match.id,
         round_number: match.round_number,
-        players: maskedPlayers
+        players: maskedPlayers,
+        fog_level: fogLevel,
+        team_ovr_estimated: avgOvr
       }
     };
   } catch (err: any) {
