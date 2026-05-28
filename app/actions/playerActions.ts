@@ -7,13 +7,23 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// bulkTrainPlayer
+//
+// Legacy bulk training via FanCoins (used by PlayerProfileModal).
+// Training Camp level provides a discount (5% per level, max 50%).
+// NOTE: The Phase 8 /base page now uses the atomic `upgrade_player_stat` RPC.
+// This function is kept for backwards-compatibility with old squad sheet UI.
+// ─────────────────────────────────────────────────────────────────────────────
+
 export async function bulkTrainPlayer(
-  userId: string, 
-  playerId: string, 
+  userId: string,
+  playerId: string,
   statIncreases: Record<string, number>
 ) {
   try {
-    // 1. Fetch user & team
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
       .select('id, balance_fancoins')
@@ -30,7 +40,6 @@ export async function bulkTrainPlayer(
 
     if (teamError || !team) return { success: false, error: 'Team not found' };
 
-    // 2. Fetch Player
     const { data: player, error: playerError } = await supabaseAdmin
       .from('players')
       .select('id, team_id, stats, ovr, potential_limit, stamina')
@@ -40,26 +49,22 @@ export async function bulkTrainPlayer(
     if (playerError || !player) return { success: false, error: 'Player not found' };
     if (player.team_id !== team.id) return { success: false, error: 'Player does not belong to your team' };
 
-
-
-    // 2.5 Get Training Camp Level
+    // Training Camp discount
     const { data: infra } = await supabaseAdmin
       .from('infrastructure')
       .select('training_camp_level')
       .eq('team_id', team.id)
       .maybeSingle();
-      
-    const trainingLevel = infra ? infra.training_camp_level : 1;
-    const baseCostPerStat = 500;
-    const discountPercent = Math.min(0.50, trainingLevel * 0.05);
-    const costPerStat = Math.floor(baseCostPerStat * (1 - discountPercent));
 
-    // 4. Calculate new stats & OVR & Cost
+    const trainingLevel    = infra?.training_camp_level ?? 1;
+    const discountPercent  = Math.min(0.50, trainingLevel * 0.05);
+    const costPerStat      = Math.floor(500 * (1 - discountPercent));
+
     const currentStats = player.stats || { pace: 50, shooting: 50, passing: 50, defending: 50, physical: 50 };
     const newStats = { ...currentStats };
     let hasChanges = false;
     let totalStatsIncreased = 0;
-    
+
     for (const [key, inc] of Object.entries(statIncreases)) {
       if (inc > 0) {
         newStats[key] = (newStats[key] || 50) + inc;
@@ -69,13 +74,12 @@ export async function bulkTrainPlayer(
     }
 
     if (!hasChanges) return { success: false, error: 'No stats to upgrade' };
-    
+
     const STAMINA_COST_PER_STAT = 5;
-    const totalCost = totalStatsIncreased * costPerStat;
+    const totalCost        = totalStatsIncreased * costPerStat;
     const totalStaminaCost = totalStatsIncreased * STAMINA_COST_PER_STAT;
 
-    // 3. Verify balance and stamina
-    if (user.balance_fancoins < totalCost) return { success: false, error: 'Insufficient FanCoins' };
+    if (user.balance_fancoins < totalCost)   return { success: false, error: 'Insufficient FanCoins' };
     if ((player.stamina || 0) < totalStaminaCost) return { success: false, error: 'Not enough stamina' };
 
     const sum = ['pace', 'shooting', 'passing', 'defending', 'physical'].reduce(
@@ -83,14 +87,12 @@ export async function bulkTrainPlayer(
     );
     const newOvr = Math.floor(sum / 5.0);
 
-    // Verify potential limit
     if (newOvr > player.potential_limit) {
       return { success: false, error: 'Cannot exceed player potential limit' };
     }
 
-    // 5. Execute transaction (Deduct balance, then update player)
     const newBalance = user.balance_fancoins - totalCost;
-    
+
     const { error: deductError } = await supabaseAdmin
       .from('users')
       .update({ balance_fancoins: newBalance })
@@ -99,7 +101,7 @@ export async function bulkTrainPlayer(
     if (deductError) throw deductError;
 
     const newStamina = (player.stamina || 0) - totalStaminaCost;
-    
+
     const { data: updatedPlayer, error: updateError } = await supabaseAdmin
       .from('players')
       .update({ stats: newStats, ovr: newOvr, stamina: newStamina })
@@ -108,149 +110,13 @@ export async function bulkTrainPlayer(
       .single();
 
     if (updateError) {
-      // Rollback
       await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins }).eq('id', userId);
       throw updateError;
     }
 
-    return { 
-      success: true, 
-      player: updatedPlayer,
-      newBalance 
-    };
+    return { success: true, player: updatedPlayer, newBalance };
 
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to process bulk training' };
-  }
-}
-
-export async function healPlayerStamina(userId: string, playerId: string) {
-  try {
-    const costTP = 50;
-    
-    // 1. Fetch user & team
-    const { data: user, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('id, balance_tp')
-      .eq('id', userId)
-      .single();
-
-    if (userError || !user) return { success: false, error: 'User not found' };
-
-    const { data: team, error: teamError } = await supabaseAdmin
-      .from('teams')
-      .select('id')
-      .eq('user_id', userId)
-      .single();
-
-    if (teamError || !team) return { success: false, error: 'Team not found' };
-
-    // 2. Fetch Player
-    const { data: player, error: playerError } = await supabaseAdmin
-      .from('players')
-      .select('id, team_id, stamina')
-      .eq('id', playerId)
-      .single();
-
-    if (playerError || !player) return { success: false, error: 'Player not found' };
-    if (player.team_id !== team.id) return { success: false, error: 'Player does not belong to your team' };
-
-    // 3. Verify balance and stamina
-    if (user.balance_tp < costTP) return { success: false, error: 'Insufficient TP' };
-    if (player.stamina >= 100) return { success: false, error: 'Stamina is already full' };
-
-    // 4. Transaction
-    const newBalance = user.balance_tp - costTP;
-    
-    const { error: deductError } = await supabaseAdmin
-      .from('users')
-      .update({ balance_tp: newBalance })
-      .eq('id', userId);
-
-    if (deductError) throw deductError;
-
-    const { error: healError } = await supabaseAdmin
-      .from('players')
-      .update({ stamina: 100 })
-      .eq('id', playerId);
-
-    if (healError) {
-      await supabaseAdmin.from('users').update({ balance_tp: user.balance_tp }).eq('id', userId);
-      throw healError;
-    }
-
-    return { 
-      success: true, 
-      newBalance 
-    };
-
-  } catch (err: any) {
-    return { success: false, error: err.message || 'Failed to heal stamina' };
-  }
-}
-
-export async function healAllPlayersStamina(userId: string) {
-  try {
-    const { data: user, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('id, balance_tp')
-      .eq('id', userId)
-      .single();
-
-    if (userError || !user) return { success: false, error: 'User not found' };
-
-    const { data: team, error: teamError } = await supabaseAdmin
-      .from('teams')
-      .select('id')
-      .eq('user_id', userId)
-      .single();
-
-    if (teamError || !team) return { success: false, error: 'Team not found' };
-
-    const { data: players, error: playersError } = await supabaseAdmin
-      .from('players')
-      .select('id, stamina')
-      .eq('team_id', team.id)
-      .lt('stamina', 100);
-
-    if (playersError) return { success: false, error: 'Failed to fetch players' };
-    
-    if (!players || players.length === 0) {
-      return { success: false, error: 'All players have full stamina' };
-    }
-
-    const costTP = players.length * 50;
-
-    if (user.balance_tp < costTP) {
-      return { success: false, error: `Insufficient TP. Need ${costTP} TP for ${players.length} players.` };
-    }
-
-    const newBalance = user.balance_tp - costTP;
-
-    const { error: deductError } = await supabaseAdmin
-      .from('users')
-      .update({ balance_tp: newBalance })
-      .eq('id', userId);
-
-    if (deductError) throw deductError;
-
-    const { error: healError } = await supabaseAdmin
-      .from('players')
-      .update({ stamina: 100 })
-      .in('id', players.map(p => p.id));
-
-    if (healError) {
-      await supabaseAdmin.from('users').update({ balance_tp: user.balance_tp }).eq('id', userId);
-      throw healError;
-    }
-
-    return {
-      success: true,
-      newBalance,
-      playersHealed: players.length
-    };
-
-  } catch (err: any) {
-    return { success: false, error: err.message || 'Failed to mass heal stamina' };
   }
 }

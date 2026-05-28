@@ -12,7 +12,9 @@ export async function GET(req: Request) {
 
     const { data: user, error } = await supabase
       .from('users')
-      .select('balance_fancoins, balance_tp, wallet_address')
+      .select(
+        'balance_fancoins, sweat_points, cardio_coin, fitness_coin, ball_coin, strength_coin, wallet_address'
+      )
       .eq('id', userId)
       .single();
 
@@ -22,7 +24,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ success: true, user });
   } catch (error: any) {
-    console.error("Fetch User API Error:", error);
+    console.error('Fetch User API Error:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', details: error.message },
       { status: 500 }

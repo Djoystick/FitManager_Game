@@ -11,7 +11,6 @@ export interface FitnessLogRequest {
 export async function POST(req: Request) {
   try {
     const body: Partial<FitnessLogRequest> = await req.json();
-
     const { userId, activityType, durationMinutes, calories } = body;
 
     // 1. Basic validation
@@ -29,25 +28,24 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. TP (Training Points) Conversion Math
-    let earnedTp = 0;
+    // 2. Sweat Points (SP) Conversion Math
+    // SP replaces the legacy TP system entirely.
+    let earnedSp = 0;
     const type = activityType.toLowerCase();
 
     if (type === 'running' || type === 'run') {
-      earnedTp = Math.floor((durationMinutes * 2) + (calories / 10));
+      earnedSp = Math.floor((durationMinutes * 2) + (calories / 10));
     } else if (type === 'strength') {
-      earnedTp = Math.floor((durationMinutes * 3) + (calories / 15));
+      earnedSp = Math.floor((durationMinutes * 3) + (calories / 15));
     } else if (type === 'yoga') {
-      earnedTp = Math.floor(durationMinutes * 1);
+      earnedSp = Math.floor(durationMinutes * 1);
     } else {
-      // Fallback multiplier for unknown generic activities
-      earnedTp = Math.floor(durationMinutes * 1);
+      earnedSp = Math.floor(durationMinutes * 1);
     }
 
-    // Ensure we don't grant negative TP on weird payloads
-    earnedTp = Math.max(0, earnedTp);
+    earnedSp = Math.max(0, earnedSp);
 
-    // 2.5 ANTI-CHEAT MECHANICS
+    // 2.5 ANTI-CHEAT: Daily diminishing returns & hard cap
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: recentLogs, error: logsError } = await supabase
       .from('fitness_logs')
@@ -63,90 +61,85 @@ export async function POST(req: Request) {
     }
 
     let sameActivityCount = 0;
-    let dailyTotalTp = 0;
+    let dailyTotalSp = 0;
 
     if (recentLogs) {
       for (const log of recentLogs) {
-        dailyTotalTp += log.earned_tp;
+        // earned_tp column still exists in fitness_logs as historical record
+        dailyTotalSp += log.earned_tp;
         if (log.activity_type.toLowerCase() === activityType.toLowerCase()) {
           sameActivityCount++;
         }
       }
     }
 
-    // Mechanic 1: Diminishing Returns (10% penalty per previous same activity, max 50%)
+    // Diminishing Returns (10% penalty per repeat, max 50%)
     const diminishingPenalty = Math.min(sameActivityCount * 10, 50);
     if (diminishingPenalty > 0) {
-      earnedTp = Math.floor(earnedTp * (1 - diminishingPenalty / 100));
+      earnedSp = Math.floor(earnedSp * (1 - diminishingPenalty / 100));
     }
 
-    // Mechanic 2: Daily Hard Cap
-    const MAX_DAILY_TP = 500;
+    // Daily Hard Cap
+    const MAX_DAILY_SP = 500;
     let dailyLimitReached = false;
 
-    if (dailyTotalTp >= MAX_DAILY_TP) {
-      earnedTp = 0;
+    if (dailyTotalSp >= MAX_DAILY_SP) {
+      earnedSp = 0;
       dailyLimitReached = true;
-    } else if (dailyTotalTp + earnedTp > MAX_DAILY_TP) {
-      earnedTp = MAX_DAILY_TP - dailyTotalTp;
+    } else if (dailyTotalSp + earnedSp > MAX_DAILY_SP) {
+      earnedSp = MAX_DAILY_SP - dailyTotalSp;
       dailyLimitReached = true;
     }
 
-    // 3. Database operations
-    // Fetch current user TP securely
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('balance_tp')
-      .eq('id', userId)
-      .single();
-
-    if (userError) {
-      return NextResponse.json(
-        { error: 'User not found or database read error', details: userError.message },
-        { status: 404 }
-      );
-    }
-
-    const newBalanceTp = (user.balance_tp || 0) + earnedTp;
-
-    // Insert the log
+    // 3. Insert log record (earned_tp column kept for historical queries)
     const { error: logError } = await supabase
       .from('fitness_logs')
       .insert({
-        user_id: userId,
-        activity_type: activityType,
+        user_id:          userId,
+        activity_type:    activityType,
         duration_minutes: durationMinutes,
-        calories: calories,
-        earned_tp: earnedTp,
+        calories:         calories,
+        earned_tp:        earnedSp, // stored in earned_tp for schema compat
       });
 
     if (logError) {
       throw new Error(`Failed to insert fitness log: ${logError.message}`);
     }
 
-    // Update user balance
+    // 4. Credit SP to user via direct update (no column reference to balance_tp)
+    const { data: user, error: userFetchErr } = await supabase
+      .from('users')
+      .select('sweat_points')
+      .eq('id', userId)
+      .single();
+
+    if (userFetchErr || !user) {
+      throw new Error('User not found while crediting SP');
+    }
+
+    const newSpBalance = (user.sweat_points || 0) + earnedSp;
+
     const { error: updateError } = await supabase
       .from('users')
-      .update({ balance_tp: newBalanceTp })
+      .update({ sweat_points: newSpBalance })
       .eq('id', userId);
 
     if (updateError) {
-      throw new Error(`Failed to update user TP balance: ${updateError.message}`);
+      throw new Error(`Failed to update Sweat Points balance: ${updateError.message}`);
     }
 
-    // 4. Return formatted response
     return NextResponse.json({
-      success: true,
-      earned_tp: earnedTp,
-      balance_tp: newBalanceTp,
+      success:        true,
+      earned_sp:      earnedSp,
+      balance_sp:     newSpBalance,
       meta: {
         dailyLimitReached,
         diminishingPenalty,
-      }
+      },
     });
 
   } catch (error: any) {
-    console.error("Fitness Log API Error:", error);
+    console.error('Fitness Log API Error:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', details: error.message },
       { status: 500 }

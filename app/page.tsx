@@ -10,12 +10,13 @@ import { OnboardingFlow } from '@/components/OnboardingFlow';
 import { FitnessSyncWidget } from '@/components/FitnessSyncWidget';
 import { MatchHistoryWidget } from '@/components/MatchHistoryWidget';
 import { CyberLoader } from '@/components/ui/CyberLoader';
-import { Users, Trophy, User, Shield, Activity, Coins, Gem } from 'lucide-react';
+import { Users, Trophy, User, Shield, Activity, Coins } from 'lucide-react';
 import { getUnviewedMatch } from '@/app/actions/matchActions';
 import { MatchReport } from '@/components/MatchReportModal';
 
 interface UserData {
-  wallet_address: string | null;
+  wallet_address:   string | null;
+  balance_fancoins: number;
 }
 
 export default function DashboardPage() {
@@ -105,26 +106,28 @@ export default function DashboardPage() {
       {/* PREMIUM TOP BAR */}
       <header className="flex items-center justify-between bg-black/60 border border-gray-800 rounded-2xl p-3 shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gray-900 border border-neon-cyan flex items-center justify-center shadow-[0_0_10px_rgba(0,240,255,0.3)]">
+          {/* Clickable profile avatar */}
+          <Link
+            href="/profile"
+            id="home-profile-btn"
+            className="w-10 h-10 rounded-full bg-gray-900 border border-neon-cyan flex items-center justify-center shadow-[0_0_10px_rgba(0,240,255,0.3)] hover:border-neon-cyan/80 hover:shadow-[0_0_18px_rgba(0,240,255,0.5)] transition-all duration-200 active:scale-95"
+          >
             <User className="text-neon-cyan w-5 h-5" />
-          </div>
+          </Link>
           <div className="flex flex-col">
             <h1 className={`text-sm font-black text-white uppercase tracking-wider ${headerFontClass}`}>
               {teamName || 'Unknown Team'}
             </h1>
-            <span className="text-[10px] text-gray-500 font-mono">ID: {firstName}</span>
+            <span className="text-[10px] text-gray-500 font-mono">@{firstName}</span>
           </div>
         </div>
-        
-        <div className="flex gap-2">
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-yellow-900/20 border border-yellow-500/30">
-            <Coins className="w-3.5 h-3.5 text-yellow-500" />
-            <span className="text-xs font-black text-yellow-500">1,250</span>
-          </div>
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-purple-900/20 border border-purple-500/30">
-            <Gem className="w-3.5 h-3.5 text-purple-500" />
-            <span className="text-xs font-black text-purple-500">14</span>
-          </div>
+
+        {/* Real FC balance from API */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-yellow-900/20 border border-yellow-600/40 shadow-[0_0_8px_rgba(234,179,8,0.2)]">
+          <Coins className="w-3.5 h-3.5 text-yellow-500" />
+          <span className="text-xs font-black font-orbitron text-yellow-400">
+            {(userData?.balance_fancoins ?? 0).toLocaleString()}
+          </span>
         </div>
       </header>
 

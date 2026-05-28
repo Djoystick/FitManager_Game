@@ -28,12 +28,12 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: "cover",
   themeColor: "#0B0F19",
+  colorScheme: "dark",
 };
 
 export const metadata: Metadata = {
   title: "FitManager TMA",
   description: "FitManager Telegram Mini App",
-  colorScheme: "dark",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

@@ -2,13 +2,16 @@ import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
 import { SweatBankClient } from '@/components/SweatBankClient';
 import { Droplets } from 'lucide-react';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import type { ManagerProfileType } from '@/app/actions/economyActions';
+
+export const viewport: Viewport = {
+  colorScheme: 'dark',
+};
 
 export const metadata: Metadata = {
   title: 'Sweat Bank — FitManager',
   description: 'Convert your real-world fitness activity into in-game currencies.',
-  colorScheme: 'dark',
 };
 
 // Default data shape if the user has no W2E data yet

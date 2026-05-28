@@ -289,6 +289,33 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
     await updateStandings(match.home_team_id, result.score.home, result.score.away);
     await updateStandings(match.away_team_id, result.score.away, result.score.home);
 
+    // ШАГ Е: Award FanCoins based on match result + Stadium level
+    // Formula (from migration 00030):
+    //   Win  = 500 + stadium_level × 75
+    //   Draw = 250 + stadium_level × 35
+    //   Loss = 100 + stadium_level × 15
+    const awardMatchFc = async (teamId: string, gf: number, ga: number) => {
+      const matchResult = gf > ga ? 'win' : gf === ga ? 'draw' : 'loss';
+      const { data: infra } = await supabaseAdmin
+        .from('infrastructure')
+        .select('stadium_level')
+        .eq('team_id', teamId)
+        .maybeSingle();
+      const stadiumLevel = infra?.stadium_level ?? 1;
+      const { error: fcError } = await supabaseAdmin.rpc('award_match_fancoins', {
+        p_team_id:       teamId,
+        p_result:        matchResult,
+        p_stadium_level: stadiumLevel,
+      });
+      if (fcError) {
+        // Non-fatal: log but don't fail the whole resolveMatch
+        console.error(`[resolveMatch] FC award failed for team ${teamId}:`, fcError);
+      }
+    };
+
+    await awardMatchFc(match.home_team_id, result.score.home, result.score.away);
+    await awardMatchFc(match.away_team_id, result.score.away, result.score.home);
+
     console.log(`[resolveMatch] SUCCESS for matchId: ${matchId}`);
     return { success: true };
   } catch (error: any) {

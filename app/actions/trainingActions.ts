@@ -266,7 +266,9 @@ export async function upgradeBuildingAction(
     if (infraErr || !infra) return { success: false, error: 'Infrastructure record not found.' };
 
     const currentLevel = (infra as unknown as Record<string, number>)[column] ?? 1;
-    const upgradeCost  = currentLevel * 1000;
+    // Exponential cost formula: FLOOR(500 × level^1.5)
+    // Mirrors the SQL building_upgrade_cost() function in migration 00030.
+    const upgradeCost  = Math.floor(500 * Math.pow(currentLevel, 1.5));
 
     if (user.balance_fancoins < upgradeCost) {
       return {

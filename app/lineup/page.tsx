@@ -5,7 +5,7 @@ import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider
 import { useRouter } from 'next/navigation';
 import { BackButton } from '@/components/ui/BackButton';
 import { swapPlayers, updatePlayers, updateTeamFormation } from '@/app/actions/lineupActions';
-import { healAllPlayersStamina } from '@/app/actions/playerActions';
+import { healAllPlayers } from '@/app/actions/baseActions';
 import toast from 'react-hot-toast';
 import { CyberLoader } from '@/components/ui/CyberLoader';
 import { Shirt, X, RefreshCw, User, Eye, EyeOff, Zap } from 'lucide-react';
@@ -255,12 +255,17 @@ export default function LineupPage() {
     setIsHealingAll(true);
     setSubmitMessage(null);
     try {
-      const res = await healAllPlayersStamina(userId);
+      const res = await healAllPlayers(userId);
       if (res.success) {
-        toast.success(`Healed ${res.playersHealed} players`);
-        setSubmitMessage({ text: `Healed ${res.playersHealed} players!`, type: 'success' });
-        setPlayers(prev => prev.map(p => ({ ...p, stamina: 100 })));
-        window.dispatchEvent(new Event('balanceUpdated'));
+        const count = res.playersHealed ?? 0;
+        if (count === 0) {
+          toast('All players are already healthy', { icon: '✅' });
+        } else {
+          toast.success(`Healed ${count} player${count > 1 ? 's' : ''}`);
+          setSubmitMessage({ text: `Healed ${count} players! Balance updated.`, type: 'success' });
+          setPlayers(prev => prev.map(p => ({ ...p, stamina: 100, is_injured: false })));
+          window.dispatchEvent(new Event('balanceUpdated'));
+        }
       } else {
         toast.error(res.error || 'Failed to mass heal');
         setSubmitMessage({ text: res.error || 'Failed to mass heal', type: 'error' });
@@ -673,8 +678,8 @@ export default function LineupPage() {
                    : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 hover:bg-yellow-500 hover:text-black shadow-[0_0_10px_rgba(234,179,8,0.2)]'
                }`}
              >
-               <span className="text-sm">⚡</span>
-               <span>Heal (-{players.filter(p => p.stamina < 100).length * 50})</span>
+              <span className="text-sm">⚡</span>
+               <span>Heal All ({players.filter(p => p.stamina < 100 || p.is_injured).length} players) · FC</span>
              </button>
            )}
         </div>

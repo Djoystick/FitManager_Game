@@ -63,10 +63,9 @@ export async function healPlayer(userId: string, playerId: string) {
       .maybeSingle();
 
     const medicalLevel = infra?.medical_center_level || 1;
-    const baseHealCost = 500;
-    // 5% discount per level, max 50%
+    // Base cost 300 FC. 5% discount per Medical Center level, max 50%.
     const discountPercent = Math.min(0.50, medicalLevel * 0.05);
-    const healCost = Math.floor(baseHealCost * (1 - discountPercent));
+    const healCost = Math.floor(300 * (1 - discountPercent));
 
     if (user.balance_fancoins < healCost) {
       return { success: false, error: 'Insufficient FanCoins' };
@@ -74,7 +73,7 @@ export async function healPlayer(userId: string, playerId: string) {
 
     const { data: player, error: playerError } = await supabaseAdmin
       .from('players')
-      .select('id, is_injured')
+      .select('id, is_injured, stamina')
       .eq('id', playerId)
       .eq('team_id', team.id)
       .single();
@@ -83,8 +82,8 @@ export async function healPlayer(userId: string, playerId: string) {
       return { success: false, error: 'Player not found or does not belong to your team' };
     }
 
-    if (!player.is_injured) {
-      return { success: false, error: 'Player is already healthy' };
+    if (!player.is_injured && (player.stamina ?? 100) >= 100) {
+      return { success: false, error: 'Player is already fully healthy' };
     }
 
     // 3. Deduct FanCoins
@@ -96,14 +95,13 @@ export async function healPlayer(userId: string, playerId: string) {
 
     if (deductError) throw deductError;
 
-    // 4. Heal Player
+    // 4. Heal Player (restore stamina + clear injury)
     const { error: healError } = await supabaseAdmin
       .from('players')
-      .update({ is_injured: false, injury_matches_left: 0 })
+      .update({ is_injured: false, injury_matches_left: 0, stamina: 100 })
       .eq('id', playerId);
 
     if (healError) {
-      // Rollback balance (best effort in simple RPC-less flow)
       await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins }).eq('id', userId);
       throw healError;
     }
@@ -402,3 +400,89 @@ export async function upgradeTrainingCenter(userId: string) {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// healAllPlayers
+//
+// Restores stamina to 100% for ALL players below 100 on the user's team.
+// Charges FC per player with Medical Center discount applied.
+// Used by the "Heal All" button in the Lineup screen.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function healAllPlayers(userId: string): Promise<{
+  success: boolean;
+  playersHealed?: number;
+  new_balance?: number;
+  error?: string;
+}> {
+  try {
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('balance_fancoins')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) return { success: false, error: 'User not found' };
+
+    const { data: team } = await supabaseAdmin
+      .from('teams')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    if (!team) return { success: false, error: 'Team not found' };
+
+    // Get Medical Center discount
+    const { data: infra } = await supabaseAdmin
+      .from('infrastructure')
+      .select('medical_center_level')
+      .eq('team_id', team.id)
+      .maybeSingle();
+
+    const medicalLevel    = infra?.medical_center_level ?? 1;
+    const discountPercent = Math.min(0.50, medicalLevel * 0.05);
+    const costPerPlayer   = Math.floor(300 * (1 - discountPercent));
+
+    // Find all players needing healing
+    const { data: needsHeal } = await supabaseAdmin
+      .from('players')
+      .select('id')
+      .eq('team_id', team.id)
+      .or('stamina.lt.100,is_injured.eq.true');
+
+    if (!needsHeal || needsHeal.length === 0) {
+      return { success: true, playersHealed: 0, new_balance: user.balance_fancoins };
+    }
+
+    const totalCost = costPerPlayer * needsHeal.length;
+    if (user.balance_fancoins < totalCost) {
+      return {
+        success: false,
+        error: `Insufficient FanCoins. Need ${totalCost.toLocaleString()} FC (${needsHeal.length} × ${costPerPlayer} FC).`,
+      };
+    }
+
+    const newBalance = user.balance_fancoins - totalCost;
+
+    const { error: deductErr } = await supabaseAdmin
+      .from('users')
+      .update({ balance_fancoins: newBalance })
+      .eq('id', userId);
+
+    if (deductErr) throw deductErr;
+
+    const ids = needsHeal.map(p => p.id);
+    const { error: healErr } = await supabaseAdmin
+      .from('players')
+      .update({ stamina: 100, is_injured: false, injury_matches_left: 0 })
+      .in('id', ids);
+
+    if (healErr) {
+      await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins }).eq('id', userId);
+      throw healErr;
+    }
+
+    return { success: true, playersHealed: needsHeal.length, new_balance: newBalance };
+  } catch (err: any) {
+    return { success: false, error: err.message ?? 'Failed to heal all players' };
+  }
+}
