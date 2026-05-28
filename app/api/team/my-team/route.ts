@@ -32,10 +32,18 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Failed to fetch players' }, { status: 500 });
     }
 
+    const safePlayers = (players || []).map(p => ({
+      ...p,
+      age: p.age ?? 18,
+      is_for_sale: p.is_for_sale ?? false,
+      is_retired: p.is_retired ?? false,
+      seasons_played: p.seasons_played ?? 0
+    }));
+
     return NextResponse.json({
       success: true,
       team,
-      players: players || []
+      players: safePlayers
     });
 
   } catch (error: any) {

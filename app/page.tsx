@@ -7,7 +7,6 @@ import Link from 'next/link';
 import { dict } from '@/lib/dictionaries';
 import { LanguageContext } from '@/components/LanguageContext';
 import { OnboardingFlow } from '@/components/OnboardingFlow';
-import { FitnessSyncWidget } from '@/components/FitnessSyncWidget';
 import { MatchHistoryWidget } from '@/components/MatchHistoryWidget';
 import { CyberLoader } from '@/components/ui/CyberLoader';
 import { Users, Trophy, User, Shield, Activity, Coins } from 'lucide-react';
@@ -151,11 +150,6 @@ export default function DashboardPage() {
       {/* MATCH JOURNAL (RESTRICTED TO 3 ITEMS) */}
       <section className="bg-black/40 rounded-2xl p-2 border border-gray-800/50 shadow-inner">
         {userId && <MatchHistoryWidget userId={userId} teamName={teamName} />}
-      </section>
-
-      {/* FITNESS SYNC WIDGET SECTION */}
-      <section className="mt-2 w-full animate-in fade-in slide-in-from-bottom-6 duration-700">
-        <FitnessSyncWidget />
       </section>
 
     </div>
