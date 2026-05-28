@@ -77,11 +77,11 @@ export async function executeBotSeeding(supabaseAdmin: any): Promise<AdminAction
   ];
 
   insertedTeams.forEach((team: any) => {
-    const teamBaseOvr = Math.floor(Math.random() * 21) + 45; // 45-65 OVR
+    const teamBaseOvr = Math.floor(Math.random() * 16) + 30; // 30-45 OVR
     
     for (let i = 0; i < 16; i++) {
-      const ovr = Math.max(1, Math.min(99, teamBaseOvr + Math.floor(Math.random() * 10 - 5)));
-      const generateStat = () => Math.max(1, Math.min(99, Math.round(ovr + (Math.random() * 14 - 7))));
+      const ovr = Math.max(30, Math.min(99, teamBaseOvr + Math.floor(Math.random() * 10 - 5)));
+      const generateStat = () => Math.max(30, Math.min(99, Math.round(ovr + (Math.random() * 14 - 7))));
       
       const traitsRoll = Math.random();
       let numTraits = 0;

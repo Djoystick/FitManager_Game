@@ -20,14 +20,46 @@ function getRandomInt(min: number, max: number) {
 
 const AVAILABLE_TRAITS = ['Sniper', 'Playmaker', 'Wall', 'Speedster', 'Anchor', 'Poacher', 'Engine'];
 
-function generatePlayer(teamId: string, position: string, lineup_status: string = 'starting', lineup_slot: string | null = null) {
-  const stats: PlayerStats = {
-    pace: getRandomInt(45, 55),
-    shooting: getRandomInt(45, 55),
-    passing: getRandomInt(45, 55),
-    defending: getRandomInt(45, 55),
-    physical: getRandomInt(45, 55),
+function generatePlayer(
+  teamId: string, 
+  position: string, 
+  lineup_status: string = 'starting', 
+  lineup_slot: string | null = null,
+  isCaptain: boolean = false
+) {
+  // Stat floor of 30 applied
+  let stats: PlayerStats = {
+    pace: Math.max(30, getRandomInt(45, 55)),
+    shooting: Math.max(30, getRandomInt(45, 55)),
+    passing: Math.max(30, getRandomInt(45, 55)),
+    defending: Math.max(30, getRandomInt(45, 55)),
+    physical: Math.max(30, getRandomInt(45, 55)),
   };
+
+  let traits: string[] = [];
+
+  if (isCaptain) {
+    stats.pace = getRandomInt(75, 85);
+    stats.shooting = getRandomInt(80, 90);
+    stats.passing = getRandomInt(80, 90);
+    stats.defending = getRandomInt(65, 75);
+    stats.physical = getRandomInt(70, 80);
+    traits.push(Math.random() > 0.5 ? 'Sniper' : 'Playmaker');
+  } else {
+    const traitsRoll = Math.random();
+    let numTraits = 0;
+    if (traitsRoll >= 0.85) {
+      numTraits = 2;
+    } else if (traitsRoll >= 0.30) {
+      numTraits = 1;
+    }
+
+    const available = [...AVAILABLE_TRAITS];
+    for (let i = 0; i < numTraits; i++) {
+      const idx = getRandomInt(0, available.length - 1);
+      traits.push(available.splice(idx, 1)[0]);
+    }
+  }
   
   const ovr = Math.floor((stats.pace + stats.shooting + stats.passing + stats.defending + stats.physical) / 5);
   const age = getRandomInt(18, 25);
@@ -35,21 +67,6 @@ function generatePlayer(teamId: string, position: string, lineup_status: string 
   const firstNames = ['Liam', 'Noah', 'Oliver', 'Elijah', 'James', 'William', 'Benjamin', 'Lucas', 'Henry', 'Alexander', 'Mateo', 'Sebastian', 'Jack', 'Owen', 'Theodore'];
   const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson'];
   const name = `${firstNames[getRandomInt(0, firstNames.length - 1)]} ${lastNames[getRandomInt(0, lastNames.length - 1)]}`;
-  
-  const traitsRoll = Math.random();
-  let numTraits = 0;
-  if (traitsRoll >= 0.85) {
-    numTraits = 2;
-  } else if (traitsRoll >= 0.30) {
-    numTraits = 1;
-  }
-
-  const traits: string[] = [];
-  const available = [...AVAILABLE_TRAITS];
-  for (let i = 0; i < numTraits; i++) {
-    const idx = getRandomInt(0, available.length - 1);
-    traits.push(available.splice(idx, 1)[0]);
-  }
   
   return {
     team_id: teamId,
@@ -122,7 +139,14 @@ export async function createStarterFranchise(teamName: string) {
       { pos: 'FWD', status: 'bench' }
     ];
 
-    const playersToInsert = positions.map((p, index) => generatePlayer(newTeam.id, p.pos, p.status, index.toString()));
+    const fwdOrMidIndexes = positions
+      .map((p, idx) => (p.pos === 'FWD' || p.pos === 'MID') ? idx : -1)
+      .filter(idx => idx !== -1);
+    const captainIndex = fwdOrMidIndexes[getRandomInt(0, fwdOrMidIndexes.length - 1)];
+
+    const playersToInsert = positions.map((p, index) => 
+      generatePlayer(newTeam.id, p.pos, p.status, index.toString(), index === captainIndex)
+    );
 
     const { error: playersError } = await supabaseAdmin
       .from('players')
