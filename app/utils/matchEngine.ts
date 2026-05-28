@@ -259,8 +259,8 @@ function resolveAttack(ctx: AttackContext): void {
   }
 
   // ── PHASE 3: Finishing ─────────────────────────────────────────────────────
-  let shotVal = atkFwd.stats.shooting + atkFwd.stats.physical * 0.3;
-  let saveVal = keeper.stats.defending + keeper.stats.physical;
+  let shotVal = atkFwd.stats.shooting * 1.5 + atkFwd.stats.pace * 0.5;
+  let saveVal = keeper.stats.defending * 1.5 + keeper.stats.physical * 0.5;
   if (atkFwd.traits.includes('Sniper'))    shotVal += 10;
   if (keeper.traits.includes('Wall'))      saveVal += 8;
   if (keeper.traits.includes('Reflexes'))  saveVal += 6;
