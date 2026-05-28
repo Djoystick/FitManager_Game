@@ -201,10 +201,9 @@ export async function addSweatPoints(amount: number): Promise<AdminActionResult>
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { data: teamData } = await supabaseAdmin.from('teams').select('id, sweat_points').eq('user_id', sessionUuid).single();
-    if (!teamData) return { success: false, error: 'Team not found' };
-
-    const { error } = await supabaseAdmin.from('teams').update({ sweat_points: (teamData.sweat_points || 0) + amount }).eq('id', teamData.id);
+    const { data: userData } = await supabaseAdmin.from('users').select('sweat_points').eq('id', sessionUuid).single();
+    
+    const { error } = await supabaseAdmin.from('users').update({ sweat_points: (userData?.sweat_points || 0) + amount }).eq('id', sessionUuid);
     if (error) return { success: false, error: error.message };
 
     return { success: true, message: `Added ${amount} SP` };
