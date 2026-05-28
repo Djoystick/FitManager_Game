@@ -324,12 +324,15 @@ function buildTimeline(
     [availableMinutes[i], availableMinutes[j]] = [availableMinutes[j], availableMinutes[i]];
   }
 
-  const total = homeCount + awayCount;
+  const safeHomeCount = Math.max(0, Math.floor(homeCount || 0));
+  const safeAwayCount = Math.max(0, Math.floor(awayCount || 0));
+  const total = safeHomeCount + safeAwayCount;
+  
   // Take only as many slots as we have attacks (pool has 87 — always enough)
   const selectedMinutes = availableMinutes.slice(0, total).sort((a, b) => a - b);
 
   // Assign teams: interleave home/away proportionally
-  const homeSlots = Math.min(homeCount, selectedMinutes.length);
+  const homeSlots = Math.min(safeHomeCount, selectedMinutes.length);
   const result: Array<{ team: 'home' | 'away'; minute: number }> = [];
 
   // Shuffle which indices go to home vs away

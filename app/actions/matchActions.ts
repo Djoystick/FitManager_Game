@@ -302,14 +302,39 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
         .eq('team_id', teamId)
         .maybeSingle();
       const stadiumLevel = infra?.stadium_level ?? 1;
-      const { error: fcError } = await supabaseAdmin.rpc('award_match_fancoins', {
-        p_team_id:       teamId,
-        p_result:        matchResult,
-        p_stadium_level: stadiumLevel,
-      });
-      if (fcError) {
-        // Non-fatal: log but don't fail the whole resolveMatch
-        console.error(`[resolveMatch] FC award failed for team ${teamId}:`, fcError);
+
+      let baseReward = 0;
+      let levelBonus = 0;
+      if (matchResult === 'win') { baseReward = 500; levelBonus = 75; }
+      else if (matchResult === 'draw') { baseReward = 250; levelBonus = 35; }
+      else { baseReward = 100; levelBonus = 15; }
+      
+      const totalReward = baseReward + (stadiumLevel * levelBonus);
+
+      const { data: teamData } = await supabaseAdmin
+        .from('teams')
+        .select('user_id')
+        .eq('id', teamId)
+        .maybeSingle();
+        
+      if (!teamData || !teamData.user_id) return;
+      
+      const { data: userData } = await supabaseAdmin
+        .from('users')
+        .select('balance_fancoins')
+        .eq('id', teamData.user_id)
+        .maybeSingle();
+        
+      if (userData) {
+        const newBalance = (Number(userData.balance_fancoins) || 0) + totalReward;
+        const { error: updateError } = await supabaseAdmin
+          .from('users')
+          .update({ balance_fancoins: newBalance })
+          .eq('id', teamData.user_id);
+          
+        if (updateError) {
+          console.error(`[resolveMatch] Failed to update balance for user ${teamData.user_id}:`, updateError);
+        }
       }
     };
 
