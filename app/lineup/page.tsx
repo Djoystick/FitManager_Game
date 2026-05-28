@@ -709,11 +709,11 @@ export default function LineupPage() {
                className={`w-full py-2.5 rounded-lg font-bold text-[10px] uppercase tracking-wider flex justify-center items-center gap-1.5 transition-all ${
                  isHealingAll || isSubmitting || isSwapping
                    ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                   : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 hover:bg-yellow-500 hover:text-black shadow-[0_0_10px_rgba(234,179,8,0.2)]'
+                   : 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50 hover:bg-neon-cyan hover:text-black shadow-[0_0_10px_rgba(0,240,255,0.2)]'
                }`}
              >
               <span className="text-sm">⚡</span>
-               <span>Heal All ({players.filter(p => p.stamina < 100 || p.is_injured).length} players) · FC</span>
+               <span>Heal All ({players.filter(p => p.stamina < 100 || p.is_injured).length} players) · {players.reduce((sum, p) => sum + Math.max(0, 100 - (p.stamina ?? 100)), 0)} SP</span>
              </button>
            )}
         </div>

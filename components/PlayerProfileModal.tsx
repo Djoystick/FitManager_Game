@@ -56,11 +56,6 @@ function buildingUpgradeCost(level: number) {
   return Math.floor(500 * Math.pow(level, 1.5));
 }
 
-/** Heal cost with Medical Center discount */
-function healCost(medLevel: number) {
-  const discount = Math.min(0.50, medLevel * 0.05);
-  return Math.floor(300 * (1 - discount));
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
@@ -68,6 +63,7 @@ function healCost(medLevel: number) {
 
 export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: Props) {
   const [fancoins,      setFancoins]      = useState<number>(0);
+  const [sweatPoints,   setSweatPoints]   = useState<number>(0);
   const [medicalLevel,  setMedicalLevel]  = useState<number>(1);
   const [stadiumLevel,  setStadiumLevel]  = useState<number>(1);
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -96,6 +92,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
         if (userRes.ok) {
           const userData = await userRes.json();
           setFancoins(userData.user?.balance_fancoins ?? 0);
+          setSweatPoints(userData.user?.sweat_points ?? 0);
         }
       } catch (err) {
         console.error('[PlayerProfileModal] Failed to fetch data:', err);
@@ -110,8 +107,8 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
 
   const stats = player.stats || { pace: 50, shooting: 50, passing: 50, defending: 50, physical: 50 };
 
-  const cost = healCost(medicalLevel);
-  const canAffordHeal = fancoins >= cost;
+  const cost = Math.max(0, 100 - (player.stamina ?? 100));
+  const canAffordHeal = sweatPoints >= cost;
 
   // ── Heal handler ─────────────────────────────────────────────────────────
 
@@ -123,8 +120,8 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
     try {
       const res = await healPlayer(userId, player.id);
       if (res.success) {
-        const newBal = res.new_balance ?? fancoins - cost;
-        setFancoins(newBal);
+        const newBal = res.new_balance ?? sweatPoints - cost;
+        setSweatPoints(newBal);
         window.dispatchEvent(new Event('balanceUpdated'));
         const updatedPlayer = { ...player, stamina: 100, is_injured: false, injury_matches_left: 0 };
         onTrainSuccess(updatedPlayer as Player, newBal);
@@ -387,7 +384,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                   `}
                 >
                   <span>{isHealing ? '...' : 'Heal'}</span>
-                  <span className="text-[8px] font-mono opacity-75">{isLoadingData ? '...' : `${cost} FC`}</span>
+                  <span className="text-[8px] font-mono opacity-75">{isLoadingData ? '...' : cost === 0 ? 'Free' : `${cost} SP`}</span>
                 </button>
               </div>
             </div>

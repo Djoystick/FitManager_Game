@@ -35,11 +35,10 @@ export async function getInjuredPlayers(userId: string) {
 
 export async function healPlayer(userId: string, playerId: string) {
   try {
-
-    // 1. Check user's balance
+    // 1. Check user's SP balance
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
-      .select('balance_fancoins')
+      .select('sweat_points')
       .eq('id', userId)
       .single();
 
@@ -55,22 +54,6 @@ export async function healPlayer(userId: string, playerId: string) {
 
     if (!team) return { success: false, error: 'Team not found' };
 
-    // 2. Fetch Medical Center Level to calculate discount
-    const { data: infra } = await supabaseAdmin
-      .from('infrastructure')
-      .select('medical_center_level')
-      .eq('team_id', team.id)
-      .maybeSingle();
-
-    const medicalLevel = infra?.medical_center_level || 1;
-    // Base cost 300 FC. 5% discount per Medical Center level, max 50%.
-    const discountPercent = Math.min(0.50, medicalLevel * 0.05);
-    const healCost = Math.floor(300 * (1 - discountPercent));
-
-    if (user.balance_fancoins < healCost) {
-      return { success: false, error: 'Insufficient FanCoins' };
-    }
-
     const { data: player, error: playerError } = await supabaseAdmin
       .from('players')
       .select('id, is_injured, stamina')
@@ -82,15 +65,23 @@ export async function healPlayer(userId: string, playerId: string) {
       return { success: false, error: 'Player not found or does not belong to your team' };
     }
 
-    if (!player.is_injured && (player.stamina ?? 100) >= 100) {
+    const currentStamina = player.stamina ?? 100;
+    if (!player.is_injured && currentStamina >= 100) {
       return { success: false, error: 'Player is already fully healthy' };
     }
 
-    // 3. Deduct FanCoins
-    const newBalance = user.balance_fancoins - healCost;
+    // 2. Calculate SP Cost (1 missing stamina = 1 SP)
+    const spCost = Math.max(0, 100 - currentStamina);
+
+    if (user.sweat_points < spCost) {
+      return { success: false, error: 'Not enough Sweat Points' };
+    }
+
+    // 3. Deduct Sweat Points
+    const newBalance = user.sweat_points - spCost;
     const { error: deductError } = await supabaseAdmin
       .from('users')
-      .update({ balance_fancoins: newBalance })
+      .update({ sweat_points: newBalance })
       .eq('id', userId);
 
     if (deductError) throw deductError;
@@ -102,7 +93,7 @@ export async function healPlayer(userId: string, playerId: string) {
       .eq('id', playerId);
 
     if (healError) {
-      await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins }).eq('id', userId);
+      await supabaseAdmin.from('users').update({ sweat_points: user.sweat_points }).eq('id', userId);
       throw healError;
     }
 
@@ -404,7 +395,7 @@ export async function upgradeTrainingCenter(userId: string) {
 // healAllPlayers
 //
 // Restores stamina to 100% for ALL players below 100 on the user's team.
-// Charges FC per player with Medical Center discount applied.
+// Charges SP per player.
 // Used by the "Heal All" button in the Lineup screen.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -417,7 +408,7 @@ export async function healAllPlayers(userId: string): Promise<{
   try {
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
-      .select('balance_fancoins')
+      .select('sweat_points')
       .eq('id', userId)
       .single();
 
@@ -431,41 +422,34 @@ export async function healAllPlayers(userId: string): Promise<{
 
     if (!team) return { success: false, error: 'Team not found' };
 
-    // Get Medical Center discount
-    const { data: infra } = await supabaseAdmin
-      .from('infrastructure')
-      .select('medical_center_level')
-      .eq('team_id', team.id)
-      .maybeSingle();
-
-    const medicalLevel    = infra?.medical_center_level ?? 1;
-    const discountPercent = Math.min(0.50, medicalLevel * 0.05);
-    const costPerPlayer   = Math.floor(300 * (1 - discountPercent));
-
     // Find all players needing healing
     const { data: needsHeal } = await supabaseAdmin
       .from('players')
-      .select('id')
+      .select('id, stamina, is_injured')
       .eq('team_id', team.id)
       .or('stamina.lt.100,is_injured.eq.true');
 
     if (!needsHeal || needsHeal.length === 0) {
-      return { success: true, playersHealed: 0, new_balance: user.balance_fancoins };
+      return { success: true, playersHealed: 0, new_balance: user.sweat_points };
     }
 
-    const totalCost = costPerPlayer * needsHeal.length;
-    if (user.balance_fancoins < totalCost) {
+    let totalCost = 0;
+    needsHeal.forEach(p => {
+      totalCost += Math.max(0, 100 - (p.stamina ?? 100));
+    });
+
+    if (user.sweat_points < totalCost) {
       return {
         success: false,
-        error: `Insufficient FanCoins. Need ${totalCost.toLocaleString()} FC (${needsHeal.length} × ${costPerPlayer} FC).`,
+        error: `Not enough Sweat Points. Need ${totalCost} SP to heal ${needsHeal.length} players.`,
       };
     }
 
-    const newBalance = user.balance_fancoins - totalCost;
+    const newBalance = user.sweat_points - totalCost;
 
     const { error: deductErr } = await supabaseAdmin
       .from('users')
-      .update({ balance_fancoins: newBalance })
+      .update({ sweat_points: newBalance })
       .eq('id', userId);
 
     if (deductErr) throw deductErr;
@@ -477,12 +461,12 @@ export async function healAllPlayers(userId: string): Promise<{
       .in('id', ids);
 
     if (healErr) {
-      await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins }).eq('id', userId);
+      await supabaseAdmin.from('users').update({ sweat_points: user.sweat_points }).eq('id', userId);
       throw healErr;
     }
 
     return { success: true, playersHealed: needsHeal.length, new_balance: newBalance };
   } catch (err: any) {
-    return { success: false, error: err.message ?? 'Failed to heal all players' };
+    return { success: false, error: err.message ?? 'Failed to bulk heal players' };
   }
 }
