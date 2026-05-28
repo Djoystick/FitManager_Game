@@ -60,18 +60,12 @@ export function GlobalHeader() {
   const fc = userData?.balance_fancoins ?? 0;
   const sp = userData?.sweat_points     ?? 0;
 
-  const specCoins = [
-    { emoji: '🏃', val: userData?.cardio_coin   ?? 0, color: 'text-cyan-400',   border: 'border-cyan-800/50',   bg: 'bg-cyan-900/20'   },
-    { emoji: '🤸', val: userData?.fitness_coin  ?? 0, color: 'text-emerald-400', border: 'border-emerald-800/50', bg: 'bg-emerald-900/20' },
-    { emoji: '⚽', val: userData?.ball_coin     ?? 0, color: 'text-orange-400', border: 'border-orange-800/50', bg: 'bg-orange-900/20' },
-    { emoji: '💪', val: userData?.strength_coin ?? 0, color: 'text-rose-400',   border: 'border-rose-800/50',   bg: 'bg-rose-900/20'   },
-  ] as const;
 
   return (
     <div className="w-full bg-black/85 backdrop-blur-md border-b border-gray-800/70 px-3 py-2 sticky top-0 z-50 shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
 
       {/* Row 1: Currencies */}
-      <div className="flex items-center justify-between overflow-x-auto custom-scrollbar pb-1">
+      <div className="flex items-center justify-evenly pb-1">
         
         {/* TON */}
         <div className="flex items-center gap-1.5 shrink-0 ml-1">
@@ -105,7 +99,7 @@ export function GlobalHeader() {
         </div>
 
         {/* Divider */}
-        <div className="h-5 w-px bg-gray-700/60" />
+        <div className="h-4 w-px bg-gray-700/60 mx-2 shrink-0" />
 
         {/* Sweat Points */}
         <div className={`flex items-center gap-1.5 transition-transform duration-300 ${animatingSP ? 'scale-110' : 'scale-100'}`}>
@@ -123,22 +117,6 @@ export function GlobalHeader() {
           }`}>
             {sp.toLocaleString()}
           </span>
-        </div>
-
-        {/* Divider */}
-        <div className="h-4 w-px bg-gray-700/60 mx-2 shrink-0" />
-
-        {/* 4 Spec-Coins row */}
-        <div className="flex items-center gap-1.5 shrink-0 mr-1">
-          {specCoins.map((c, i) => (
-            <div
-              key={i}
-              className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full border ${c.bg} ${c.border}`}
-            >
-              <span className="text-[10px]">{c.emoji}</span>
-              <span className={`text-[10px] font-bold font-mono ${c.color}`}>{c.val}</span>
-            </div>
-          ))}
         </div>
       </div>
     </div>

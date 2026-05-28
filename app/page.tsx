@@ -16,6 +16,10 @@ import { MatchReport } from '@/components/MatchReportModal';
 interface UserData {
   wallet_address:   string | null;
   balance_fancoins: number;
+  cardio_coin:      number;
+  fitness_coin:     number;
+  ball_coin:        number;
+  strength_coin:    number;
 }
 
 export default function DashboardPage() {
@@ -147,8 +151,23 @@ export default function DashboardPage() {
         </div>
       </section>
 
+      {/* TRAINING BANK (SPEC COINS) */}
+      <section className="grid grid-cols-4 gap-2">
+        {[
+          { emoji: '🏃', val: userData?.cardio_coin ?? 0, bg: 'bg-cyan-900/20', border: 'border-cyan-800/50', color: 'text-cyan-400' },
+          { emoji: '🤸', val: userData?.fitness_coin ?? 0, bg: 'bg-emerald-900/20', border: 'border-emerald-800/50', color: 'text-emerald-400' },
+          { emoji: '⚽', val: userData?.ball_coin ?? 0, bg: 'bg-orange-900/20', border: 'border-orange-800/50', color: 'text-orange-400' },
+          { emoji: '💪', val: userData?.strength_coin ?? 0, bg: 'bg-rose-900/20', border: 'border-rose-800/50', color: 'text-rose-400' }
+        ].map((c, i) => (
+          <div key={i} className={`flex flex-col items-center justify-center p-2 rounded-xl border ${c.bg} ${c.border} shadow-inner`}>
+            <span className="text-sm mb-0.5">{c.emoji}</span>
+            <span className={`text-[10px] font-bold font-mono ${c.color}`}>{c.val}</span>
+          </div>
+        ))}
+      </section>
+
       {/* MATCH JOURNAL (RESTRICTED TO 3 ITEMS) */}
-      <section className="bg-black/40 rounded-2xl p-2 border border-gray-800/50 shadow-inner">
+      <section className="bg-black/40 rounded-2xl p-2 border border-gray-800/50 shadow-inner flex-1 min-h-[150px] max-h-[220px] overflow-y-auto custom-scrollbar">
         {userId && <MatchHistoryWidget userId={userId} teamName={teamName} />}
       </section>
 
