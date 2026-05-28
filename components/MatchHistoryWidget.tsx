@@ -57,7 +57,7 @@ export function MatchHistoryWidget({ userId, teamName }: { userId: string; teamN
   }, [userId, teamName]);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 h-full">
       <div className="flex items-center gap-2 px-2">
         <BookOpen className="text-neon-pink w-5 h-5" />
         <h2 className="text-sm font-bold uppercase tracking-widest text-neon-pink drop-shadow-[0_0_5px_rgba(255,0,100,0.5)]">
@@ -65,7 +65,7 @@ export function MatchHistoryWidget({ userId, teamName }: { userId: string; teamN
         </h2>
       </div>
 
-      <div className="bg-black/40 border border-gray-800 rounded-xl overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex flex-col min-h-[150px]">
+      <div className="flex-1 bg-black/40 border border-gray-800 rounded-xl overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex flex-col min-h-0">
         {isLoading ? (
           <div className="flex-1 flex justify-center items-center p-8">
             <div className="w-6 h-6 border-2 border-neon-pink border-t-transparent rounded-full animate-spin"></div>
@@ -75,7 +75,7 @@ export function MatchHistoryWidget({ userId, teamName }: { userId: string; teamN
             <p className="text-xs uppercase tracking-widest">No matches played yet</p>
           </div>
         ) : (
-          <div className="flex flex-col divide-y divide-gray-800/50 max-h-[180px] overflow-y-auto custom-scrollbar">
+          <div className="flex-1 flex flex-col divide-y divide-gray-800/50 overflow-y-auto custom-scrollbar">
             {history.map((match) => {
               const isHome = match.home_team_id === userTeamId;
               const isWin = isHome ? match.home_score > match.away_score : match.away_score > match.home_score;

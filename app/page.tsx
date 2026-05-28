@@ -12,6 +12,7 @@ import { CyberLoader } from '@/components/ui/CyberLoader';
 import { Users, Trophy, User, Shield, Activity, Coins } from 'lucide-react';
 import { getUnviewedMatch } from '@/app/actions/matchActions';
 import { MatchReport } from '@/components/MatchReportModal';
+import { UnseenMatchesModal } from '@/components/UnseenMatchesModal';
 
 interface UserData {
   wallet_address:   string | null;
@@ -35,6 +36,8 @@ export default function DashboardPage() {
   const [players, setPlayers] = useState<any[]>([]);
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [firstName, setFirstName] = useState('Manager');
+  const [teamId, setTeamId] = useState<string | null>(null);
+  const [unseenMatches, setUnseenMatches] = useState<any[]>([]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -66,7 +69,17 @@ export default function DashboardPage() {
         } else {
           setHasTeam(true);
           setTeamName(teamJson.team.name);
+          setTeamId(teamJson.team.id);
           setPlayers(teamJson.players || []);
+          
+          // Fetch unseen matches in background
+          import('@/app/actions/matchActions').then(mod => {
+            mod.getUnseenMatches(teamJson.team.id).then(res => {
+              if (res.success && res.matches) {
+                setUnseenMatches(res.matches);
+              }
+            });
+          });
         }
       } else {
         setHasTeam(true);
@@ -103,8 +116,17 @@ export default function DashboardPage() {
   const teamOvr = players.length ? Math.round(players.reduce((sum, p) => sum + (p.ovr || 0), 0) / players.length) : 0;
   const avgStamina = players.length ? Math.round(players.reduce((sum, p) => sum + (p.stamina || 0), 0) / players.length) : 0;
 
+  const handleAcknowledgeUnseen = async (matchIds: string[]) => {
+    setUnseenMatches([]); // Optimistic UI close
+    if (teamId) {
+      const mod = await import('@/app/actions/matchActions');
+      await mod.markMatchesAsViewed(matchIds, teamId);
+    }
+  };
+
   return (
     <div className="flex flex-col flex-1 p-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <UnseenMatchesModal matches={unseenMatches} onAcknowledge={handleAcknowledgeUnseen} />
 
       {/* PREMIUM TOP BAR */}
       <header className="flex items-center justify-between bg-black/60 border border-gray-800 rounded-2xl p-3 shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-md">
@@ -167,8 +189,8 @@ export default function DashboardPage() {
         ))}
       </section>
 
-      {/* MATCH JOURNAL (RESTRICTED TO 3 VISIBLE ITEMS) */}
-      <section className="bg-black/40 rounded-2xl p-2 border border-gray-800/50 shadow-inner flex-1 min-h-[150px] max-h-[175px] overflow-y-auto custom-scrollbar">
+      {/* MATCH JOURNAL */}
+      <section className="flex-1 flex flex-col min-h-0">
         {userId && <MatchHistoryWidget userId={userId} teamName={teamName} />}
       </section>
 

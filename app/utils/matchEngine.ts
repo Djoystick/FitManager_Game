@@ -213,12 +213,12 @@ function resolveAttack(ctx: AttackContext): void {
 
   if (!duel(atkBuild, defBuild)) {
     events.push({
-      type: 'breakthrough_failed',
+      type: 'info',
       minute,
       player_id: defMid.id,
       player_name: defMid.name,
       team: defKey,
-      details: `${atkMid.name} ${pick(BUILDUP_LOSE)}. ${defMid.name} wins the ball back.`,
+      details: `Атака вязнет в центре поля. Уверенная игра в обороне от ${defMid.name}.`,
     });
     return;
   }
@@ -248,12 +248,12 @@ function resolveAttack(ctx: AttackContext): void {
 
   if (!duel(atkPace, defStop)) {
     events.push({
-      type: 'breakthrough_failed',
+      type: 'info',
       minute,
       player_id: defDef.id,
       player_name: defDef.name,
       team: defKey,
-      details: `${atkFwd.name} ${pick(PENET_LOSE)}. ${defDef.name} reads the run perfectly.`,
+      details: `Успешный отбор! ${defDef.name} чисто останавливает прорыв от ${atkFwd.name}.`,
     });
     return;
   }

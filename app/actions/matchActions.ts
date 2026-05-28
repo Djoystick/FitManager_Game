@@ -484,3 +484,74 @@ export async function simulateNextPendingMatch(userId: string) {
     return { success: false, error: error.message || 'Unknown exception' };
   }
 }
+
+export async function getUnseenMatches(teamId: string) {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('league_matches')
+      .select('id, round_number, home_score, away_score, home_team_id, away_team_id, teams!home_team_id(name), away_team:teams!away_team_id(name)')
+      .eq('is_played', true)
+      .or(`and(home_team_id.eq.${teamId},home_team_viewed.eq.false),and(away_team_id.eq.${teamId},away_team_viewed.eq.false)`);
+
+    if (error) {
+      console.error('[getUnseenMatches] error:', error);
+      return { success: false, error: error.message };
+    }
+
+    // Format the response
+    const formatted = data?.map(m => {
+      const isHome = m.home_team_id === teamId;
+      const opponentName = isHome ? (m.away_team as any)?.name : (m.teams as any)?.name;
+      const gf = isHome ? m.home_score : m.away_score;
+      const ga = isHome ? m.away_score : m.home_score;
+      const result = gf > ga ? 'win' : gf === ga ? 'draw' : 'loss';
+      
+      return {
+        id: m.id,
+        opponent: opponentName || 'Unknown',
+        gf, ga,
+        result
+      };
+    }) || [];
+
+    return { success: true, matches: formatted };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function markMatchesAsViewed(matchIds: string[], teamId: string) {
+  try {
+    if (!matchIds || matchIds.length === 0) return { success: true };
+
+    // Find which are home vs away for this team
+    const { data: matches } = await supabaseAdmin
+      .from('league_matches')
+      .select('id, home_team_id, away_team_id')
+      .in('id', matchIds);
+      
+    if (!matches) return { success: true };
+
+    const homeMatches = matches.filter(m => m.home_team_id === teamId).map(m => m.id);
+    const awayMatches = matches.filter(m => m.away_team_id === teamId).map(m => m.id);
+
+    if (homeMatches.length > 0) {
+      await supabaseAdmin
+        .from('league_matches')
+        .update({ home_team_viewed: true })
+        .in('id', homeMatches);
+    }
+    if (awayMatches.length > 0) {
+      await supabaseAdmin
+        .from('league_matches')
+        .update({ away_team_viewed: true })
+        .in('id', awayMatches);
+    }
+
+    revalidatePath('/');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
