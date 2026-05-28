@@ -217,6 +217,140 @@ export async function trainPlayerStatAction(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ACTION: batchTrainPlayerAction
+//
+// Accepts multiple stat increments and processes them in a single transaction.
+// Calculates costs progressively per stat.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function batchTrainPlayerAction(
+  playerId: string,
+  increments: Record<StatKey, number>
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const userId = await getAuthUserId();
+    if (!userId) return { success: false, error: 'Unauthorized: Valid Telegram session required.' };
+    
+    // 1. Validate payload
+    const keysToUpgrade = Object.keys(increments) as StatKey[];
+    if (keysToUpgrade.length === 0) return { success: false, error: 'No stats to upgrade.' };
+
+    // 2. Fetch player and team
+    const { data: player, error: playerErr } = await supabaseAdmin
+      .from('players')
+      .select('id, team_id, stats, ovr')
+      .eq('id', playerId)
+      .single();
+    if (playerErr || !player) return { success: false, error: 'Player not found.' };
+
+    const { data: team, error: teamErr } = await supabaseAdmin
+      .from('teams')
+      .select('user_id')
+      .eq('id', player.team_id)
+      .single();
+    if (teamErr || !team || team.user_id !== userId) return { success: false, error: 'Unauthorized team.' };
+
+    // 3. Fetch user balances
+    const { data: user, error: userErr } = await supabaseAdmin
+      .from('users')
+      .select('id, cardio_coin, fitness_coin, ball_coin, strength_coin')
+      .eq('id', userId)
+      .single();
+    if (userErr || !user) return { success: false, error: 'User not found.' };
+
+    // 4. Calculate progressive costs
+    const getCost = (val: number) => {
+      if (val <= 50) return 5;
+      if (val <= 65) return 10;
+      if (val <= 75) return 25;
+      if (val <= 85) return 60;
+      if (val <= 90) return 120;
+      return 300;
+    };
+
+    const currencyMap: Record<StatKey, SpecCurrencyType> = {
+      pac: 'cardio_coin', sta: 'cardio_coin',
+      agi: 'fitness_coin', def: 'fitness_coin',
+      dri: 'ball_coin', pas: 'ball_coin',
+      phy: 'strength_coin', sho: 'strength_coin',
+    };
+
+    const totalCosts: Record<SpecCurrencyType, number> = {
+      cardio_coin: 0, fitness_coin: 0, ball_coin: 0, strength_coin: 0
+    };
+
+    const newStats = { ...(player.stats as Record<string, number>) };
+    
+    // Handle legacy stat mapping for calculation
+    const legacyKeyMap: Record<StatKey, string> = { pac: 'pace', sho: 'shooting', pas: 'passing', def: 'defending', phy: 'physical', sta: 'sta', agi: 'agi', dri: 'dri' };
+
+    for (const key of keysToUpgrade) {
+      const inc = increments[key];
+      if (inc <= 0) continue;
+
+      let currentVal = newStats[key] ?? newStats[legacyKeyMap[key]] ?? 50;
+      const curType = currencyMap[key];
+
+      for (let i = 0; i < inc; i++) {
+        if (currentVal >= 99) break; // Cannot exceed 99
+        totalCosts[curType] += getCost(currentVal);
+        currentVal++;
+      }
+      newStats[key] = currentVal;
+    }
+
+    // 5. Verify balances
+    if (user.cardio_coin < totalCosts.cardio_coin ||
+        user.fitness_coin < totalCosts.fitness_coin ||
+        user.ball_coin < totalCosts.ball_coin ||
+        user.strength_coin < totalCosts.strength_coin) {
+      return { success: false, error: 'Недостаточно монет для всей операции.' };
+    }
+
+    // 6. Deduct balances
+    const newBalances = {
+      cardio_coin: user.cardio_coin - totalCosts.cardio_coin,
+      fitness_coin: user.fitness_coin - totalCosts.fitness_coin,
+      ball_coin: user.ball_coin - totalCosts.ball_coin,
+      strength_coin: user.strength_coin - totalCosts.strength_coin,
+    };
+
+    const { error: updateBalErr } = await supabaseAdmin
+      .from('users')
+      .update(newBalances)
+      .eq('id', userId);
+    if (updateBalErr) return { success: false, error: 'Failed to update user balances.' };
+
+    // 7. Recalculate OVR
+    const getVal = (k: StatKey) => newStats[k] ?? newStats[legacyKeyMap[k]] ?? 50;
+    const newOvr = Math.floor((getVal('pac') + getVal('sho') + getVal('pas') + getVal('def') + getVal('phy')) / 5.0);
+
+    // 8. Update player (single query)
+    const { error: updatePlErr } = await supabaseAdmin
+      .from('players')
+      .update({ stats: newStats, ovr: newOvr })
+      .eq('id', playerId);
+    
+    if (updatePlErr) {
+      // rollback best effort
+      await supabaseAdmin.from('users').update({
+        cardio_coin: user.cardio_coin, fitness_coin: user.fitness_coin, ball_coin: user.ball_coin, strength_coin: user.strength_coin
+      }).eq('id', userId);
+      return { success: false, error: 'Failed to update player stats.' };
+    }
+
+    revalidatePath('/base');
+    revalidatePath('/');
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('[batchTrainPlayerAction] error:', err);
+    return { success: false, error: err.message ?? 'Unknown error' };
+  }
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ACTION: upgradeBuildingAction
 //
 // Unified building upgrade handler for all 4 club facilities:

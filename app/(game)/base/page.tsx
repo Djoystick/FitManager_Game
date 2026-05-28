@@ -20,7 +20,7 @@ import {
   getClubInfrastructureData,
   getTrainingCampData,
   upgradeBuildingAction,
-  trainPlayerStatAction,
+  batchTrainPlayerAction,
   type ClubInfrastructure,
   type TrainingCampData,
   type PlayerForTraining,
@@ -276,19 +276,15 @@ export default function BaseDashboard() {
     });
   };
 
-  const handleTrainStat = (statKey: StatKey, currencyType: SpecCurrencyType) => {
+  const handleBatchTrain = (increments: Record<StatKey, number>) => {
     if (!selectedPlayer) return;
     const playerId = selectedPlayer.id;
 
     startTransition(async () => {
-      const res = await trainPlayerStatAction(playerId, statKey, currencyType);
-      if (res.success && res.data) {
-        toast.success(
-          `${res.data.stat_name.toUpperCase()} ${res.data.old_value} → ${res.data.new_value} ✅`,
-          { icon: '💪' }
-        );
+      const res = await batchTrainPlayerAction(playerId, increments);
+      if (res.success) {
+        toast.success(`Тренировка прошла успешно! ✅`, { icon: '💪' });
         window.dispatchEvent(new Event('balanceUpdated'));
-        // Refetch data and re-sync the selected player with fresh stats
         await fetchAll(playerId);
       } else {
         toast.error(res.error ?? 'Ошибка тренировки');
@@ -380,13 +376,13 @@ export default function BaseDashboard() {
             onUpgrade={handleUpgrade}
           />
         ) : (
-          <TrainingTab
-            campData={campData}
-            selectedPlayer={selectedPlayer}
-            onSelectPlayer={setSelectedPlayer}
-            onTrainStat={handleTrainStat}
-            isPending={isPending}
-          />
+        <TrainingTab
+          campData={campData}
+          selectedPlayer={selectedPlayer}
+          onSelectPlayer={setSelectedPlayer}
+          onBatchTrain={handleBatchTrain}
+          isPending={isPending}
+        />
         )}
       </div>
     </div>
@@ -547,15 +543,24 @@ function TrainingTab({
   campData,
   selectedPlayer,
   onSelectPlayer,
-  onTrainStat,
+  onBatchTrain,
   isPending,
 }: {
   campData: TrainingCampData | null;
   selectedPlayer: PlayerForTraining | null;
   onSelectPlayer: (p: PlayerForTraining) => void;
-  onTrainStat: (key: StatKey, cur: SpecCurrencyType) => void;
+  onBatchTrain: (increments: Record<StatKey, number>) => void;
   isPending: boolean;
 }) {
+  const [pendingUpgrades, setPendingUpgrades] = useState<Record<StatKey, number>>({
+    pac: 0, sta: 0, agi: 0, def: 0, dri: 0, pas: 0, phy: 0, sho: 0,
+  });
+
+  // Reset pending upgrades when player changes
+  useEffect(() => {
+    setPendingUpgrades({ pac: 0, sta: 0, agi: 0, def: 0, dri: 0, pas: 0, phy: 0, sho: 0 });
+  }, [selectedPlayer?.id, campData]);
+
   if (!campData || campData.players.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-48 gap-3 px-4">
@@ -567,14 +572,42 @@ function TrainingTab({
     );
   }
 
+  // Calculate total costs for pending upgrades
+  const totalCosts: Record<SpecCurrencyType, number> = {
+    cardio_coin: 0, fitness_coin: 0, ball_coin: 0, strength_coin: 0
+  };
+
+  let hasPending = false;
+
+  if (selectedPlayer) {
+    for (const stat of STAT_DEFS) {
+      const inc = pendingUpgrades[stat.key] || 0;
+      if (inc > 0) hasPending = true;
+      let currentVal = getStatValue(selectedPlayer.stats, stat.key);
+      for (let i = 0; i < inc; i++) {
+        totalCosts[stat.currency] += getStatCost(currentVal);
+        currentVal++;
+      }
+    }
+  }
+
+  const handleAdjust = (key: StatKey, amount: number) => {
+    setPendingUpgrades(prev => ({
+      ...prev,
+      [key]: Math.max(0, prev[key] + amount)
+    }));
+  };
+
+  const confirmUpgrades = () => {
+    if (!hasPending || isPending) return;
+    onBatchTrain(pendingUpgrades);
+  };
+
   return (
     <div className="flex flex-col">
 
       {/* ── Player Carousel ───────────────────────────────────────────────── */}
-      <div className="pt-4 px-4">
-        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-2">
-          Выбери игрока
-        </p>
+      <div className="pt-2 px-4">
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none -mx-1 px-1">
           {campData.players.map(player => {
             const isSelected = selectedPlayer?.id === player.id;
@@ -584,10 +617,10 @@ function TrainingTab({
                 id={`player-card-${player.id}`}
                 onClick={() => onSelectPlayer(player)}
                 className={`
-                  flex-shrink-0 flex flex-col items-center gap-1.5 p-2.5 rounded-2xl
-                  border transition-all duration-200 w-[74px]
+                  flex-shrink-0 flex flex-col items-center gap-1.5 p-2 rounded-xl
+                  border transition-all duration-200 w-[68px]
                   ${isSelected
-                    ? 'bg-neon-cyan/10 border-neon-cyan/50 shadow-[0_0_14px_rgba(0,240,255,0.15)]'
+                    ? 'bg-neon-cyan/10 border-neon-cyan/50 shadow-[0_0_10px_rgba(0,240,255,0.15)]'
                     : 'bg-black/40 border-gray-800 hover:border-gray-600 active:scale-95'
                   }
                 `}
@@ -595,7 +628,7 @@ function TrainingTab({
                 {/* OVR circle */}
                 <div
                   className={`
-                    w-10 h-10 rounded-full flex items-center justify-center
+                    w-8 h-8 rounded-full flex items-center justify-center
                     text-xs font-bold font-orbitron transition-colors
                     ${isSelected
                       ? 'bg-neon-cyan/20 text-neon-cyan'
@@ -607,7 +640,7 @@ function TrainingTab({
                 </div>
 
                 {/* Name (last name only) */}
-                <span className="text-[9px] font-bold text-white text-center leading-tight line-clamp-2 w-full">
+                <span className="text-[9px] font-bold text-white text-center leading-tight line-clamp-1 w-full">
                   {player.name.split(' ').pop()}
                 </span>
 
@@ -619,14 +652,6 @@ function TrainingTab({
                 >
                   {player.position}
                 </span>
-
-                {/* Active indicator */}
-                {isSelected && (
-                  <ChevronRight
-                    size={10}
-                    className="text-neon-cyan rotate-90"
-                  />
-                )}
               </button>
             );
           })}
@@ -635,18 +660,14 @@ function TrainingTab({
 
       {/* ── Stat Grid ─────────────────────────────────────────────────────── */}
       {selectedPlayer && (
-        <div className="px-4 pt-4 pb-4">
+        <div className="px-4 pt-2 pb-4">
           {/* Selected player info bar */}
-          <div className="flex items-center justify-between mb-3 px-1">
+          <div className="flex items-center justify-between mb-2 px-1">
             <div>
               <p className="text-sm font-bold text-white font-orbitron">
                 {selectedPlayer.name}
               </p>
-              <p className="text-[10px] text-gray-500 font-mono">
-                {selectedPlayer.position} · OVR {selectedPlayer.ovr}
-              </p>
             </div>
-
             {/* Pending indicator */}
             {isPending && (
               <div className="flex items-center gap-1.5 text-neon-cyan">
@@ -659,113 +680,115 @@ function TrainingTab({
           {/* 2-column stat grid */}
           <div className="grid grid-cols-2 gap-2">
             {STAT_DEFS.map(stat => {
-              const value      = getStatValue(selectedPlayer.stats, stat.key);
-              const cost       = getStatCost(value);
+              const baseValue  = getStatValue(selectedPlayer.stats, stat.key);
+              const pendingInc = pendingUpgrades[stat.key] || 0;
+              const plannedVal = baseValue + pendingInc;
+              const nextCost   = getStatCost(plannedVal);
               const balance    = campData.currencies[stat.currency];
-              const canAfford  = balance >= cost;
-              const isMaxed    = value >= 99;
+              const usedBalance = totalCosts[stat.currency];
+              const remainingBalance = balance - usedBalance;
+              const canAffordNext = remainingBalance >= nextCost;
+              const isMaxed    = plannedVal >= 99;
 
               return (
                 <div
                   key={stat.key}
                   className={`
-                    relative overflow-hidden rounded-xl border p-3
+                    relative overflow-hidden rounded-xl border p-2
                     ${stat.colorBg} ${stat.colorBorder}
                     transition-opacity duration-200
                     ${isPending ? 'opacity-60' : 'opacity-100'}
                   `}
                 >
                   {/* Stat header */}
-                  <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center justify-between mb-1">
                     <div>
-                      <span className={`text-[11px] font-bold font-orbitron ${stat.colorText}`}>
+                      <span className={`text-[10px] font-bold font-orbitron ${stat.colorText}`}>
                         {stat.label}
                       </span>
-                      <p className="text-[8px] text-gray-600 leading-tight">
-                        {stat.fullLabel}
-                      </p>
                     </div>
-                    <span className="text-white font-bold font-mono text-base leading-none">
-                      {value}
+                    <span className="text-white font-bold font-mono text-sm leading-none flex items-center gap-1">
+                      {baseValue}
+                      {pendingInc > 0 && <span className="text-neon-green text-[10px]">+ {pendingInc}</span>}
                     </span>
                   </div>
 
                   {/* Progress bar */}
-                  <div className="w-full h-1 bg-gray-700/40 rounded-full mb-2.5 overflow-hidden">
+                  <div className="w-full h-1 bg-gray-700/40 rounded-full mb-1.5 overflow-hidden flex">
                     <div
-                      className={`h-full rounded-full transition-all duration-500 ${stat.colorBar}`}
-                      style={{ width: `${(value / 99) * 100}%` }}
+                      className={`h-full transition-all duration-500 ${stat.colorBar}`}
+                      style={{ width: `${(baseValue / 99) * 100}%` }}
                     />
+                    {pendingInc > 0 && (
+                      <div
+                        className={`h-full transition-all duration-500 bg-neon-green/80`}
+                        style={{ width: `${(pendingInc / 99) * 100}%` }}
+                      />
+                    )}
                   </div>
 
-                  {/* Footer: currency badge + cost + plus button */}
+                  {/* Footer: + / - buttons and cost */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
-                      <span className="text-[11px]">{stat.currencyEmoji}</span>
+                      <span className="text-[10px]">{stat.currencyEmoji}</span>
                       <span className={`text-[9px] font-mono font-bold ${stat.colorText}`}>
-                        {isMaxed ? 'MAX' : cost}
+                        {isMaxed ? 'MAX' : nextCost}
                       </span>
                     </div>
 
-                    <button
-                      id={`train-${selectedPlayer.id}-${stat.key}`}
-                      onClick={() => onTrainStat(stat.key, stat.currency)}
-                      disabled={isPending || !canAfford || isMaxed}
-                      title={
-                        isMaxed
-                          ? 'Максимальный уровень'
-                          : canAfford
-                          ? `+1 ${stat.label} за ${cost} ${stat.currencyLabel}`
-                          : `Нужно ${cost} ${stat.currencyLabel} (есть ${balance})`
-                      }
-                      className={`
-                        w-7 h-7 rounded-lg flex items-center justify-center
-                        text-sm font-bold transition-all duration-150
-                        ${isPending
-                          ? 'bg-gray-800 text-gray-600 cursor-wait'
-                          : isMaxed
-                          ? 'bg-gray-800/40 text-gray-700 cursor-default'
-                          : !canAfford
-                          ? 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
-                          : `${stat.colorBg} ${stat.colorText} border ${stat.colorBorder}
-                             hover:brightness-150 active:scale-90`
-                        }
-                      `}
-                    >
-                      {isMaxed ? '✓' : '+'}
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {pendingInc > 0 && (
+                        <button
+                          onClick={() => handleAdjust(stat.key, -1)}
+                          disabled={isPending}
+                          className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold transition-all bg-red-900/40 text-red-400 border border-red-800/40 hover:bg-red-800/60 active:scale-90`}
+                        >
+                          -
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleAdjust(stat.key, 1)}
+                        disabled={isPending || !canAffordNext || isMaxed}
+                        className={`
+                          w-6 h-6 rounded flex items-center justify-center
+                          text-xs font-bold transition-all
+                          ${isPending
+                            ? 'bg-gray-800 text-gray-600 cursor-wait'
+                            : isMaxed
+                            ? 'bg-gray-800/40 text-gray-700 cursor-default'
+                            : !canAffordNext
+                            ? 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
+                            : `${stat.colorBg} ${stat.colorText} border ${stat.colorBorder} hover:brightness-150 active:scale-90`
+                          }
+                        `}
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Training legend */}
-          <div className="mt-4 flex flex-col gap-1.5 px-1">
-            <p className="text-[9px] text-gray-600 uppercase tracking-widest font-bold">
-              Прогрессивная стоимость
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {(
-                [
-                  { range: '1–50',  cost: '5' },
-                  { range: '51–65', cost: '10' },
-                  { range: '66–75', cost: '25' },
-                  { range: '76–85', cost: '60' },
-                  { range: '86–90', cost: '120' },
-                  { range: '91–99', cost: '300' },
-                ] as const
-              ).map(tier => (
-                <div
-                  key={tier.range}
-                  className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-800/60 rounded border border-gray-700/30"
-                >
-                  <span className="text-[8px] text-gray-500 font-mono">{tier.range}</span>
-                  <span className="text-[8px] text-gray-300 font-bold font-mono">→ {tier.cost}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Confirm Button */}
+          {hasPending && (
+            <button
+              onClick={confirmUpgrades}
+              disabled={isPending}
+              className={`
+                mt-4 w-full py-3 rounded-xl font-black uppercase tracking-widest text-xs
+                transition-all duration-200
+                ${isPending 
+                  ? 'bg-gray-800 text-gray-500 cursor-wait' 
+                  : 'bg-neon-cyan text-black hover:bg-neon-cyan/80 shadow-[0_0_15px_rgba(0,255,255,0.4)]'
+                }
+              `}
+            >
+              {isPending ? 'Загрузка...' : 'Подтвердить улучшения'}
+            </button>
+          )}
+
         </div>
       )}
     </div>
