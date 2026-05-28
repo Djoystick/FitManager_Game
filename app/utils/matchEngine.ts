@@ -218,7 +218,7 @@ function resolveAttack(ctx: AttackContext): void {
       player_id: defMid.id,
       player_name: defMid.name,
       team: defKey,
-      details: `Атака вязнет в центре поля. Уверенная игра в обороне от ${defMid.name}.`,
+      details: `Неточный пас в центре поля, владение переходит к сопернику.`,
     });
     return;
   }
@@ -248,12 +248,12 @@ function resolveAttack(ctx: AttackContext): void {
 
   if (!duel(atkPace, defStop)) {
     events.push({
-      type: 'info',
+      type: 'breakthrough_failed',
       minute,
       player_id: defDef.id,
       player_name: defDef.name,
       team: defKey,
-      details: `Успешный отбор! ${defDef.name} чисто останавливает прорыв от ${atkFwd.name}.`,
+      details: `Отличный подкат! Защита нейтрализует угрозу.`,
     });
     return;
   }
@@ -386,14 +386,14 @@ export function simulateMatch(
   const awayMid  = midfieldScore(awayTeam, awayGreenLinks, liveStaminaMap);
   const totalMid = homeMid + awayMid || 1; // avoid division by zero
 
-  const homePoss = homeMid / totalMid;
+  const homePoss = isNaN(homeMid / totalMid) ? 0.5 : (homeMid / totalMid);
   const awayPoss = 1 - homePoss;
 
   // Formula: base 5 attacks + up to 7 bonus based on possession, ±1 jitter
   // Capped at 12 max per team (hard cap to prevent runaway goals)
-  // Minimum 5 per team to guarantee events
-  const homeAttacks = Math.min(12, Math.max(5, Math.round(5 + homePoss * 7 + Math.random() * 2 - 1)));
-  const awayAttacks = Math.min(12, Math.max(5, Math.round(5 + awayPoss * 7 + Math.random() * 2 - 1)));
+  // Minimum 3 per team to guarantee events (safeguarded against NaN)
+  const homeAttacks = Math.min(12, Math.max(3, Math.round(5 + homePoss * 7 + Math.random() * 2 - 1) || 3));
+  const awayAttacks = Math.min(12, Math.max(3, Math.round(5 + awayPoss * 7 + Math.random() * 2 - 1) || 3));
 
   // ── 3. Kickoff info event ──────────────────────────────────────────────────
   const homeAnchor = homeTeam[0];
