@@ -7,6 +7,8 @@ import { bulkTrainPlayer } from '@/app/actions/playerActions';
 import { healPlayer } from '@/app/actions/baseActions';
 import { InfoPopover } from '@/components/ui/InfoPopover';
 import Link from 'next/link';
+import { listPlayerAction } from '@/app/actions/marketActions';
+import toast from 'react-hot-toast';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -33,6 +35,9 @@ interface Player {
   is_injured?:          boolean;
   injury_matches_left?: number;
   lineup_status:        string;
+  is_for_sale?:         boolean;
+  is_retired?:          boolean;
+  seasons_played?:      number;
 }
 
 interface Props {
@@ -64,9 +69,14 @@ function healCost(medLevel: number) {
 export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: Props) {
   const [fancoins,      setFancoins]      = useState<number>(0);
   const [medicalLevel,  setMedicalLevel]  = useState<number>(1);
+  const [stadiumLevel,  setStadiumLevel]  = useState<number>(1);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isHealing,     setIsHealing]     = useState(false);
   const [errorMsg,      setErrorMsg]      = useState<string | null>(null);
+
+  const [sellMode,      setSellMode]      = useState(false);
+  const [sellPrice,     setSellPrice]     = useState('');
+  const [isPendingSell, startTransition]  = React.useTransition();
 
   // ── Load balances + medical level ─────────────────────────────────────────
 
@@ -81,6 +91,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
         if (infraRes.ok) {
           const infraData = await infraRes.json();
           setMedicalLevel(infraData.infrastructure?.medical_center_level ?? 1);
+          setStadiumLevel(infraData.infrastructure?.stadium_level ?? 1);
         }
         if (userRes.ok) {
           const userData = await userRes.json();
@@ -125,6 +136,35 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
     } finally {
       setIsHealing(false);
     }
+  };
+
+  // ── Sell handler ─────────────────────────────────────────────────────────
+  const handleSell = () => {
+    const price = parseFloat(sellPrice);
+    if (isNaN(price) || price <= 0) {
+      toast.error('Введите корректную цену в TON');
+      return;
+    }
+    const fee = stadiumLevel * 250;
+    if (fancoins < fee) {
+      toast.error(`Недостаточно FanCoins для налога. Нужно: ${fee} FC`);
+      return;
+    }
+    if (player.lineup_status === 'starter') {
+      toast.error('Игрок в стартовом составе. Сначала переведите его в резерв.');
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await listPlayerAction(player.id, price);
+      if (res.success) {
+        toast.success(`Игрок выставлен на рынок за ${price} TON`);
+        window.dispatchEvent(new Event('balanceUpdated'));
+        onClose(); // Close modal on success
+      } else {
+        toast.error(res.error || 'Ошибка при выставлении на рынок');
+      }
+    });
   };
 
   // ── Stat display config ───────────────────────────────────────────────────
@@ -193,7 +233,57 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
         {/* ── Content ────────────────────────────────────────────────────── */}
         <div className="overflow-y-auto custom-scrollbar flex-1 p-5 flex flex-col gap-5">
 
-          {/* Error banner */}
+          {sellMode ? (
+            <div className="flex flex-col gap-4 animate-in fade-in duration-300">
+              <h3 className="text-sm font-black text-white uppercase tracking-widest text-center">Выставить на рынок</h3>
+              <p className="text-xs text-gray-400 text-center -mt-2">Продажа NFT-карточки за TON</p>
+              
+              <div className="bg-black/50 p-4 rounded-xl border border-gray-800">
+                <label className="text-xs text-gray-400 font-bold uppercase tracking-widest">Цена (TON)</label>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xl">💎</span>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    min="0"
+                    value={sellPrice}
+                    onChange={(e) => setSellPrice(e.target.value)}
+                    placeholder="Например: 1.5"
+                    className="flex-1 bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-orbitron text-xl focus:border-neon-cyan outline-none transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-red-900/20 border border-red-500/30 p-4 rounded-xl flex flex-col gap-2">
+                <div className="flex justify-between text-xs text-red-400 font-bold uppercase tracking-widest">
+                  <span>Налог на размещение (Fee):</span>
+                  <span>{stadiumLevel * 250} FC</span>
+                </div>
+                <p className="text-[10px] text-red-500/70">
+                  Этот налог высчитывается из уровня вашего Стадиона ({stadiumLevel} ур.) и будет сожжен навсегда.
+                </p>
+              </div>
+
+              <div className="flex gap-3 mt-2">
+                <button 
+                  onClick={() => setSellMode(false)}
+                  disabled={isPendingSell}
+                  className="flex-1 py-3 rounded-lg font-bold uppercase tracking-widest text-xs bg-gray-800 text-white hover:bg-gray-700 disabled:opacity-50 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button 
+                  onClick={handleSell}
+                  disabled={isPendingSell || !sellPrice}
+                  className="flex-1 py-3 rounded-lg font-black uppercase tracking-widest text-xs bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 transition-colors shadow-[0_0_15px_rgba(37,99,235,0.4)]"
+                >
+                  {isPendingSell ? 'Загрузка...' : 'Подтвердить'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-5">
+              {/* Error banner */}
           {errorMsg && (
             <div className="text-xs text-center font-bold text-neon-pink bg-red-900/20 p-2 rounded border border-neon-pink/30">
               {errorMsg}
@@ -303,33 +393,36 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
             </div>
           )}
 
-          {/* ── Train CTA → /base ─────────────────────────────────────────── */}
-          <div className="border-t border-gray-800 pt-4">
-            <h3 className="text-[10px] uppercase tracking-widest text-gray-500 mb-3">
-              Прокачка W2E
-            </h3>
-            <Link
-              href={`/base?playerId=${player.id}`}
-              onClick={onClose}
-              id={`train-goto-base-${player.id}`}
-              className="
-                w-full flex items-center justify-between px-4 py-3 rounded-xl
-                bg-neon-cyan/10 border border-neon-cyan/40 text-neon-cyan
-                hover:bg-neon-cyan/20 hover:border-neon-cyan/70
-                active:scale-95 transition-all duration-200
-                shadow-[0_0_12px_rgba(0,240,255,0.1)]
-              "
-            >
-              <div className="flex flex-col">
-                <span className="text-xs font-black font-orbitron uppercase tracking-widest">
-                  Тренировать игрока
-                </span>
-                <span className="text-[9px] font-mono text-neon-cyan/60 mt-0.5">
-                  Открыть в Базе клуба
-                </span>
+            </div>
+          )}
+
+          {/* ── Footer Actions ─────────────────────────────────────────────── */}
+          <div className="border-t border-gray-800 pt-4 flex flex-col gap-3">
+            {player.is_for_sale ? (
+              <div className="w-full py-3 bg-gray-900 border border-gray-700 rounded-xl text-center text-xs font-bold text-gray-500 uppercase tracking-widest">
+                Игрок выставлен на рынок
               </div>
-              <ChevronRight size={16} className="text-neon-cyan opacity-60" />
-            </Link>
+            ) : player.is_retired ? (
+              <div className="w-full py-3 bg-purple-900/20 border border-purple-500/50 rounded-xl text-center text-xs font-bold text-purple-400 uppercase tracking-widest">
+                Игрок на пенсии (Зал Славы)
+              </div>
+            ) : (
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setSellMode(true)}
+                  className="flex-1 py-3 rounded-xl bg-blue-900/30 border border-blue-500/50 text-blue-400 font-black text-xs uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-[0_0_10px_rgba(59,130,246,0.1)]"
+                >
+                  Продать (TON)
+                </button>
+                <Link
+                  href={`/base?playerId=${player.id}`}
+                  onClick={onClose}
+                  className="flex-1 py-3 rounded-xl bg-neon-cyan/20 border border-neon-cyan/50 text-neon-cyan font-black text-xs uppercase tracking-widest hover:bg-neon-cyan hover:text-black flex items-center justify-center transition-all shadow-[0_0_10px_rgba(0,255,255,0.2)]"
+                >
+                  Тренировать
+                </Link>
+              </div>
+            )}
           </div>
 
         </div>

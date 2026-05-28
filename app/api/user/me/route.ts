@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     const { data: user, error } = await supabase
       .from('users')
       .select(
-        'balance_fancoins, sweat_points, cardio_coin, fitness_coin, ball_coin, strength_coin, wallet_address'
+        'balance_fancoins, sweat_points, cardio_coin, fitness_coin, ball_coin, strength_coin, wallet_address, balance_ton'
       )
       .eq('id', userId)
       .single();

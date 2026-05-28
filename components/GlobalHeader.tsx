@@ -12,6 +12,7 @@ interface UserData {
   fitness_coin:      number;
   ball_coin:         number;
   strength_coin:     number;
+  balance_ton:       number;
 }
 
 export function GlobalHeader() {
@@ -69,10 +70,24 @@ export function GlobalHeader() {
   return (
     <div className="w-full bg-black/85 backdrop-blur-md border-b border-gray-800/70 px-3 py-2 sticky top-0 z-50 shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
 
-      {/* Row 1: FC + SP */}
-      <div className="flex items-center justify-between">
+      {/* Row 1: Currencies */}
+      <div className="flex items-center justify-between overflow-x-auto custom-scrollbar pb-1">
+        
+        {/* TON */}
+        <div className="flex items-center gap-1.5 shrink-0 ml-1">
+          <div className="w-5 h-5 rounded-full border border-blue-600 bg-blue-500/20 shadow-[0_0_8px_rgba(59,130,246,0.3)] flex items-center justify-center">
+            <span className="text-[10px] text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.8)]">💎</span>
+          </div>
+          <span className="text-sm font-black font-orbitron text-blue-400 drop-shadow-[0_0_4px_rgba(96,165,250,0.7)]">
+            {Number(userData?.balance_ton ?? 0).toFixed(2)}
+          </span>
+        </div>
+
+        {/* Divider */}
+        <div className="h-4 w-px bg-gray-700/60 mx-2 shrink-0" />
+
         {/* FanCoins */}
-        <div className={`flex items-center gap-1.5 transition-transform duration-300 ${animatingFC ? 'scale-110' : 'scale-100'}`}>
+        <div className={`flex items-center gap-1.5 shrink-0 transition-transform duration-300 ${animatingFC ? 'scale-110' : 'scale-100'}`}>
           <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-300 ${
             animatingFC
               ? 'bg-yellow-400 border-yellow-300 shadow-[0_0_16px_rgba(250,204,21,1)]'
@@ -111,10 +126,10 @@ export function GlobalHeader() {
         </div>
 
         {/* Divider */}
-        <div className="h-5 w-px bg-gray-700/60" />
+        <div className="h-4 w-px bg-gray-700/60 mx-2 shrink-0" />
 
         {/* 4 Spec-Coins row */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0 mr-1">
           {specCoins.map((c, i) => (
             <div
               key={i}
