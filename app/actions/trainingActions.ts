@@ -265,7 +265,7 @@ export async function upgradeBuildingAction(
 
     if (infraErr || !infra) return { success: false, error: 'Infrastructure record not found.' };
 
-    const currentLevel = (infra as Record<string, number>)[column] ?? 1;
+    const currentLevel = (infra as unknown as Record<string, number>)[column] ?? 1;
     const upgradeCost  = currentLevel * 1000;
 
     if (user.balance_fancoins < upgradeCost) {
