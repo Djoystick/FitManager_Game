@@ -1,319 +1,775 @@
 'use client';
 
-import React, { useContext, useEffect, useState } from 'react';
-import { Hospital, Dumbbell, Zap, TrendingUp, AlertTriangle } from 'lucide-react';
+import React, {
+  useContext,
+  useEffect,
+  useState,
+  useTransition,
+} from 'react';
+import {
+  Trophy,
+  Hospital,
+  GraduationCap,
+  Search,
+  Dumbbell,
+  Users,
+  ChevronRight,
+} from 'lucide-react';
 import { BackButton } from '@/components/ui/BackButton';
-import { LanguageContext } from '@/components/LanguageContext';
-import { dict } from '@/lib/dictionaries';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
-import { getInjuredPlayers, healPlayer, getStadiumData, upgradeStadium, upgradeMedicalCenter, upgradeTrainingCenter, forceInjuryDebug } from '@/app/actions/baseActions';
+import {
+  getClubInfrastructureData,
+  getTrainingCampData,
+  upgradeBuildingAction,
+  trainPlayerStatAction,
+  type ClubInfrastructure,
+  type TrainingCampData,
+  type PlayerForTraining,
+  type StatKey,
+  type SpecCurrencyType,
+  type BuildingType,
+} from '@/app/actions/trainingActions';
 import toast from 'react-hot-toast';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Static definitions — declared outside component so Tailwind class scanner
+// can see all literal class names and include them in the build output.
+// ─────────────────────────────────────────────────────────────────────────────
+
+type TabId = 'infrastructure' | 'training';
+
+// ── Stat definitions ──────────────────────────────────────────────────────────
+
+interface StatDef {
+  key: StatKey;
+  label: string;
+  fullLabel: string;
+  currency: SpecCurrencyType;
+  currencyLabel: string;
+  currencyEmoji: string;
+  colorText: string;
+  colorBg: string;
+  colorBorder: string;
+  colorBar: string;
+}
+
+const STAT_DEFS: StatDef[] = [
+  {
+    key: 'pac', label: 'PAC', fullLabel: 'Скорость',
+    currency: 'cardio_coin', currencyLabel: 'Cardio', currencyEmoji: '🏃',
+    colorText: 'text-cyan-400', colorBg: 'bg-cyan-900/20',
+    colorBorder: 'border-cyan-800/40', colorBar: 'bg-cyan-400',
+  },
+  {
+    key: 'sta', label: 'STA', fullLabel: 'Стамина',
+    currency: 'cardio_coin', currencyLabel: 'Cardio', currencyEmoji: '🏃',
+    colorText: 'text-cyan-300', colorBg: 'bg-cyan-900/20',
+    colorBorder: 'border-cyan-800/40', colorBar: 'bg-cyan-300',
+  },
+  {
+    key: 'agi', label: 'AGI', fullLabel: 'Ловкость',
+    currency: 'fitness_coin', currencyLabel: 'Fitness', currencyEmoji: '🤸',
+    colorText: 'text-emerald-400', colorBg: 'bg-emerald-900/20',
+    colorBorder: 'border-emerald-800/40', colorBar: 'bg-emerald-400',
+  },
+  {
+    key: 'def', label: 'DEF', fullLabel: 'Защита',
+    currency: 'fitness_coin', currencyLabel: 'Fitness', currencyEmoji: '🤸',
+    colorText: 'text-emerald-300', colorBg: 'bg-emerald-900/20',
+    colorBorder: 'border-emerald-800/40', colorBar: 'bg-emerald-300',
+  },
+  {
+    key: 'dri', label: 'DRI', fullLabel: 'Дриблинг',
+    currency: 'ball_coin', currencyLabel: 'Ball', currencyEmoji: '⚽',
+    colorText: 'text-orange-400', colorBg: 'bg-orange-900/20',
+    colorBorder: 'border-orange-800/40', colorBar: 'bg-orange-400',
+  },
+  {
+    key: 'pas', label: 'PAS', fullLabel: 'Пасы',
+    currency: 'ball_coin', currencyLabel: 'Ball', currencyEmoji: '⚽',
+    colorText: 'text-orange-300', colorBg: 'bg-orange-900/20',
+    colorBorder: 'border-orange-800/40', colorBar: 'bg-orange-300',
+  },
+  {
+    key: 'phy', label: 'PHY', fullLabel: 'Физика',
+    currency: 'strength_coin', currencyLabel: 'Strength', currencyEmoji: '💪',
+    colorText: 'text-rose-400', colorBg: 'bg-rose-900/20',
+    colorBorder: 'border-rose-800/40', colorBar: 'bg-rose-400',
+  },
+  {
+    key: 'sho', label: 'SHO', fullLabel: 'Удары',
+    currency: 'strength_coin', currencyLabel: 'Strength', currencyEmoji: '💪',
+    colorText: 'text-rose-300', colorBg: 'bg-rose-900/20',
+    colorBorder: 'border-rose-800/40', colorBar: 'bg-rose-300',
+  },
+];
+
+// ── Building definitions ───────────────────────────────────────────────────────
+
+interface BuildingDef {
+  key: BuildingType;
+  label: string;
+  description: string;
+  bonusLabel: string;
+  Icon: React.ElementType;
+  colorText: string;
+  colorBg: string;
+  colorBorder: string;
+  colorHoverBorder: string;
+  colorGlow: string;
+}
+
+const BUILDING_DEFS: BuildingDef[] = [
+  {
+    key: 'stadium', label: 'Стадион',
+    description: 'Пассивный доход FanCoins за каждый матч',
+    bonusLabel: '+50 FC / матч / уровень',
+    Icon: Trophy,
+    colorText:        'text-yellow-400',
+    colorBg:          'bg-yellow-900/20',
+    colorBorder:      'border-yellow-800/40',
+    colorHoverBorder: 'hover:border-yellow-500/60',
+    colorGlow:        'bg-yellow-500/8',
+  },
+  {
+    key: 'medical', label: 'Медпункт',
+    description: 'Скидка на лечение травмированных игроков',
+    bonusLabel: '-5% стоимость / уровень',
+    Icon: Hospital,
+    colorText:        'text-pink-400',
+    colorBg:          'bg-pink-900/20',
+    colorBorder:      'border-pink-800/40',
+    colorHoverBorder: 'hover:border-pink-500/60',
+    colorGlow:        'bg-pink-500/8',
+  },
+  {
+    key: 'academy', label: 'Академия',
+    description: 'Улучшает стартовые характеристики новичков',
+    bonusLabel: '+2 OVR генетики / уровень',
+    Icon: GraduationCap,
+    colorText:        'text-violet-400',
+    colorBg:          'bg-violet-900/20',
+    colorBorder:      'border-violet-800/40',
+    colorHoverBorder: 'hover:border-violet-500/60',
+    colorGlow:        'bg-violet-500/8',
+  },
+  {
+    key: 'scout', label: 'Скауты',
+    description: 'Шанс выпадения перков при генерации игрока',
+    bonusLabel: '+5% шанс перка / уровень',
+    Icon: Search,
+    colorText:        'text-teal-400',
+    colorBg:          'bg-teal-900/20',
+    colorBorder:      'border-teal-800/40',
+    colorHoverBorder: 'hover:border-teal-500/60',
+    colorGlow:        'bg-teal-500/8',
+  },
+];
+
+// ── Old stat key compatibility mapping ────────────────────────────────────────
+
+const LEGACY_KEY: Partial<Record<StatKey, string>> = {
+  pac: 'pace',
+  sho: 'shooting',
+  pas: 'passing',
+  def: 'defending',
+  phy: 'physical',
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function getStatValue(
+  stats: Record<string, unknown> | null | undefined,
+  key: StatKey
+): number {
+  if (!stats) return 50;
+  const direct = stats[key];
+  if (typeof direct === 'number') return direct;
+  const legacy = LEGACY_KEY[key];
+  if (legacy) {
+    const legacyVal = stats[legacy];
+    if (typeof legacyVal === 'number') return legacyVal;
+  }
+  return 50;
+}
+
+function getStatCost(value: number): number {
+  if (value <= 50) return 5;
+  if (value <= 65) return 10;
+  if (value <= 75) return 25;
+  if (value <= 85) return 60;
+  if (value <= 90) return 120;
+  return 300;
+}
+
+function getInfraLevel(infra: ClubInfrastructure | null, key: BuildingType): number {
+  if (!infra) return 1;
+  switch (key) {
+    case 'stadium': return infra.stadium_level;
+    case 'medical': return infra.medical_level;
+    case 'academy': return infra.academy_level;
+    case 'scout':   return infra.scout_level;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main Page Component
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function BaseDashboard() {
-  const { language } = useContext(LanguageContext);
-  const t = dict[language as keyof typeof dict];
   const { userId, isAuthenticated } = useContext(TelegramAuthContext);
-  const [infra, setInfra] = useState({ stadium: 1, medical: 1, training: 1, fancoins: 0 });
-  const [isLoading, setIsLoading] = useState(true);
 
-  const fetchInfra = async () => {
+  const [activeTab, setActiveTab]           = useState<TabId>('infrastructure');
+  const [infra, setInfra]                   = useState<ClubInfrastructure | null>(null);
+  const [campData, setCampData]             = useState<TrainingCampData | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<PlayerForTraining | null>(null);
+  const [isLoading, setIsLoading]           = useState(true);
+
+  /**
+   * useTransition wraps all mutations (upgrade building, train stat).
+   * isPending === true → UI blocks all action buttons, preventing spam clicks
+   * and client-side race conditions. Server-side safety is handled by
+   * FOR UPDATE row locks in the upgrade_player_stat RPC.
+   */
+  const [isPending, startTransition] = useTransition();
+
+  // ── Data fetching ───────────────────────────────────────────────────────────
+
+  const fetchAll = async (currentPlayerId?: string) => {
     if (!userId) return;
     setIsLoading(true);
-    const res = await getStadiumData(userId);
-    if (res.success) {
-      setInfra({
-        stadium: res.stadium_level || 1,
-        medical: res.medical_center_level || 1,
-        training: res.training_camp_level || 1,
-        fancoins: res.fancoins || 0
-      });
+    const [infraRes, campRes] = await Promise.all([
+      getClubInfrastructureData(userId),
+      getTrainingCampData(userId),
+    ]);
+    if (infraRes.success && infraRes.data)  setInfra(infraRes.data);
+    if (campRes.success && campRes.data) {
+      setCampData(campRes.data);
+      // Re-sync selected player (so stat values refresh after training)
+      const pid = currentPlayerId ?? selectedPlayer?.id;
+      if (pid) {
+        const fresh = campRes.data.players.find(p => p.id === pid);
+        setSelectedPlayer(fresh ?? campRes.data.players[0] ?? null);
+      } else if (campRes.data.players.length > 0) {
+        setSelectedPlayer(campRes.data.players[0]);
+      }
     }
     setIsLoading(false);
   };
 
   useEffect(() => {
-    if (isAuthenticated && userId) fetchInfra();
+    if (isAuthenticated && userId) fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, userId]);
 
+  // ── Handlers ─────────────────────────────────────────────────────────────────
+
+  const handleUpgrade = (buildingType: BuildingType) => {
+    startTransition(async () => {
+      const res = await upgradeBuildingAction(buildingType);
+      if (res.success) {
+        toast.success(`Улучшено до уровня ${res.new_level}! 🎉`, { icon: '🏗️' });
+        window.dispatchEvent(new Event('balanceUpdated'));
+        await fetchAll(selectedPlayer?.id);
+      } else {
+        toast.error(res.error ?? 'Ошибка улучшения');
+      }
+    });
+  };
+
+  const handleTrainStat = (statKey: StatKey, currencyType: SpecCurrencyType) => {
+    if (!selectedPlayer) return;
+    const playerId = selectedPlayer.id;
+
+    startTransition(async () => {
+      const res = await trainPlayerStatAction(playerId, statKey, currencyType);
+      if (res.success && res.data) {
+        toast.success(
+          `${res.data.stat_name.toUpperCase()} ${res.data.old_value} → ${res.data.new_value} ✅`,
+          { icon: '💪' }
+        );
+        window.dispatchEvent(new Event('balanceUpdated'));
+        // Refetch data and re-sync the selected player with fresh stats
+        await fetchAll(playerId);
+      } else {
+        toast.error(res.error ?? 'Ошибка тренировки');
+      }
+    });
+  };
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+
   return (
-    <div className="flex flex-col flex-1 p-4 gap-4 pb-24 h-full overflow-y-auto custom-scrollbar bg-space-dark">
-      {/* Header */}
-      <header className="flex flex-col gap-1 border-b border-gray-800 pb-4 mt-4">
+    <div className="flex flex-col flex-1 h-full overflow-hidden bg-space-dark">
+
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <header className="flex-shrink-0 px-4 pt-5 pb-3 border-b border-gray-800/60">
         <BackButton />
-        <h1 className="text-2xl font-bold font-orbitron text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] uppercase tracking-wider flex items-center gap-2">
-          <Hospital className="text-neon-cyan" /> 
-          {t.training_base}
-        </h1>
-      </header>
 
-      <div className="flex flex-col gap-4">
-        <StadiumFacilityCard t={t} infra={infra} onUpgradeSuccess={fetchInfra} />
-        <MedicalWardCard t={t} infra={infra} onUpgradeSuccess={fetchInfra} />
-        <TrainingCenterCard t={t} infra={infra} onUpgradeSuccess={fetchInfra} />
-      </div>
-    </div>
-  );
-}
-
-function TrainingCenterCard({ t, infra, onUpgradeSuccess }: { t: any, infra: any, onUpgradeSuccess: () => void }) {
-  const { userId } = useContext(TelegramAuthContext);
-  const [isUpgrading, setIsUpgrading] = useState(false);
-  const upgradeCost = infra.training * 1000;
-  
-  const safeBalance = typeof infra.fancoins === 'string' ? Number(infra.fancoins.replace(/\D/g, '')) : Number(infra.fancoins);
-
-  const handleUpgrade = async () => {
-    if (!userId) return;
-    if (safeBalance < upgradeCost) {
-      toast.error(`Не хватает FC! Цена: ${upgradeCost}`);
-      return;
-    }
-    setIsUpgrading(true);
-    const res = await upgradeTrainingCenter(userId);
-    if (res.success) {
-      toast.success(`Training Center upgraded to level ${res.new_level}!`);
-      window.dispatchEvent(new Event('balanceUpdated'));
-      onUpgradeSuccess();
-    } else {
-      toast.error(res.error || "Upgrade failed");
-    }
-    setIsUpgrading(false);
-  };
-
-  return (
-    <div className="bg-black/40 border border-gray-800 rounded-xl p-4 shadow-lg relative overflow-hidden group hover:border-neon-cyan/50 transition-colors flex items-center justify-between">
-      <div className="absolute top-0 right-0 w-24 h-24 bg-neon-cyan/10 rounded-full blur-2xl group-hover:bg-neon-cyan/20 transition-all -mr-10 -mt-10"></div>
-      
-      <div className="flex items-center gap-4 relative z-10">
-        <div className="w-12 h-12 bg-cyan-900/30 rounded-lg flex items-center justify-center border border-neon-cyan/30 flex-shrink-0">
-          <Dumbbell className="text-neon-cyan" size={24} />
-        </div>
-        <div>
-          <h2 className="text-sm font-bold text-white font-orbitron uppercase tracking-widest">{t.training_center}</h2>
-          <span className="text-xs font-mono text-gray-500">{t.level} {infra.training}</span>
-        </div>
-      </div>
-      
-      <button 
-        onClick={handleUpgrade}
-        disabled={isUpgrading}
-        className={`relative z-10 text-[10px] px-3 py-1.5 rounded uppercase font-bold tracking-widest transition-colors ${
-          isUpgrading
-            ? 'bg-cyan-900/50 text-neon-cyan border border-cyan-700 cursor-wait'
-            : 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30 hover:bg-neon-cyan hover:text-black shadow-[0_0_10px_rgba(0,240,255,0.2)]'
-        }`}
-      >
-        {isUpgrading ? '...' : `${upgradeCost} FC`}
-      </button>
-    </div>
-  );
-}
-
-function MedicalWardCard({ t, infra, onUpgradeSuccess }: { t: any, infra: any, onUpgradeSuccess: () => void }) {
-  const { userId, isAuthenticated } = useContext(TelegramAuthContext);
-  const [injuredPlayers, setInjuredPlayers] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [healingId, setHealingId] = useState<string | null>(null);
-  const [isUpgrading, setIsUpgrading] = useState(false);
-  
-  const upgradeCost = infra.medical * 1000;
-  const safeBalance = typeof infra.fancoins === 'string' ? Number(infra.fancoins.replace(/\D/g, '')) : Number(infra.fancoins);
-  
-  const baseHealCost = 500;
-  const discountPercent = Math.min(0.50, infra.medical * 0.05);
-  const healCost = Math.floor(baseHealCost * (1 - discountPercent));
-
-  const fetchInjured = async () => {
-    if (!userId) return;
-    setIsLoading(true);
-    const res = await getInjuredPlayers(userId);
-    if (res.success) {
-      setInjuredPlayers(res.players || []);
-    }
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    if (isAuthenticated && userId) {
-      fetchInjured();
-    }
-  }, [isAuthenticated, userId]);
-
-  const handleHeal = async (playerId: string) => {
-    if (!userId) return;
-    setHealingId(playerId);
-    
-    const res = await healPlayer(userId, playerId);
-    if (res.success) {
-      setInjuredPlayers(prev => prev.filter(p => p.id !== playerId));
-      window.dispatchEvent(new Event('balanceUpdated'));
-    } else {
-      toast.error(res.error || "Failed to heal");
-    }
-    setHealingId(null);
-  };
-
-  const handleDebugInjury = async () => {
-    if (!userId) return;
-    const res = await forceInjuryDebug(userId);
-    if (res.success) {
-      toast.success(`Травма применена: ${res.playerName}`);
-      fetchInjured();
-    } else {
-      toast.error(res.error || "Ошибка травмы");
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="bg-black/40 border border-gray-800 rounded-xl p-4 shadow-lg relative overflow-hidden group hover:border-neon-pink/50 transition-colors flex items-center justify-between">
-        <div className="absolute top-0 right-0 w-24 h-24 bg-neon-pink/10 rounded-full blur-2xl group-hover:bg-neon-pink/20 transition-all -mr-10 -mt-10"></div>
-        
-        <div className="flex items-center gap-4 relative z-10">
-          <div className="w-12 h-12 bg-pink-900/30 rounded-lg flex items-center justify-center border border-neon-pink/30 flex-shrink-0">
-            <Zap className="text-neon-pink" size={24} />
+        <div className="flex items-center justify-between mt-3 mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-neon-cyan/10 rounded-lg flex items-center justify-center border border-neon-cyan/30">
+              <Dumbbell className="text-neon-cyan" size={16} />
+            </div>
+            <h1 className="text-base font-bold font-orbitron text-white uppercase tracking-widest">
+              База клуба
+            </h1>
           </div>
-          <div>
-            <h2 className="text-sm font-bold text-white font-orbitron uppercase tracking-widest">{t.medical_center}</h2>
-            <span className="text-xs font-mono text-gray-500">{t.level} {infra.medical}</span>
-          </div>
-        </div>
 
-        <div className="relative z-10 flex flex-col items-end gap-2">
-          <span className="text-xs font-mono text-gray-500">
-            {isLoading ? '...' : `${injuredPlayers.length} Injured`}
-          </span>
-          <button 
-            onClick={async () => {
-              if (!userId) return;
-              if (safeBalance < upgradeCost) {
-                toast.error(`Не хватает FC! Цена: ${upgradeCost}`);
-                return;
-              }
-              setIsUpgrading(true);
-              const res = await upgradeMedicalCenter(userId);
-              if (res.success) {
-                toast.success(`Medical Center upgraded to level ${res.new_level}!`);
-                window.dispatchEvent(new Event('balanceUpdated'));
-                onUpgradeSuccess();
-              } else {
-                toast.error(res.error || "Upgrade failed");
-              }
-              setIsUpgrading(false);
-            }}
-            disabled={isUpgrading}
-            className={`text-[10px] px-3 py-1.5 rounded uppercase font-bold tracking-widest transition-colors ${
-              isUpgrading
-                ? 'bg-pink-900/50 text-neon-pink border border-pink-700 cursor-wait'
-                : 'bg-neon-pink/10 text-neon-pink border border-neon-pink/30 hover:bg-neon-pink hover:text-black shadow-[0_0_10px_rgba(255,0,100,0.2)]'
-            }`}
-          >
-            {isUpgrading ? '...' : `UPGRADE ${upgradeCost} FC`}
-          </button>
-          
-          {process.env.NODE_ENV === 'development' && (
-            <button 
-              onClick={handleDebugInjury}
-              className="text-[9px] px-2 py-1 bg-red-900/30 text-red-400 border border-red-500/30 rounded uppercase font-bold tracking-widest hover:bg-red-500 hover:text-white transition-colors"
-            >
-              🐛 DEBUG: Сломать ногу
-            </button>
+          {/* FanCoin badge */}
+          {infra && (
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-yellow-700/40 bg-yellow-900/20 text-yellow-400">
+              <span className="text-[10px] font-mono font-bold">
+                🪙 {infra.fancoins.toLocaleString()} FC
+              </span>
+            </div>
           )}
         </div>
-      </div>
 
-      {/* Injured Players List */}
-      {!isLoading && injuredPlayers.length > 0 && (
-        <div className="bg-black/30 border border-gray-800 rounded-lg p-3 flex flex-col gap-2">
-          <h3 className="text-[10px] font-bold text-neon-pink uppercase tracking-wider flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" />
-            {t.injured_players}
-          </h3>
-          {injuredPlayers.map(player => (
-            <div key={player.id} className="flex items-center justify-between bg-black/60 p-2 rounded border border-gray-800">
-              <div>
-                <p className="text-xs font-bold text-white">{player.name}</p>
-                <p className="text-[9px] text-gray-400 uppercase tracking-widest">{player.position} • OVR {player.overall_rating}</p>
-              </div>
-              <button 
-                onClick={() => handleHeal(player.id)}
-                disabled={healingId === player.id}
-                className={`text-[10px] px-3 py-1.5 rounded uppercase font-bold tracking-widest transition-colors flex flex-col items-center justify-center ${
-                  healingId === player.id 
-                    ? 'bg-gray-800 text-gray-500 cursor-wait' 
-                    : 'bg-neon-pink/10 text-neon-pink border border-neon-pink/30 hover:bg-neon-pink hover:text-black shadow-[0_0_10px_rgba(255,0,100,0.2)]'
-                }`}
+        {/* Currency ribbon */}
+        {campData && (
+          <div className="flex gap-1.5 flex-wrap">
+            {(
+              [
+                { emoji: '🏃', val: campData.currencies.cardio_coin,   cls: 'border-cyan-800/40 bg-cyan-900/20 text-cyan-400' },
+                { emoji: '🤸', val: campData.currencies.fitness_coin,  cls: 'border-emerald-800/40 bg-emerald-900/20 text-emerald-400' },
+                { emoji: '⚽', val: campData.currencies.ball_coin,     cls: 'border-orange-800/40 bg-orange-900/20 text-orange-400' },
+                { emoji: '💪', val: campData.currencies.strength_coin, cls: 'border-rose-800/40 bg-rose-900/20 text-rose-400' },
+              ] as const
+            ).map((c, i) => (
+              <div
+                key={i}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold font-mono ${c.cls}`}
               >
-                <span>{healingId === player.id ? '...' : t.heal_button}</span>
-                {!healingId && <span className="text-[8px] font-mono opacity-80">{healCost} FC</span>}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+                <span>{c.emoji}</span>
+                <span>{c.val}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </header>
+
+      {/* ── Tab Navigation ───────────────────────────────────────────────────── */}
+      <nav className="flex-shrink-0 flex border-b border-gray-800/60">
+        {(
+          [
+            { id: 'infrastructure' as TabId, label: 'Инфраструктура' },
+            { id: 'training'       as TabId, label: 'Тренировка' },
+          ] as const
+        ).map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-widest font-orbitron transition-all duration-200 ${
+              activeTab === tab.id
+                ? 'text-neon-cyan border-b-2 border-neon-cyan bg-neon-cyan/5'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      {/* ── Tab Content ─────────────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar pb-28">
+        {isLoading ? (
+          <LoadingPulse />
+        ) : activeTab === 'infrastructure' ? (
+          <InfrastructureTab
+            infra={infra}
+            isPending={isPending}
+            onUpgrade={handleUpgrade}
+          />
+        ) : (
+          <TrainingTab
+            campData={campData}
+            selectedPlayer={selectedPlayer}
+            onSelectPlayer={setSelectedPlayer}
+            onTrainStat={handleTrainStat}
+            isPending={isPending}
+          />
+        )}
+      </div>
     </div>
   );
 }
 
-function StadiumFacilityCard({ t, infra, onUpgradeSuccess }: { t: any, infra: any, onUpgradeSuccess: () => void }) {
-  const { userId } = useContext(TelegramAuthContext);
-  const [isUpgrading, setIsUpgrading] = useState(false);
+// ─────────────────────────────────────────────────────────────────────────────
+// Loading Pulse
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const upgradeCost = infra.stadium * 1000;
-  const currentIncome = infra.stadium * 50;
-  
-  const safeBalance = typeof infra.fancoins === 'string' ? Number(infra.fancoins.replace(/\D/g, '')) : Number(infra.fancoins);
+function LoadingPulse() {
+  return (
+    <div className="flex items-center justify-center h-48">
+      <div className="flex gap-1.5">
+        {[0, 1, 2].map(i => (
+          <span
+            key={i}
+            className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce"
+            style={{ animationDelay: `${i * 0.15}s` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
-  const handleUpgrade = async () => {
-    if (!userId) return;
-    
-    if (safeBalance < upgradeCost) {
-      toast.error(`Не хватает FC! Баланс: ${safeBalance}, Цена: ${upgradeCost}`);
-      return;
-    }
+// ─────────────────────────────────────────────────────────────────────────────
+// Tab 1: Infrastructure
+// ─────────────────────────────────────────────────────────────────────────────
 
-    setIsUpgrading(true);
-    const res = await upgradeStadium(userId);
-    if (res.success) {
-      toast.success(t.stadium_upgrade_success.replace('{level}', (res.new_level ?? 1).toString()));
-      window.dispatchEvent(new Event('balanceUpdated'));
-      onUpgradeSuccess();
-    } else {
-      toast.error(res.error || t.stadium_upgrade_fail);
-    }
-    setIsUpgrading(false);
-  };
+function InfrastructureTab({
+  infra,
+  isPending,
+  onUpgrade,
+}: {
+  infra: ClubInfrastructure | null;
+  isPending: boolean;
+  onUpgrade: (key: BuildingType) => void;
+}) {
+  const fancoins = infra?.fancoins ?? 0;
 
   return (
-    <div className="bg-black/40 border border-gray-800 rounded-xl p-4 shadow-lg relative overflow-hidden group hover:border-yellow-500/50 transition-colors flex items-center justify-between">
-      <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-500/10 rounded-full blur-2xl group-hover:bg-yellow-500/20 transition-all -mr-10 -mt-10"></div>
-      
-      <div className="flex items-center gap-4 relative z-10">
-        <div className="w-12 h-12 bg-yellow-900/30 rounded-lg flex items-center justify-center border border-yellow-500/30 flex-shrink-0">
-          <TrendingUp className="text-yellow-500" size={24} />
-        </div>
-        <div>
-          <h2 className="text-sm font-bold text-white font-orbitron uppercase tracking-widest flex items-center gap-2">
-            {t.stadium}
-            <span className="text-[9px] text-yellow-500 bg-yellow-900/30 px-1 py-0.5 rounded border border-yellow-500/30">
-              +{currentIncome} FC/m
-            </span>
-          </h2>
-          <span className="text-xs font-mono text-gray-500">{t.level} {infra.stadium}</span>
+    <div className="p-4 flex flex-col gap-3">
+      <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">
+        Клубные здания
+      </p>
+
+      {BUILDING_DEFS.map(b => {
+        const level      = getInfraLevel(infra, b.key);
+        const cost       = level * 1000;
+        const canAfford  = fancoins >= cost;
+        const Icon       = b.Icon;
+
+        return (
+          <div
+            key={b.key}
+            className={`
+              relative overflow-hidden rounded-2xl border
+              bg-black/40 ${b.colorBorder} ${b.colorHoverBorder}
+              transition-colors duration-200 shadow-lg group
+            `}
+          >
+            {/* Ambient glow blob */}
+            <div
+              className={`
+                absolute -top-8 -right-8 w-32 h-32 rounded-full blur-3xl
+                ${b.colorGlow} group-hover:opacity-200 transition-opacity duration-300
+              `}
+            />
+
+            <div className="relative z-10 flex items-center justify-between p-4">
+              {/* Left: icon + info */}
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div
+                  className={`
+                    w-12 h-12 flex-shrink-0 rounded-xl flex items-center justify-center
+                    border ${b.colorBg} ${b.colorBorder}
+                  `}
+                >
+                  <Icon className={b.colorText} size={22} />
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h2 className="text-sm font-bold font-orbitron text-white uppercase tracking-widest">
+                      {b.label}
+                    </h2>
+                    <span
+                      className={`
+                        text-[9px] font-bold font-mono px-1.5 py-0.5 rounded
+                        ${b.colorBg} ${b.colorText} border ${b.colorBorder}
+                      `}
+                    >
+                      LVL {level}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-gray-500 leading-tight">{b.description}</p>
+                  <p className={`text-[10px] font-mono font-bold mt-0.5 ${b.colorText}`}>
+                    {b.bonusLabel}
+                  </p>
+                </div>
+              </div>
+
+              {/* Right: upgrade button */}
+              <button
+                id={`upgrade-${b.key}`}
+                onClick={() => onUpgrade(b.key)}
+                disabled={isPending || !canAfford}
+                className={`
+                  ml-3 flex-shrink-0 flex flex-col items-center justify-center
+                  px-3 py-2 rounded-xl text-[9px] font-bold font-orbitron uppercase
+                  tracking-widest transition-all duration-200 min-w-[64px]
+                  ${isPending
+                    ? 'bg-gray-800/60 text-gray-500 cursor-wait'
+                    : !canAfford
+                    ? 'bg-gray-800/40 text-gray-600 border border-gray-700/30 cursor-not-allowed'
+                    : `${b.colorBg} ${b.colorText} border ${b.colorBorder}
+                       hover:brightness-125 active:scale-95
+                       shadow-[0_0_12px_rgba(0,0,0,0.3)]`
+                  }
+                `}
+              >
+                {isPending ? (
+                  <span>...</span>
+                ) : (
+                  <>
+                    <span>UPGRADE</span>
+                    <span className="text-[8px] font-mono opacity-75 mt-0.5">
+                      {cost.toLocaleString()} FC
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Level progress dots */}
+            <div className="relative z-10 flex gap-1 px-4 pb-3">
+              {Array.from({ length: Math.min(level, 10) }).map((_, i) => (
+                <span
+                  key={i}
+                  className={`w-4 h-1 rounded-full ${b.colorBg} border ${b.colorBorder}`}
+                  style={{ opacity: 1 - (i * 0.07) }}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tab 2: Training Camp
+// ─────────────────────────────────────────────────────────────────────────────
+
+function TrainingTab({
+  campData,
+  selectedPlayer,
+  onSelectPlayer,
+  onTrainStat,
+  isPending,
+}: {
+  campData: TrainingCampData | null;
+  selectedPlayer: PlayerForTraining | null;
+  onSelectPlayer: (p: PlayerForTraining) => void;
+  onTrainStat: (key: StatKey, cur: SpecCurrencyType) => void;
+  isPending: boolean;
+}) {
+  if (!campData || campData.players.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-48 gap-3 px-4">
+        <Users className="text-gray-700" size={32} />
+        <p className="text-gray-500 text-sm text-center">
+          Нет игроков в команде
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col">
+
+      {/* ── Player Carousel ───────────────────────────────────────────────── */}
+      <div className="pt-4 px-4">
+        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-2">
+          Выбери игрока
+        </p>
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none -mx-1 px-1">
+          {campData.players.map(player => {
+            const isSelected = selectedPlayer?.id === player.id;
+            return (
+              <button
+                key={player.id}
+                id={`player-card-${player.id}`}
+                onClick={() => onSelectPlayer(player)}
+                className={`
+                  flex-shrink-0 flex flex-col items-center gap-1.5 p-2.5 rounded-2xl
+                  border transition-all duration-200 w-[74px]
+                  ${isSelected
+                    ? 'bg-neon-cyan/10 border-neon-cyan/50 shadow-[0_0_14px_rgba(0,240,255,0.15)]'
+                    : 'bg-black/40 border-gray-800 hover:border-gray-600 active:scale-95'
+                  }
+                `}
+              >
+                {/* OVR circle */}
+                <div
+                  className={`
+                    w-10 h-10 rounded-full flex items-center justify-center
+                    text-xs font-bold font-orbitron transition-colors
+                    ${isSelected
+                      ? 'bg-neon-cyan/20 text-neon-cyan'
+                      : 'bg-gray-800 text-gray-400'
+                    }
+                  `}
+                >
+                  {player.ovr}
+                </div>
+
+                {/* Name (last name only) */}
+                <span className="text-[9px] font-bold text-white text-center leading-tight line-clamp-2 w-full">
+                  {player.name.split(' ').pop()}
+                </span>
+
+                {/* Position */}
+                <span
+                  className={`text-[8px] font-mono uppercase tracking-wider ${
+                    isSelected ? 'text-neon-cyan' : 'text-gray-600'
+                  }`}
+                >
+                  {player.position}
+                </span>
+
+                {/* Active indicator */}
+                {isSelected && (
+                  <ChevronRight
+                    size={10}
+                    className="text-neon-cyan rotate-90"
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
-      
-      <button 
-        onClick={handleUpgrade}
-        disabled={isUpgrading}
-        className={`relative z-10 text-[10px] px-3 py-1.5 rounded uppercase font-bold tracking-widest transition-colors ${
-          isUpgrading
-            ? 'bg-yellow-900/50 text-yellow-500 border border-yellow-700 cursor-wait'
-            : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 hover:bg-yellow-500 hover:text-black shadow-[0_0_10px_rgba(234,179,8,0.2)]'
-        }`}
-      >
-        {isUpgrading ? '...' : `${upgradeCost} FC`}
-      </button>
+
+      {/* ── Stat Grid ─────────────────────────────────────────────────────── */}
+      {selectedPlayer && (
+        <div className="px-4 pt-4 pb-4">
+          {/* Selected player info bar */}
+          <div className="flex items-center justify-between mb-3 px-1">
+            <div>
+              <p className="text-sm font-bold text-white font-orbitron">
+                {selectedPlayer.name}
+              </p>
+              <p className="text-[10px] text-gray-500 font-mono">
+                {selectedPlayer.position} · OVR {selectedPlayer.ovr}
+              </p>
+            </div>
+
+            {/* Pending indicator */}
+            {isPending && (
+              <div className="flex items-center gap-1.5 text-neon-cyan">
+                <span className="w-1.5 h-1.5 rounded-full bg-neon-cyan animate-pulse" />
+                <span className="text-[10px] font-mono">Тренировка...</span>
+              </div>
+            )}
+          </div>
+
+          {/* 2-column stat grid */}
+          <div className="grid grid-cols-2 gap-2">
+            {STAT_DEFS.map(stat => {
+              const value      = getStatValue(selectedPlayer.stats, stat.key);
+              const cost       = getStatCost(value);
+              const balance    = campData.currencies[stat.currency];
+              const canAfford  = balance >= cost;
+              const isMaxed    = value >= 99;
+
+              return (
+                <div
+                  key={stat.key}
+                  className={`
+                    relative overflow-hidden rounded-xl border p-3
+                    ${stat.colorBg} ${stat.colorBorder}
+                    transition-opacity duration-200
+                    ${isPending ? 'opacity-60' : 'opacity-100'}
+                  `}
+                >
+                  {/* Stat header */}
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div>
+                      <span className={`text-[11px] font-bold font-orbitron ${stat.colorText}`}>
+                        {stat.label}
+                      </span>
+                      <p className="text-[8px] text-gray-600 leading-tight">
+                        {stat.fullLabel}
+                      </p>
+                    </div>
+                    <span className="text-white font-bold font-mono text-base leading-none">
+                      {value}
+                    </span>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="w-full h-1 bg-gray-700/40 rounded-full mb-2.5 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${stat.colorBar}`}
+                      style={{ width: `${(value / 99) * 100}%` }}
+                    />
+                  </div>
+
+                  {/* Footer: currency badge + cost + plus button */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[11px]">{stat.currencyEmoji}</span>
+                      <span className={`text-[9px] font-mono font-bold ${stat.colorText}`}>
+                        {isMaxed ? 'MAX' : cost}
+                      </span>
+                    </div>
+
+                    <button
+                      id={`train-${selectedPlayer.id}-${stat.key}`}
+                      onClick={() => onTrainStat(stat.key, stat.currency)}
+                      disabled={isPending || !canAfford || isMaxed}
+                      title={
+                        isMaxed
+                          ? 'Максимальный уровень'
+                          : canAfford
+                          ? `+1 ${stat.label} за ${cost} ${stat.currencyLabel}`
+                          : `Нужно ${cost} ${stat.currencyLabel} (есть ${balance})`
+                      }
+                      className={`
+                        w-7 h-7 rounded-lg flex items-center justify-center
+                        text-sm font-bold transition-all duration-150
+                        ${isPending
+                          ? 'bg-gray-800 text-gray-600 cursor-wait'
+                          : isMaxed
+                          ? 'bg-gray-800/40 text-gray-700 cursor-default'
+                          : !canAfford
+                          ? 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
+                          : `${stat.colorBg} ${stat.colorText} border ${stat.colorBorder}
+                             hover:brightness-150 active:scale-90`
+                        }
+                      `}
+                    >
+                      {isMaxed ? '✓' : '+'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Training legend */}
+          <div className="mt-4 flex flex-col gap-1.5 px-1">
+            <p className="text-[9px] text-gray-600 uppercase tracking-widest font-bold">
+              Прогрессивная стоимость
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {(
+                [
+                  { range: '1–50',  cost: '5' },
+                  { range: '51–65', cost: '10' },
+                  { range: '66–75', cost: '25' },
+                  { range: '76–85', cost: '60' },
+                  { range: '86–90', cost: '120' },
+                  { range: '91–99', cost: '300' },
+                ] as const
+              ).map(tier => (
+                <div
+                  key={tier.range}
+                  className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-800/60 rounded border border-gray-700/30"
+                >
+                  <span className="text-[8px] text-gray-500 font-mono">{tier.range}</span>
+                  <span className="text-[8px] text-gray-300 font-bold font-mono">→ {tier.cost}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
