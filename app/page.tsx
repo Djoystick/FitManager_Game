@@ -109,13 +109,14 @@ export default function DashboardPage() {
       {/* PREMIUM TOP BAR */}
       <header className="flex items-center justify-between bg-black/60 border border-gray-800 rounded-2xl p-3 shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-md">
         <div className="flex items-center gap-3">
-          {/* Clickable profile avatar */}
+          {/* Clickable profile button */}
           <Link
             href="/profile"
             id="home-profile-btn"
-            className="w-10 h-10 rounded-full bg-gray-900 border border-neon-cyan flex items-center justify-center shadow-[0_0_10px_rgba(0,240,255,0.3)] hover:border-neon-cyan/80 hover:shadow-[0_0_18px_rgba(0,240,255,0.5)] transition-all duration-200 active:scale-95"
+            className="flex items-center gap-2 px-3 h-10 rounded-full bg-gray-900 border border-neon-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)] hover:border-neon-cyan/80 hover:shadow-[0_0_18px_rgba(0,240,255,0.5)] transition-all duration-200 active:scale-95"
           >
-            <User className="text-neon-cyan w-5 h-5" />
+            <User className="text-neon-cyan w-4 h-4 shrink-0" />
+            <span className="text-[10px] font-black uppercase text-neon-cyan tracking-widest mt-0.5">Profile</span>
           </Link>
           <div className="flex flex-col">
             <h1 className={`text-sm font-black text-white uppercase tracking-wider ${headerFontClass}`}>
@@ -166,8 +167,8 @@ export default function DashboardPage() {
         ))}
       </section>
 
-      {/* MATCH JOURNAL (RESTRICTED TO 3 ITEMS) */}
-      <section className="bg-black/40 rounded-2xl p-2 border border-gray-800/50 shadow-inner flex-1 min-h-[150px] max-h-[220px] overflow-y-auto custom-scrollbar">
+      {/* MATCH JOURNAL (RESTRICTED TO 3 VISIBLE ITEMS) */}
+      <section className="bg-black/40 rounded-2xl p-2 border border-gray-800/50 shadow-inner flex-1 min-h-[150px] max-h-[175px] overflow-y-auto custom-scrollbar">
         {userId && <MatchHistoryWidget userId={userId} teamName={teamName} />}
       </section>
 

@@ -67,58 +67,52 @@ export function simulateMatch(
   calculateDrain(homeTeam, 'home');
   calculateDrain(awayTeam, 'away');
 
-  // Helper to get effective stat value considering modifiers
-  const getStat = (p: MatchPlayer, teamKey: 'home' | 'away', statValue: number) => {
-    let multiplier = 1.0;
-    // Debuff for low stamina
-    if (p.stamina < 30) {
-      multiplier *= 0.5;
-    }
-    // Buff for Chemistry (Green Link)
-    const hasGreenLink = teamKey === 'home' ? homeGreenLinks[p.id] : awayGreenLinks[p.id];
-    if (hasGreenLink) {
-      multiplier *= 1.1;
-    }
-    return statValue * multiplier;
+  // Helper to calculate Average OVR
+  const calcOVR = (players: MatchPlayer[]) => {
+    if (players.length === 0) return 0;
+    return players.reduce((sum, p) => {
+      return sum + (p.stats.pace + p.stats.shooting + p.stats.passing + p.stats.dribbling + p.stats.defending + p.stats.physical) / 6;
+    }, 0) / players.length;
   };
 
-  // 2. Midfield Control (PAS + DRI + PHY)
-  const isMid = (pos: string) => ['MID', 'CAM', 'CDM', 'CM', 'RM', 'LM'].includes(pos || '');
-  const isAtk = (pos: string) => ['FWD', 'ST', 'CF', 'LWF', 'RWF', 'CAM'].includes(pos || '');
-  const isDef = (pos: string) => ['DEF', 'CB', 'LB', 'RB', 'LWB', 'RWB'].includes(pos || '');
-  
-  const calcMidScore = (players: MatchPlayer[], teamKey: 'home' | 'away') => {
-    const mids = players.filter(p => isMid(p.position));
-    if (mids.length === 0) return 100; // Fallback if no midfielders
-    return mids.reduce((sum, p) => {
-      const pas = getStat(p, teamKey, p.stats.passing);
-      const dri = getStat(p, teamKey, p.stats.dribbling);
-      const phy = getStat(p, teamKey, p.stats.physical);
-      return sum + pas + dri + phy;
-    }, 0);
-  };
+  const homeOVR = calcOVR(homeTeam);
+  const awayOVR = calcOVR(awayTeam);
+  const diff = homeOVR - awayOVR;
 
-  const homeMid = calcMidScore(homeTeam, 'home');
-  const awayMid = calcMidScore(awayTeam, 'away');
-  
-  const totalMid = homeMid + awayMid;
-  const homeMidRatio = totalMid > 0 ? homeMid / totalMid : 0.5;
-  const awayMidRatio = 1 - homeMidRatio;
+  // 2. Realistic Volatile Score Calculation
+  let homeBase = Math.random() * 2; // 0 to 2
+  let awayBase = Math.random() * 2; // 0 to 2
 
-  // Base attacks 4, bonus up to 6 based on Midfield dominance (Total attacks = 4 to 10 per team)
-  const homeAttacks = 4 + Math.round(homeMidRatio * 6);
-  const awayAttacks = 4 + Math.round(awayMidRatio * 6);
+  if (diff > 5) {
+    homeBase += (diff / 10) * (Math.random() * 1.5 + 0.5);
+    awayBase -= (diff / 15) * Math.random();
+  } else if (diff < -5) {
+    awayBase += (Math.abs(diff) / 10) * (Math.random() * 1.5 + 0.5);
+    homeBase -= (Math.abs(diff) / 15) * Math.random();
+  }
 
-  // 3. Process Attacks
-  let currentMinute = 0;
+  const targetHomeScore = Math.max(0, Math.round(homeBase));
+  const targetAwayScore = Math.max(0, Math.round(awayBase));
+
+  let homeAttacks = Math.max(4, targetHomeScore + Math.floor(Math.random() * 3));
+  let awayAttacks = Math.max(4, targetAwayScore + Math.floor(Math.random() * 3));
+
   const totalAttacks = homeAttacks + awayAttacks;
   const minuteInterval = 90 / (totalAttacks + 1);
+  let currentMinute = 0;
+
+  let homeGoalsScored = 0;
+  let awayGoalsScored = 0;
+
+  const isAtk = (pos: string) => ['FWD', 'ST', 'CF', 'LWF', 'RWF', 'CAM', 'RM', 'LM'].includes(pos || '');
+  const isDef = (pos: string) => ['DEF', 'CB', 'LB', 'RB', 'LWB', 'RWB', 'CDM'].includes(pos || '');
 
   const processAttack = (
     attackingTeam: MatchPlayer[], 
     defendingTeam: MatchPlayer[], 
     atkKey: 'home' | 'away', 
-    defKey: 'home' | 'away'
+    defKey: 'home' | 'away',
+    isGoal: boolean
   ) => {
     currentMinute = Math.min(90, Math.floor(currentMinute + minuteInterval + (Math.random() * 4 - 2)));
     
@@ -126,98 +120,68 @@ export function simulateMatch(
     const defenders = defendingTeam.filter(p => isDef(p.position));
     const gk = defendingTeam.find(p => p.position === 'GK');
 
-    // Fallbacks if team lacks proper positions
     const attacker = attackers.length > 0 ? attackers[Math.floor(Math.random() * attackers.length)] : attackingTeam[Math.floor(Math.random() * attackingTeam.length)];
     const defender = defenders.length > 0 ? defenders[Math.floor(Math.random() * defenders.length)] : defendingTeam[Math.floor(Math.random() * defendingTeam.length)];
     const goalie = gk || defendingTeam[0];
 
-    // Mico-Duel 1: Breakthrough Phase (Attacker PAC+DRI vs Defender PAC+DEF) + Dice Roll
-    const atkBreakthrough = getStat(attacker, atkKey, attacker.stats.pace + attacker.stats.dribbling) + (Math.random() * 20);
-    const defBreakthrough = getStat(defender, defKey, defender.stats.pace + defender.stats.defending) + (Math.random() * 20);
-
-    // Cards / Injuries Logic (8% chance of hard foul)
-    const foulChance = Math.random();
-    if (foulChance < 0.08) {
+    // Cards / Injuries Logic (5% chance of foul on non-goal attacks)
+    if (!isGoal && Math.random() < 0.05) {
        const eventTypeRandom = Math.random();
        if (eventTypeRandom < 0.6) {
-           events.push({
-             type: 'yellow_card',
-             minute: currentMinute,
-             player_id: defender.id,
-             player_name: defender.name,
-             team: defKey,
-             details: `ЖЕЛТАЯ КАРТОЧКА! ${defender.name} грубо фолит на ${attacker.name}.`
-           });
+           events.push({ type: 'yellow_card', minute: currentMinute, player_id: defender.id, player_name: defender.name, team: defKey, details: `ЖЕЛТАЯ КАРТОЧКА! ${defender.name} грубо фолит.` });
        } else if (eventTypeRandom < 0.8) {
-           events.push({
-             type: 'injury',
-             minute: currentMinute,
-             player_id: attacker.id,
-             player_name: attacker.name,
-             team: atkKey,
-             details: `ТРАВМА! ${attacker.name} получает повреждение в стыке с ${defender.name}.`
-           });
+           events.push({ type: 'injury', minute: currentMinute, player_id: attacker.id, player_name: attacker.name, team: atkKey, details: `ТРАВМА! ${attacker.name} получает повреждение.` });
        } else {
-           events.push({
-             type: 'red_card',
-             minute: currentMinute,
-             player_id: defender.id,
-             player_name: defender.name,
-             team: defKey,
-             details: `КРАСНАЯ КАРТОЧКА! ${defender.name} удален за жесткий подкат под ${attacker.name}!`
-           });
+           events.push({ type: 'red_card', minute: currentMinute, player_id: defender.id, player_name: defender.name, team: defKey, details: `КРАСНАЯ КАРТОЧКА! ${defender.name} удален!` });
        }
-       return; // Attack stopped by foul
+       return;
     }
 
-    if (atkBreakthrough > defBreakthrough) {
-      // Micro-Duel 2: Shooting Phase (Attacker SHO+PHY vs Goalkeeper DEF+PHY) + Dice Roll
-      const atkShot = getStat(attacker, atkKey, attacker.stats.shooting + attacker.stats.physical) + (Math.random() * 20);
-      const defSave = getStat(goalie, defKey, goalie.stats.defending + goalie.stats.physical) + (Math.random() * 20);
-
-      if (atkShot > defSave) {
-        score[atkKey]++;
-        events.push({
-          type: 'goal',
-          minute: currentMinute,
-          player_id: attacker.id,
-          player_name: attacker.name,
-          team: atkKey,
-          details: `ГОЛ! ${attacker.name} прорвался сквозь ${defender.name} и мощно пробил мимо ${goalie.name}.`
-        });
-      } else {
+    if (isGoal) {
+      score[atkKey]++;
+      events.push({
+        type: 'goal',
+        minute: currentMinute,
+        player_id: attacker.id,
+        player_name: attacker.name,
+        team: atkKey,
+        details: `ГОЛ! ${attacker.name} прошивает ворота ${goalie?.name || 'соперника'}.`
+      });
+    } else {
+      if (Math.random() > 0.5) {
         events.push({
           type: 'save',
           minute: currentMinute,
-          player_id: goalie.id,
-          player_name: goalie.name,
+          player_id: goalie?.id || defender.id,
+          player_name: goalie?.name || defender.name,
           team: defKey,
-          details: `СЭЙВ! ${goalie.name} чудом тащит удар от ${attacker.name} после прорыва.`
+          details: `СЭЙВ! Вратарь тащит удар от ${attacker.name}.`
+        });
+      } else {
+        events.push({
+          type: 'breakthrough_failed',
+          minute: currentMinute,
+          player_id: defender.id,
+          player_name: defender.name,
+          team: defKey,
+          details: `ОТБОР! ${defender.name} останавливает атаку ${attacker.name}.`
         });
       }
-    } else {
-      events.push({
-        type: 'breakthrough_failed',
-        minute: currentMinute,
-        player_id: defender.id,
-        player_name: defender.name,
-        team: defKey,
-        details: `ОТБОР! ${defender.name} чисто останавливает прорыв ${attacker.name}.`
-      });
     }
   };
 
-  // Mix attacks randomly across the 90 minutes
-  const attacks = [];
-  for (let i = 0; i < homeAttacks; i++) attacks.push('home');
-  for (let i = 0; i < awayAttacks; i++) attacks.push('away');
-  attacks.sort(() => Math.random() - 0.5);
+  const attackSequence = [];
+  for (let i = 0; i < homeAttacks; i++) attackSequence.push({ team: 'home', isGoal: i < targetHomeScore });
+  for (let i = 0; i < awayAttacks; i++) attackSequence.push({ team: 'away', isGoal: i < targetAwayScore });
+  
+  // Shuffle attacks
+  attackSequence.sort(() => Math.random() - 0.5);
 
-  attacks.forEach(teamAtk => {
-    if (teamAtk === 'home') {
-      processAttack(homeTeam, awayTeam, 'home', 'away');
+  attackSequence.forEach(atk => {
+    if (atk.team === 'home') {
+      processAttack(homeTeam, awayTeam, 'home', 'away', atk.isGoal);
     } else {
-      processAttack(awayTeam, homeTeam, 'away', 'home');
+      processAttack(awayTeam, homeTeam, 'away', 'home', atk.isGoal);
     }
   });
 

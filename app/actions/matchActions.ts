@@ -396,12 +396,41 @@ export async function simulateNextPendingMatch(userId: string) {
       return { success: false, error: matchError.message };
     }
     
+    let roundNumber = userMatch ? userMatch.round_number : 999;
+    
     if (!userMatch) {
-      console.log('[simulateNextPendingMatch] No pending match found');
-      return { success: false, error: 'No pending matches found for this team' };
+      console.log('[simulateNextPendingMatch] No pending match found, inserting dummy match');
+      const { data: randomTeam } = await supabaseAdmin
+        .from('teams')
+        .select('id, league_id')
+        .neq('id', teamData.id)
+        .limit(1)
+        .single();
+        
+      if (randomTeam) {
+        const { data: newMatch, error: insertError } = await supabaseAdmin
+          .from('league_matches')
+          .insert({
+            home_team_id: teamData.id,
+            away_team_id: randomTeam.id,
+            league_id: randomTeam.league_id || null,
+            round_number: 999,
+            status: 'pending',
+            is_played: false
+          })
+          .select('round_number')
+          .single();
+          
+        if (!insertError && newMatch) {
+          roundNumber = newMatch.round_number;
+        } else {
+          return { success: false, error: 'Failed to create dummy match' };
+        }
+      } else {
+        return { success: false, error: 'No opponent teams available for dummy match' };
+      }
     }
-
-    const roundNumber = userMatch.round_number;
+    
     console.log(`[simulateNextPendingMatch] Simulating entire round: ${roundNumber}`);
 
     // Fetch all pending matches for this round
