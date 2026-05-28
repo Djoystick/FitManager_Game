@@ -120,3 +120,69 @@ export async function bulkTrainPlayer(
     return { success: false, error: err.message || 'Failed to process bulk training' };
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// retirePlayer — Hall of Fame mechanic
+//
+// Permanently retires a legend card (OVR ≥ 85) from the active roster.
+// In exchange the user earns a permanent global prestige_multiplier buff
+// (+0.02 per legend) that compounds on all future FanCoin rewards.
+//
+// Loop: Grind SP → Train to 85+ OVR → Retire → +2% FC forever → repeat
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function retirePlayer(
+  userId: string,
+  playerId: string
+): Promise<{ success: boolean; newMultiplier?: number; error?: string }> {
+  try {
+    // 1. Verify player belongs to user's team and meets OVR threshold
+    const { data: team } = await supabaseAdmin
+      .from('teams')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    if (!team) return { success: false, error: 'Team not found' };
+
+    const { data: player, error: playerError } = await supabaseAdmin
+      .from('players')
+      .select('id, team_id, ovr, name')
+      .eq('id', playerId)
+      .single();
+
+    if (playerError || !player) return { success: false, error: 'Player not found' };
+    if (player.team_id !== team.id)  return { success: false, error: 'This player does not belong to your team' };
+    if ((player.ovr || 0) < 85)      return { success: false, error: `${player.name} must reach OVR 85+ to be retired as a legend (current: ${player.ovr})` };
+
+    // 2. Delete the legend card from the active roster
+    const { error: deleteError } = await supabaseAdmin
+      .from('players')
+      .delete()
+      .eq('id', playerId);
+
+    if (deleteError) throw deleteError;
+
+    // 3. Grant permanent prestige_multiplier buff (+0.02)
+    const { data: userData } = await supabaseAdmin
+      .from('users')
+      .select('prestige_multiplier')
+      .eq('id', userId)
+      .single();
+
+    const currentMultiplier = Number(userData?.prestige_multiplier ?? 1.0);
+    const newMultiplier     = Math.round((currentMultiplier + 0.02) * 10000) / 10000; // avoid float drift
+
+    const { error: updateError } = await supabaseAdmin
+      .from('users')
+      .update({ prestige_multiplier: newMultiplier })
+      .eq('id', userId);
+
+    if (updateError) throw updateError;
+
+    return { success: true, newMultiplier };
+
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to retire player' };
+  }
+}

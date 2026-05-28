@@ -56,8 +56,10 @@ export interface MatchResult {
  * Noise window: ±15. At +30 advantage the stronger stat wins ~100%.
  */
 function duel(atkStat: number, defStat: number): boolean {
-  const atkRoll = atkStat + (Math.random() * 30 - 15);
-  const defRoll = defStat + (Math.random() * 30 - 15);
+  // +12 Attacker advantage to counteract the 3-phase probability crush
+  // ±25 noise to allow occasional upsets by weaker teams
+  const atkRoll = atkStat + 12 + (Math.random() * 50 - 25);
+  const defRoll = defStat + (Math.random() * 50 - 25);
   return atkRoll > defRoll;
 }
 
@@ -266,7 +268,7 @@ function resolveAttack(ctx: AttackContext): void {
   if (keeper.traits.includes('Reflexes'))  saveVal += 6;
 
   const atkShot = eff(shotVal, gl(atkFwd, atkGreenLinks), st(atkFwd));
-  const defSave = eff(saveVal, gl(keeper, defGreenLinks),  st(keeper));
+  const defSave = eff(saveVal, gl(keeper, defGreenLinks), st(keeper)) * 0.85;
 
   if (duel(atkShot, defSave)) {
     score[atkKey]++;

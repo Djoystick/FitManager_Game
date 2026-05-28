@@ -289,11 +289,53 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
     await updateStandings(match.home_team_id, result.score.home, result.score.away);
     await updateStandings(match.away_team_id, result.score.away, result.score.home);
 
-    // ШАГ Е: Award FanCoins based on match result + Stadium level
-    // Formula (from migration 00030):
-    //   Win  = 500 + stadium_level × 75
-    //   Draw = 250 + stadium_level × 35
-    //   Loss = 100 + stadium_level × 15
+    // ── ШАГ Е.1: Salary Sink (exponential FC cost per player OVR) ─────────────
+    // Formula: salaryCost(ovr) = FLOOR(0.5 * 1.04^(ovr - 50)) FC per player
+    // OVR 55 ≈ 1 FC | OVR 70 ≈ 2 FC | OVR 85 ≈ 6 FC | OVR 99 ≈ 17 FC
+    const deductSquadSalary = async (players: any[], teamId: string) => {
+      const { data: teamData } = await supabaseAdmin
+        .from('teams')
+        .select('user_id')
+        .eq('id', teamId)
+        .maybeSingle();
+      if (!teamData?.user_id) return;
+
+      const userId = teamData.user_id;
+      const totalSalary = players.reduce((sum, p) => {
+        const ovr = p.ovr ?? 55;
+        return sum + Math.floor(0.5 * Math.pow(1.04, ovr - 50));
+      }, 0);
+
+      const { data: userData } = await supabaseAdmin
+        .from('users')
+        .select('balance_fancoins')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const currentBalance = Number(userData?.balance_fancoins ?? 0);
+      const newBalance = currentBalance - totalSalary;
+
+      if (newBalance < 0) {
+        // Bankrupt penalty: clamp FC to 0 and cap stamina of all players at 30
+        console.warn(`[resolveMatch] Team ${teamId} is BANKRUPT. Applying stamina penalty.`);
+        await supabaseAdmin.from('users').update({ balance_fancoins: 0 }).eq('id', userId);
+        const penaltyPromises = players.map(p =>
+          supabaseAdmin.from('players').update({ stamina: Math.min(p.stamina ?? 30, 30) }).eq('id', p.id)
+        );
+        await Promise.all(penaltyPromises);
+      } else {
+        await supabaseAdmin.from('users').update({ balance_fancoins: newBalance }).eq('id', userId);
+      }
+      console.log(`[resolveMatch] Salary deducted for team ${teamId}: ${totalSalary} FC`);
+    };
+
+    await deductSquadSalary(homePlayersData, match.home_team_id);
+    await deductSquadSalary(awayPlayersData, match.away_team_id);
+
+    // ── ШАГ Е.2: Award FanCoins (with prestige_multiplier scaling) ──────────
+    // Win  = (500 + stadium_level × 75)  × prestige_multiplier
+    // Draw = (250 + stadium_level × 35)  × prestige_multiplier
+    // Loss = (100 + stadium_level × 15)  × prestige_multiplier
     const awardMatchFc = async (teamId: string, gf: number, ga: number) => {
       const matchResult = gf > ga ? 'win' : gf === ga ? 'draw' : 'loss';
       const { data: infra } = await supabaseAdmin
@@ -305,35 +347,40 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
 
       let baseReward = 0;
       let levelBonus = 0;
-      if (matchResult === 'win') { baseReward = 500; levelBonus = 75; }
-      else if (matchResult === 'draw') { baseReward = 250; levelBonus = 35; }
-      else { baseReward = 100; levelBonus = 15; }
-      
-      const totalReward = baseReward + (stadiumLevel * levelBonus);
+      if (matchResult === 'win')        { baseReward = 500; levelBonus = 150; } // 2× vs loss
+      else if (matchResult === 'draw') { baseReward = 250; levelBonus = 70;  }
+      else                             { baseReward = 100; levelBonus = 30;  }
+
+      const rawReward = baseReward + (stadiumLevel * levelBonus);
 
       const { data: teamData } = await supabaseAdmin
         .from('teams')
         .select('user_id')
         .eq('id', teamId)
         .maybeSingle();
-        
-      if (!teamData || !teamData.user_id) return;
-      
+
+      if (!teamData?.user_id) return;
+
       const { data: userData } = await supabaseAdmin
         .from('users')
-        .select('balance_fancoins')
+        .select('balance_fancoins, prestige_multiplier')
         .eq('id', teamData.user_id)
         .maybeSingle();
-        
+
       if (userData) {
-        const newBalance = (Number(userData.balance_fancoins) || 0) + totalReward;
+        const multiplier   = Number(userData.prestige_multiplier ?? 1.0);
+        const totalReward  = Math.floor(rawReward * multiplier);
+        const newBalance   = (Number(userData.balance_fancoins) || 0) + totalReward;
+
         const { error: updateError } = await supabaseAdmin
           .from('users')
           .update({ balance_fancoins: newBalance })
           .eq('id', teamData.user_id);
-          
+
         if (updateError) {
-          console.error(`[resolveMatch] Failed to update balance for user ${teamData.user_id}:`, updateError);
+          console.error(`[resolveMatch] Failed to award FC for user ${teamData.user_id}:`, updateError);
+        } else {
+          console.log(`[resolveMatch] Awarded ${totalReward} FC (${rawReward} × ${multiplier}) to user ${teamData.user_id} (${matchResult})`);
         }
       }
     };
