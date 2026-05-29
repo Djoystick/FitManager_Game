@@ -9,7 +9,7 @@ export async function GET(req: Request) {
     // 1. Fetch Standings from the physical table
     const { data: standingsData, error: standingsError } = await supabase
       .from('league_standings')
-      .select('*, team:teams(name)')
+      .select('*, team:teams(name), league_instance:league_instances(tier_level)')
       .order('points', { ascending: false })
       .order('wins', { ascending: false })
       .order('matches_played', { ascending: true });
@@ -55,7 +55,8 @@ export async function GET(req: Request) {
       success: true,
       standings: standings || [],
       recentMatches: matches || [],
-      userTeamId
+      userTeamId,
+      league_instance: standingsData?.[0]?.league_instance || null
     });
 
   } catch (error: any) {
