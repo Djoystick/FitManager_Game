@@ -148,6 +148,25 @@ export default function DashboardPage() {
       <div className="relative z-10 w-full max-w-md mx-auto flex flex-col gap-4 mt-2">
         <UnseenMatchesModal matches={unseenMatches} onAcknowledge={handleAcknowledgeUnseen} />
 
+        {lobbyTimeLeft !== null && (
+          <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+            <div className="w-32 h-32 rounded-full border-4 border-neon-cyan/40 mb-6 flex items-center justify-center bg-black/60 shadow-[0_0_40px_rgba(0,240,255,0.4)] animate-pulse">
+              <span className="text-5xl text-neon-cyan font-orbitron font-black">{lobbyTimeLeft}s</span>
+            </div>
+            <h2 className="text-3xl font-black text-white uppercase tracking-widest font-orbitron mb-2 drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
+              WAITING FOR TEAMS
+            </h2>
+            <p className="text-neon-cyan text-2xl font-bold mb-8 font-orbitron tracking-widest">
+              {lobbyTeamCount} / 14
+            </p>
+            <div className="bg-gray-900 border border-neon-cyan/30 p-6 rounded-xl shadow-[0_0_20px_rgba(0,240,255,0.1)] max-w-sm">
+              <p className="text-gray-300 text-sm font-inter">
+                The league will automatically fill with remaining bots and start when the timer reaches zero.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* HOLO DISPLAY (FRANCHISE STATUS) */}
         <div className="bg-black/40 backdrop-blur-xl border border-neon-cyan/30 rounded-3xl p-4 shadow-[0_0_30px_rgba(0,240,255,0.15)] relative overflow-hidden flex flex-col items-center">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-neon-cyan to-transparent"></div>
