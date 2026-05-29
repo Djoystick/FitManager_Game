@@ -866,7 +866,19 @@ export default function LineupPage() {
               </p>
 
               <div>
-                <span className="text-gray-400 block mb-2">Комбинации трейтов:</span>
+                <span className="text-gray-400 block mb-2">Классы стилей (Трейты):</span>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-teal-900/80 border-teal-500 text-teal-400 text-[7px] font-black">SN</span><span className="text-[10px] text-gray-300">Sniper</span></div>
+                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-blue-900/80 border-blue-500 text-blue-400 text-[7px] font-black">PM</span><span className="text-[10px] text-gray-300">Playmaker</span></div>
+                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-purple-900/80 border-purple-500 text-purple-400 text-[7px] font-black">WL</span><span className="text-[10px] text-gray-300">Wall</span></div>
+                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-orange-900/80 border-orange-500 text-orange-400 text-[7px] font-black">SP</span><span className="text-[10px] text-gray-300">Speedster</span></div>
+                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-indigo-900/80 border-indigo-500 text-indigo-400 text-[7px] font-black">AN</span><span className="text-[10px] text-gray-300">Anchor</span></div>
+                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-pink-900/80 border-pink-500 text-pink-400 text-[7px] font-black">PO</span><span className="text-[10px] text-gray-300">Poacher</span></div>
+                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-yellow-900/80 border-yellow-500 text-yellow-400 text-[7px] font-black">EN</span><span className="text-[10px] text-gray-300">Engine</span></div>
+                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-red-900/80 border-red-500 text-red-400 text-[7px] font-black">LD</span><span className="text-[10px] text-gray-300">Leader</span></div>
+                </div>
+
+                <span className="text-gray-400 block mb-2">Комбинации:</span>
                 <ul className="space-y-2">
                   <li className="flex items-center justify-between bg-gray-900/50 p-2 rounded">
                     <span>Playmaker + Poacher</span>

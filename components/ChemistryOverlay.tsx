@@ -9,6 +9,17 @@ import {
   ChemistryRecord 
 } from '@/app/utils/chemistry';
 
+const TRAIT_COLORS: Record<string, { bg: string, border: string, text: string, short: string }> = {
+  'Sniper': { bg: 'bg-teal-900/80', border: 'border-teal-500', text: 'text-teal-400', short: 'SN' },
+  'Playmaker': { bg: 'bg-blue-900/80', border: 'border-blue-500', text: 'text-blue-400', short: 'PM' },
+  'Wall': { bg: 'bg-purple-900/80', border: 'border-purple-500', text: 'text-purple-400', short: 'WL' },
+  'Speedster': { bg: 'bg-orange-900/80', border: 'border-orange-500', text: 'text-orange-400', short: 'SP' },
+  'Anchor': { bg: 'bg-indigo-900/80', border: 'border-indigo-500', text: 'text-indigo-400', short: 'AN' },
+  'Poacher': { bg: 'bg-pink-900/80', border: 'border-pink-500', text: 'text-pink-400', short: 'PO' },
+  'Engine': { bg: 'bg-yellow-900/80', border: 'border-yellow-500', text: 'text-yellow-400', short: 'EN' },
+  'Leader': { bg: 'bg-red-900/80', border: 'border-red-500', text: 'text-red-400', short: 'LD' },
+};
+
 interface Player {
   id: string;
   position: string;
@@ -98,6 +109,40 @@ export function ChemistryOverlay({ formation, players, chemistryData }: Props) {
         })}
       </svg>
 
+      {/* Compact Trait Nodes Overlay */}
+      {players.filter(p => p.lineup_status === 'starting').map(p => {
+        const slot = parseInt(p.lineup_slot || '-1', 10);
+        if (slot < 0) return null;
+        
+        const coords = getSlotCoords(slot, formation);
+        const hasTraits = (p as any).traits && (p as any).traits.length > 0;
+        
+        if (!hasTraits) return null;
+
+        return (
+          <div 
+            key={p.id}
+            className="absolute flex flex-col gap-0.5 z-30"
+            style={{ 
+              left: `calc(${coords.x}% + 18px)`, 
+              top: `calc(${coords.y}% - 22px)` 
+            }}
+          >
+            {(p as any).traits.map((trait: string, idx: number) => {
+              const style = TRAIT_COLORS[trait] || { bg: 'bg-gray-900/80', border: 'border-gray-500', text: 'text-gray-400', short: trait.substring(0, 2).toUpperCase() };
+              return (
+                <div 
+                  key={idx}
+                  title={trait}
+                  className={`w-5 h-5 flex items-center justify-center rounded-full border ${style.bg} ${style.border} ${style.text} text-[8px] font-black shadow-[0_0_8px_rgba(0,0,0,0.8)] backdrop-blur-sm`}
+                >
+                  {style.short}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
     </div>
   );
 }
