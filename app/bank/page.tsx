@@ -4,6 +4,7 @@ import { SweatBankClient } from '@/components/SweatBankClient';
 import { Droplets } from 'lucide-react';
 import type { Metadata, Viewport } from 'next';
 import type { ManagerProfileType } from '@/app/actions/economyActions';
+import { dict } from '@/lib/dictionaries';
 
 export const viewport: Viewport = {
   colorScheme: 'dark',
@@ -28,6 +29,8 @@ const DEFAULT_DATA = {
 export default async function BankPage() {
   const cookieStore = await cookies();
   const userId = cookieStore.get('tg_user_id')?.value;
+  const language = cookieStore.get('fitmanager_lang')?.value || 'en';
+  const t = dict[language as keyof typeof dict];
 
   let userData = DEFAULT_DATA;
 
@@ -62,10 +65,10 @@ export default async function BankPage() {
         </div>
         <div>
           <h1 className="text-base font-black uppercase tracking-widest text-white leading-none">
-            Sweat Bank
+            {t.bank_title}
           </h1>
           <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">
-            Шаги → SP → Монеты
+            {t.bank_subtitle}
           </p>
         </div>
         <div className="ml-auto flex items-center gap-1.5 bg-neon-green/10 border border-neon-green/20 rounded-full px-3 py-1">
@@ -77,7 +80,7 @@ export default async function BankPage() {
       </div>
 
       {/* Main Client Component */}
-      <SweatBankClient initialData={userData} />
+      <SweatBankClient initialData={userData} language={language} />
     </div>
   );
 }

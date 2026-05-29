@@ -34,6 +34,12 @@ export default async function SquadPage() {
       </header>
 
       <SquadTabs initialPlayers={players || []} teamId={team.id} userId={userId} />
+
+      <ScreenGuide 
+        screenName="squad" 
+        title={t.squad_management} 
+        content={t.squad_management_desc} 
+      />
     </div>
   );
 }

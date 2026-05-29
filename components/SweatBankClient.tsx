@@ -9,8 +9,10 @@ import {
   type ManagerProfileType,
   type CurrencyType,
   type SyncStepsResult,
+  type SyncStepsResult,
   type ConvertSpResult,
 } from '@/app/actions/economyActions';
+import { dict } from '@/lib/dictionaries';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants & Helpers
@@ -18,12 +20,7 @@ import {
 
 const DAILY_STEP_CAP = 25_000;
 
-const PROFILE_LABELS: Record<ManagerProfileType, { label: string; emoji: string; color: string }> = {
-  runner:      { label: 'Бегун',    emoji: '🏃', color: 'text-neon-green' },
-  yogi:        { label: 'Йог',      emoji: '🧘', color: 'text-purple-400' },
-  ball_player: { label: 'Игровик',  emoji: '⚽', color: 'text-yellow-400' },
-  lifter:      { label: 'Лифтер',   emoji: '🏋️', color: 'text-red-400' },
-};
+// Profile labels moved inside component to support translations
 
 // Multiplier matrix (mirrors DB logic — used only for local preview)
 const MULTIPLIER_MATRIX: Record<ManagerProfileType, Record<CurrencyType, number>> = {
@@ -60,13 +57,16 @@ interface SweatBankClientProps {
     ball_coin: number;
     strength_coin: number;
   };
+  language: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function SweatBankClient({ initialData }: SweatBankClientProps) {
+export function SweatBankClient({ initialData, language }: SweatBankClientProps) {
+  const t = dict[language as keyof typeof dict];
+
   // Local mirrors of server state — updated optimistically on action success
   const [dailySteps, setDailySteps] = useState(initialData.daily_steps);
   const [sweatPoints, setSweatPoints] = useState(initialData.sweat_points);
@@ -77,6 +77,13 @@ export function SweatBankClient({ initialData }: SweatBankClientProps) {
     strength: initialData.strength_coin,
   });
   const profile = initialData.manager_profile;
+
+  const PROFILE_LABELS: Record<ManagerProfileType, { label: string; emoji: string; color: string }> = {
+    runner:      { label: t.profile_runner, emoji: '🏃', color: 'text-neon-green' },
+    yogi:        { label: t.profile_yogi,   emoji: '🧘', color: 'text-purple-400' },
+    ball_player: { label: t.profile_ball,   emoji: '⚽', color: 'text-yellow-400' },
+    lifter:      { label: t.profile_lifter, emoji: '🏋️', color: 'text-red-400' },
+  };
 
   // Exchange inputs: one integer input per currency
   const [spInputs, setSpInputs] = useState<Record<CurrencyType, string>>({
@@ -95,9 +102,9 @@ export function SweatBankClient({ initialData }: SweatBankClientProps) {
         const d = res.data as SyncStepsResult;
         setDailySteps(d.daily_steps);
         setSweatPoints(d.total_sp);
-        toast.success(`+${d.sp_gained} SP за ${d.added_steps} шагов!`);
+        toast.success(t.toast_sync_success.replace('{sp}', d.sp_gained.toString()).replace('{steps}', d.added_steps.toString()));
       } else {
-        toast.error(res.error ?? 'Ошибка синхронизации');
+        toast.error(res.error ?? t.toast_sync_error);
       }
     });
   }, []);
@@ -108,11 +115,11 @@ export function SweatBankClient({ initialData }: SweatBankClientProps) {
     const raw = spInputs[currency];
     const amount = parseInt(raw, 10);
     if (!raw || isNaN(amount) || amount <= 0) {
-      toast.error('Введи корректное количество SP');
+      toast.error(t.toast_invalid_sp);
       return;
     }
     if (amount > sweatPoints) {
-      toast.error('Недостаточно Sweat Points');
+      toast.error(t.toast_insufficient_sp);
       return;
     }
 
@@ -123,9 +130,9 @@ export function SweatBankClient({ initialData }: SweatBankClientProps) {
         setSweatPoints(d.new_balance_sp);
         setCoinBalances(prev => ({ ...prev, [currency]: d.new_balance_currency }));
         setSpInputs(prev => ({ ...prev, [currency]: '' }));
-        toast.success(`+${d.gained_coins} ${CURRENCY_META[currency].label}!`);
+        toast.success(t.toast_convert_success.replace('{coins}', d.gained_coins.toString()).replace('{coinName}', CURRENCY_META[currency].label));
       } else {
-        toast.error(res.error ?? 'Ошибка конвертации');
+        toast.error(res.error ?? t.toast_convert_error);
       }
     });
   }, [spInputs, sweatPoints]);
@@ -143,7 +150,7 @@ export function SweatBankClient({ initialData }: SweatBankClientProps) {
         <div className="flex items-center gap-2">
           <Footprints className="text-neon-green w-5 h-5" />
           <h2 className="text-sm font-black uppercase tracking-widest text-neon-green drop-shadow-[0_0_5px_rgba(57,255,20,0.5)]">
-            Шагомер
+            {t.pedometer}
           </h2>
         </div>
 
@@ -153,7 +160,7 @@ export function SweatBankClient({ initialData }: SweatBankClientProps) {
             <span className="text-2xl font-black text-white tabular-nums font-orbitron">
               {dailySteps.toLocaleString()}
             </span>
-            <span className="text-xs text-gray-500 font-bold">/ {DAILY_STEP_CAP.toLocaleString()} шагов</span>
+            <span className="text-xs text-gray-500 font-bold">/ {DAILY_STEP_CAP.toLocaleString()} {t.steps_lower}</span>
           </div>
           <div className="h-2.5 rounded-full bg-gray-800 overflow-hidden">
             <div
@@ -183,7 +190,7 @@ export function SweatBankClient({ initialData }: SweatBankClientProps) {
         <div className="flex flex-col gap-1.5">
           <p className="text-[9px] uppercase tracking-widest text-gray-600 font-bold flex items-center gap-1">
             <FlaskConical size={10} />
-            Debug Mode — Step Injector
+            {t.debug_mode}
           </p>
           <div className="flex gap-2">
             {[1000, 5500].map(amt => (
@@ -197,7 +204,7 @@ export function SweatBankClient({ initialData }: SweatBankClientProps) {
                     : 'bg-neon-green/10 text-neon-green border-neon-green/40 hover:bg-neon-green/20 active:scale-95'
                 }`}
               >
-                {isSyncing ? '...' : `+${amt.toLocaleString()} шагов`}
+                {isSyncing ? '...' : `+${amt.toLocaleString()} ${t.steps_lower}`}
               </button>
             ))}
           </div>
@@ -208,14 +215,14 @@ export function SweatBankClient({ initialData }: SweatBankClientProps) {
       <section className="bg-black/40 border border-gray-800 rounded-2xl p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-black uppercase tracking-widest text-neon-cyan drop-shadow-[0_0_5px_rgba(0,240,255,0.5)]">
-            Профиль Менеджера
+            {t.manager_profile_title}
           </h2>
           <span className={`text-sm font-black ${profileMeta.color} flex items-center gap-1.5`}>
             {profileMeta.emoji} {profileMeta.label}
           </span>
         </div>
         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
-          Бонусный множитель конвертации SP → Монеты:
+          {t.bonus_multiplier}
         </p>
         <div className="grid grid-cols-2 gap-2">
           {(Object.entries(CURRENCY_META) as [CurrencyType, typeof CURRENCY_META[CurrencyType]][]).map(([curr, meta]) => {
@@ -239,7 +246,7 @@ export function SweatBankClient({ initialData }: SweatBankClientProps) {
         <div className="flex items-center gap-2">
           <ArrowRightLeft className="text-neon-pink w-5 h-5" />
           <h2 className="text-sm font-black uppercase tracking-widest text-neon-pink drop-shadow-[0_0_5px_rgba(255,0,100,0.5)]">
-            Обменник SP
+            {t.sp_exchange}
           </h2>
         </div>
 
@@ -291,15 +298,15 @@ export function SweatBankClient({ initialData }: SweatBankClientProps) {
                         : `${meta.accent} bg-gray-900 border-gray-700 hover:border-current active:scale-95 ${meta.glow}`
                     }`}
                   >
-                    {isConverting ? '...' : 'Обменять'}
+                    {isConverting ? '...' : t.exchange_btn}
                   </button>
                 </div>
 
                 {/* Multiplier indicator inline */}
                 <div className="flex items-center gap-1">
-                  <span className="text-[9px] text-gray-600 font-bold uppercase tracking-wider">Курс:</span>
+                  <span className="text-[9px] text-gray-600 font-bold uppercase tracking-wider">{t.exchange_rate}</span>
                   <span className={`text-[9px] font-black ${multiplierBadge(mult).split(' ')[0]}`}>
-                    100 SP → {Math.floor(100 * mult)} монет (x{mult.toFixed(1)})
+                    100 SP → {Math.floor(100 * mult)} {t.coins_lower} (x{mult.toFixed(1)})
                   </span>
                 </div>
               </div>

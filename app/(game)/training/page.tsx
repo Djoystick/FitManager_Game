@@ -172,6 +172,11 @@ export default async function TrainingDashboard({ searchParams }: { searchParams
         )}
       </section>
 
+      <ScreenGuide 
+        screenName="training" 
+        title={t.training_base_title} 
+        content={t.training_base_desc} 
+      />
     </div>
   );
 }
