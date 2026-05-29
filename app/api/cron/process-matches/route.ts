@@ -49,8 +49,10 @@ export async function GET(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization');
     const manualSecret = req.nextUrl?.searchParams?.get('secret');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && manualSecret !== 'supersecret_trigger_123') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // We only allow the manual secret to prevent external cron services from triggering this too often.
+    if (manualSecret !== 'supersecret_trigger_123') {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { data: unplayedMatches } = await supabaseAdmin

@@ -642,52 +642,6 @@ export default function LineupPage() {
                 {showChemistry ? 'Hide Links' : 'Chemistry'}
               </span>
             </button>
-            <InfoPopover 
-              title="Сыгранность (Chemistry)"
-              content={
-                <div className="space-y-4">
-                  <p>Сыгранность (Chemistry) строится на совместных матчах, совместимости стилей (Traits) и совместных тренировках (Sweat Points).</p>
-                  
-                  <div>
-                    <h4 className="text-xs font-bold text-emerald-400 mb-2 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
-                      СИНЕРГИЯ (+30 очков, без лимита)
-                    </h4>
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center justify-between text-[10px] bg-black/40 p-1.5 rounded border border-gray-800">
-                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold uppercase tracking-wider">Playmaker</span>
-                        <span className="text-gray-500">+</span>
-                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold uppercase tracking-wider">Poacher</span>
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] bg-black/40 p-1.5 rounded border border-gray-800">
-                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold uppercase tracking-wider">Engine</span>
-                        <span className="text-gray-500">+</span>
-                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold uppercase tracking-wider">Speedster</span>
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] bg-black/40 p-1.5 rounded border border-gray-800">
-                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold uppercase tracking-wider">Anchor</span>
-                        <span className="text-gray-500">+</span>
-                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold uppercase tracking-wider">Wall</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-xs font-bold text-rose-400 mb-2 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
-                      КОНФЛИКТ (-20 очков)
-                    </h4>
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center justify-between text-[10px] bg-black/40 p-1.5 rounded border border-rose-900/30">
-                        <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 font-bold uppercase tracking-wider">Leader</span>
-                        <span className="text-rose-500/50 text-xs font-bold font-mono">VS</span>
-                        <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 font-bold uppercase tracking-wider">Leader</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              }
-            />
           </div>
           <div className="flex justify-center gap-2 shrink-0 z-20 mt-1 mb-2">
             {['4-4-2', '4-3-3', '3-5-2'].map(f => {
@@ -765,28 +719,30 @@ export default function LineupPage() {
              )}
            </div>
 
-           <div className="flex gap-3 overflow-x-auto custom-scrollbar px-2 pb-2 justify-start md:justify-center items-center relative">
-             {/* BENCH PLAYERS */}
-             <div className="flex gap-2 shrink-0">
-               {[11, 12, 13, 14, 15].map(idx => (
-                 <div key={idx} className="shrink-0">
-                   {renderPitchMarker(idx)}
-                 </div>
-               ))}
-             </div>
-             
-             {/* VERTICAL DIVIDER */}
-             {activePlayers.filter(p => p.lineup_status === 'reserve').length > 0 && (
-               <div className="w-px h-16 bg-gradient-to-b from-transparent via-gray-700 to-transparent shrink-0 mx-1"></div>
-             )}
+           <div className="w-full overflow-x-auto custom-scrollbar overflow-y-hidden">
+             <div className="flex gap-3 px-4 pb-2 items-center w-max min-w-full justify-start md:justify-center">
+               {/* BENCH PLAYERS */}
+               <div className="flex gap-2 shrink-0">
+                 {[11, 12, 13, 14, 15].map(idx => (
+                   <div key={idx} className="shrink-0">
+                     {renderPitchMarker(idx)}
+                   </div>
+                 ))}
+               </div>
+               
+               {/* VERTICAL DIVIDER */}
+               {activePlayers.filter(p => p.lineup_status === 'reserve').length > 0 && (
+                 <div className="w-px h-16 bg-gradient-to-b from-transparent via-gray-700 to-transparent shrink-0 mx-2"></div>
+               )}
 
-             {/* DEEP RESERVE PLAYERS */}
-             <div className="flex gap-2 shrink-0">
-               {activePlayers.filter(p => p.lineup_status === 'reserve').map(p => (
-                 <div key={p.id} className="shrink-0 opacity-70 hover:opacity-100 transition-opacity scale-95">
-                   {renderReservePlayer(p)}
-                 </div>
-               ))}
+               {/* DEEP RESERVE PLAYERS */}
+               <div className="flex gap-2 shrink-0">
+                 {activePlayers.filter(p => p.lineup_status === 'reserve').map(p => (
+                   <div key={p.id} className="shrink-0 opacity-70 hover:opacity-100 transition-opacity scale-95">
+                     {renderReservePlayer(p)}
+                   </div>
+                 ))}
+               </div>
              </div>
            </div>
 
