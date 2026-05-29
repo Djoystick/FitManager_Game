@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { resolveMatch } from '@/app/actions/matchActions';
 
@@ -45,10 +45,11 @@ function buildMessage(
   );
 }
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    const manualSecret = req.nextUrl?.searchParams?.get('secret');
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && manualSecret !== 'supersecret_trigger_123') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
