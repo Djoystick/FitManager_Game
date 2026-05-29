@@ -14,6 +14,7 @@ export interface MatchReport {
   home_score: number;
   away_score: number;
   events: MatchEvent[];
+  round_number?: number;
   stamina_drain?: {
     home: Record<string, number>;
     away: Record<string, number>;
