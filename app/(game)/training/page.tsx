@@ -2,6 +2,7 @@ import React from 'react';
 import { supabase } from '@/lib/supabase';
 import { LogSessionButton } from '@/components/training/LogSessionButton';
 import { Activity, AlertTriangle, CheckCircle2, XCircle, Zap } from 'lucide-react';
+import { ScreenGuide } from '@/components/ui/ScreenGuide';
 
 export default async function TrainingDashboard({ searchParams }: { searchParams: Promise<{ userId?: string }> | { userId?: string } }) {
   const resolvedParams = await searchParams;
@@ -39,6 +40,11 @@ export default async function TrainingDashboard({ searchParams }: { searchParams
 
   return (
     <div className="flex flex-col flex-1 p-4 gap-6 pb-24 h-full overflow-y-auto custom-scrollbar">
+      <ScreenGuide 
+        screenName="training"
+        title="Тренировочная база"
+        content="Ваша реальная физическая активность (шаги) конвертируется в Sweat Points (SP). Используйте SP для тренировки кибер-атлетов и буста их характеристик!"
+      />
       
       {/* Header */}
       <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-gray-800 pb-4">

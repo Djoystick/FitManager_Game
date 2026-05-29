@@ -50,12 +50,14 @@ export default function OnboardingPage() {
         </div>
 
         {/* Text */}
-        <h1 className="text-3xl font-black text-white mb-2 text-center tracking-wide font-orbitron drop-shadow-md">
+        <h1 className="text-3xl font-black text-white mb-2 text-center tracking-wide font-orbitron drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
           Welcome, Manager.
         </h1>
-        <p className="text-gray-400 text-center mb-10 text-sm leading-relaxed px-4 font-inter">
-          Create your franchise to enter the league. You will receive a starter pack of <span className="text-neon-cyan font-bold">16 players</span>, <span className="text-yellow-400 font-bold">1000 FC</span> and <span className="text-neon-cyan font-bold">1000 SP</span>.
-        </p>
+        <div className="bg-black/50 backdrop-blur-md border border-neon-cyan/20 p-4 rounded-xl shadow-[0_0_15px_rgba(0,240,255,0.1)] mb-8">
+          <p className="text-gray-300 text-center text-sm leading-relaxed font-inter">
+            Добро пожаловать в FitManager — Web3 симулятор футбольного менеджера нового поколения. Ваша реальная физическая активность конвертируется в Sweat Points. Тренируйте кибер-атлетов, торгуйте на глобальном рынке за TON и покорите Высшую Лигу.
+          </p>
+        </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="w-full flex flex-col gap-6">
@@ -70,7 +72,7 @@ export default function OnboardingPage() {
               placeholder="e.g. Cyber City FC"
               required
               maxLength={25}
-              className="w-full bg-black/40 border border-gray-800 text-white font-bold rounded-xl p-4 focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan transition-all duration-300 placeholder:text-gray-600 shadow-inner"
+              className="w-full bg-black/60 border border-gray-800/80 text-white font-bold rounded-xl p-4 focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan transition-all duration-300 placeholder:text-gray-600 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)] hover:border-neon-cyan/50"
             />
           </div>
           

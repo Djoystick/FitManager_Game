@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function TooltipTour() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const hasSeenTour = localStorage.getItem('fitmanager_tour_completed');
@@ -46,6 +48,7 @@ export function TooltipTour() {
     localStorage.setItem('fitmanager_tour_completed', 'true');
   };
 
+  if (pathname === '/onboarding') return null;
   if (!isVisible) return null;
 
   return (

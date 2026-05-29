@@ -6,6 +6,7 @@ import { getMarketListingsAction, buyPlayerAction, cancelListingAction } from '@
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import toast from 'react-hot-toast';
 import { RefreshCw, Filter, ShieldAlert } from 'lucide-react';
+import { ScreenGuide } from '@/components/ui/ScreenGuide';
 
 interface MarketListing {
   id: string;
@@ -97,7 +98,12 @@ export default function TransferMarketPage() {
     : listings.filter(l => l.seller.id === userId);
 
   return (
-    <div className="flex flex-col flex-1 p-4 gap-4 min-h-screen bg-space-dark text-white">
+    <div className="flex flex-col flex-1 p-4 gap-4 min-h-screen bg-space-dark text-white pb-24">
+      <ScreenGuide 
+        screenName="market"
+        title="Трансферный Рынок"
+        content="Добро пожаловать на глобальный P2P Трансферный Рынок. Здесь менеджеры со всего мира покупают и продают игроков за реальную криптовалюту TON."
+      />
       {/* HEADER */}
       <header className="border-b border-gray-800 pb-4">
         <div className="flex items-center justify-between">
