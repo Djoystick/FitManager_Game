@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(req: Request) {
   try {
@@ -11,10 +16,10 @@ export async function GET(req: Request) {
 
     // 1. Find the current user's team ID and their league instance
     if (userId) {
-       const { data: teamData } = await supabase.from('teams').select('id').eq('user_id', userId).single();
+       const { data: teamData } = await supabaseAdmin.from('teams').select('id').eq('user_id', userId).single();
        if (teamData) {
          userTeamId = teamData.id;
-         const { data: userStanding } = await supabase.from('league_standings')
+         const { data: userStanding } = await supabaseAdmin.from('league_standings')
            .select('league_instance_id')
            .eq('team_id', userTeamId)
            .single();
@@ -37,7 +42,7 @@ export async function GET(req: Request) {
     }
 
     // 2. Fetch Standings ONLY for the target league
-    const { data: standingsData, error: standingsError } = await supabase
+    const { data: standingsData, error: standingsError } = await supabaseAdmin
       .from('league_standings')
       .select('*, team:teams(name), league_instance:league_instances(tier_level)')
       .eq('league_instance_id', targetLeagueId)
@@ -57,7 +62,7 @@ export async function GET(req: Request) {
     })) || [];
 
     // 3. Fetch Recent Match History ONLY for the target league
-    const { data: matches, error: matchesError } = await supabase
+    const { data: matches, error: matchesError } = await supabaseAdmin
       .from('league_matches')
       .select(`
         id, 
