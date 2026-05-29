@@ -1,4 +1,6 @@
 <div align="center">
+  <img src="public/logo.png" alt="FitManager Logo" width="120" height="120" style="border-radius: 20px; margin-bottom: 20px;" />
+  <br/>
   <img src="https://img.shields.io/badge/Status-Beta-00f0ff?style=for-the-badge&logo=rocket" alt="Status" />
   <img src="https://img.shields.io/badge/Platform-Telegram_Mini_App-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram" />
   <img src="https://img.shields.io/badge/Web3-TON_Network-0098EA?style=for-the-badge" alt="TON" />
@@ -43,12 +45,13 @@ Instead of waiting for energy to recharge or buying micro-transactions, managers
 
 ## 🔥 Key Features
 
-* 🏃 **Real-World Sync (M2E):** Connect your fitness tracker. Your real-world miles become in-game Training Points (Cardio, Strength, Fitness, Ball).
-* ⚽ **Deep Tactical Engine:** Manage formations, player stamina, and scout intel. Every match is simulated fully on the backend via automated Cron Jobs.
-* 🏙️ **Club Infrastructure:** Upgrade your Stadium, Medical Center, and Training Camp to gain passive FanCoins (FC) and team buffs.
-* 💎 **P2P Transfer Market (TON):** Fully decentralized player market. Sell your trained academy players to other real managers for actual **TON cryptocurrency**.
-* 🏆 **Global Multiplayer Leagues:** Fight through 15 tiers of leagues. If a tier lacks real players, it's instantly auto-filled with intelligent AI Bots.
-* 📱 **Native Telegram Integration:** Frictionless onboarding. One click to play, no separate app installation required.
+* 🏃 **Real-World Sync (M2E Sweat Bank):** Connect your fitness tracker. Your real-world steps convert into **Sweat Points (SP)** through a specialized manager profile (Runner, Gym Bro, etc.).
+* ⚽ **Match Engine v3.0 (Micro-Duels):** A deep backend engine simulating matches phase-by-phase based on player traits, OOP (Out of Position) penalties, stamina drain, and situational probability. 
+* 🧬 **Chemistry & Trait Resonance:** Highly visual SVG-based synergy maps. Combine specific player traits (e.g., Playmaker + Poacher) for duel buffs, but beware of clashing leaders.
+* 🏙️ **Club Infrastructure:** Upgrade your Stadium, Medical Center, Academy, and Training Camp to gain passive FanCoins (FC), tax exemptions, and recovery buffs.
+* 💎 **P2P Transfer Market (TON):** Fully decentralized player market. Sell your trained academy players to other real managers for actual **TON cryptocurrency**. Features complex economic burning mechanics to prevent inflation.
+* 🏆 **Global Multiplayer Leagues:** Fight through 15 tiers of leagues. Powered by resilient automated Cron architectures with fallback AI Bots.
+* 📱 **Native Telegram Integration:** Frictionless onboarding. One click to play in fullscreen, no separate app installation required. Seamless UI/UX built for mobile.
 
 ## 🛠️ Architecture & Tech Stack
 
