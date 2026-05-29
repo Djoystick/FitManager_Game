@@ -12,6 +12,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PlayerProfileModal } from '@/components/PlayerProfileModal';
 import { InfoPopover } from '@/components/ui/InfoPopover';
 import { ChemistryOverlay } from '@/components/ChemistryOverlay';
+import { LanguageContext } from '@/components/LanguageContext';
+import { dict } from '@/lib/dictionaries';
+import { ScreenGuide } from '@/components/ui/ScreenGuide';
 
 interface PlayerStats {
   pace: number;
@@ -48,6 +51,8 @@ interface Team {
 
 export default function LineupPage() {
   const { userId, isAuthenticated, isLoading: isAuthLoading } = useContext(TelegramAuthContext);
+  const { language } = useContext(LanguageContext);
+  const t = dict[language as keyof typeof dict];
   const [team, setTeam] = useState<Team | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -786,6 +791,12 @@ export default function LineupPage() {
           />
         )}
       </AnimatePresence>
+
+      <ScreenGuide 
+        screenName="squad" 
+        title={t.squad_management} 
+        content={t.squad_management_desc} 
+      />
     </div>
   );
 }

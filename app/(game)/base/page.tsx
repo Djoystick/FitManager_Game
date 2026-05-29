@@ -29,6 +29,9 @@ import {
   type BuildingType,
 } from '@/app/actions/trainingActions';
 import toast from 'react-hot-toast';
+import { LanguageContext } from '@/components/LanguageContext';
+import { dict } from '@/lib/dictionaries';
+import { ScreenGuide } from '@/components/ui/ScreenGuide';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Static definitions — declared outside component so Tailwind class scanner
@@ -217,6 +220,8 @@ function getInfraLevel(infra: ClubInfrastructure | null, key: BuildingType): num
 
 export default function BaseDashboard() {
   const { userId, isAuthenticated } = useContext(TelegramAuthContext);
+  const { language } = useContext(LanguageContext);
+  const t = dict[language as keyof typeof dict];
 
   const [activeTab, setActiveTab]           = useState<TabId>('infrastructure');
   const [infra, setInfra]                   = useState<ClubInfrastructure | null>(null);
@@ -385,6 +390,12 @@ export default function BaseDashboard() {
         />
         )}
       </div>
+
+      <ScreenGuide 
+        screenName="training" 
+        title={t.training_base_title} 
+        content={t.training_base_desc} 
+      />
     </div>
   );
 }
