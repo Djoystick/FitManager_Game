@@ -389,6 +389,57 @@ export default function LineupPage() {
     );
   };
 
+  const renderReservePlayer = (player: Player) => {
+    const isSelected = selectedPlayerId === player.id;
+
+    return (
+      <div 
+        key={player.id} 
+        onClick={(e) => handlePlayerClick(player, e)}
+        className={`relative flex flex-col items-center justify-center p-1 w-14 cursor-pointer transition-all duration-300 rounded-md ${
+          isSelected 
+            ? 'ring-2 ring-neon-pink scale-110 z-20 bg-neon-pink/20 shadow-[0_0_15px_rgba(255,0,60,0.6)]' 
+            : 'hover:bg-white/10'
+        }`}
+      >
+        {/* Position Badge & Injury */}
+        <div className="flex gap-0.5 items-center mb-0.5 z-10 transition-opacity duration-300">
+          <span className="text-[8px] font-black px-1 rounded-sm uppercase tracking-tighter shadow-sm bg-gray-600 text-gray-300">
+            {player.position}
+          </span>
+          {player.is_injured && <span className="text-[8px] drop-shadow-[0_0_2px_rgba(255,0,0,0.8)]">🚑</span>}
+        </div>
+
+        {/* Dynamic Center Content based on View Mode */}
+        <div className="relative flex flex-col items-center justify-center h-10 w-full transition-all duration-300">
+          {viewMode === 'lineup' ? (
+            <div className="relative flex items-center justify-center animate-in fade-in zoom-in duration-300 opacity-60">
+              <Shirt className="w-9 h-9 drop-shadow-md text-gray-400 transition-colors duration-300" fill="#9ca3af" fillOpacity={0.1} strokeWidth={1.5} />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none mt-1">
+                <span className="text-[11px] font-black drop-shadow-md text-gray-400">{player.ovr}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="w-full flex flex-col items-center justify-center gap-1 animate-in fade-in zoom-in duration-300 opacity-60">
+              <span className={`text-[13px] font-black drop-shadow-md ${player.stamina > 70 ? 'text-neon-green' : player.stamina > 30 ? 'text-yellow-500' : 'text-red-500 animate-pulse'}`}>
+                {player.stamina}
+              </span>
+              <div className={`w-10 h-1.5 rounded-full overflow-hidden border bg-black/50 ${player.stamina > 70 ? 'border-neon-green/50 shadow-[0_0_8px_rgba(57,255,20,0.6)]' : player.stamina > 30 ? 'border-yellow-500/50 shadow-[0_0_8px_rgba(234,179,8,0.6)]' : 'border-red-500/80 shadow-[0_0_10px_rgba(239,68,68,0.8)] bg-red-900/40'}`}>
+                <div className={`h-full transition-all duration-1000 ${player.stamina > 70 ? 'bg-neon-green' : player.stamina > 30 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${player.stamina}%` }}></div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Name */}
+        <span className="text-[10px] font-bold text-gray-400 truncate w-full text-center tracking-wider mt-0.5 drop-shadow-sm leading-tight opacity-80">
+          {player.name.split(' ').pop()}
+        </span>
+      </div>
+    );
+  };
+
+
 
   
   let averageOvr = 50;
@@ -704,9 +755,20 @@ export default function LineupPage() {
                {submitMessage.text}
              </div>
            )}
+           <div className="text-[9px] uppercase tracking-widest text-gray-500 text-center font-bold mb-1">Скамейка</div>
            <div className="flex gap-2 overflow-x-auto custom-scrollbar justify-center">
              {[11, 12, 13, 14, 15].map(idx => renderPitchMarker(idx))}
            </div>
+           
+           {activePlayers.filter(p => p.lineup_status === 'reserve').length > 0 && (
+             <>
+               <div className="text-[9px] uppercase tracking-widest text-gray-500 text-center font-bold mt-2 border-t border-gray-800 pt-2">Глубокий резерв</div>
+               <div className="flex gap-2 overflow-x-auto custom-scrollbar justify-center">
+                 {activePlayers.filter(p => p.lineup_status === 'reserve').map(p => renderReservePlayer(p))}
+               </div>
+             </>
+           )}
+
            {players.filter(p => p.stamina < 100).length > 0 && (
              <button 
                onClick={handleMassHeal}

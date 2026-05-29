@@ -147,8 +147,8 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
       toast.error(`Недостаточно FanCoins для налога. Нужно: ${fee} FC`);
       return;
     }
-    if (player.lineup_status === 'starter') {
-      toast.error('Игрок в стартовом составе. Сначала переведите его в резерв.');
+    if (player.lineup_status === 'starting' || player.lineup_status === 'bench') {
+      toast.error('Игрок в составе. Сначала переведите его в резерв.');
       return;
     }
 
@@ -246,7 +246,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                     value={sellPrice}
                     onChange={(e) => setSellPrice(e.target.value)}
                     placeholder="Например: 1.5"
-                    className="flex-1 bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-orbitron text-xl focus:border-neon-cyan outline-none transition-colors"
+                    className="flex-1 w-0 bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-orbitron text-xl focus:border-neon-cyan outline-none transition-colors"
                   />
                 </div>
               </div>
