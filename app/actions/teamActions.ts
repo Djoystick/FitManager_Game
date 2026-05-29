@@ -220,9 +220,10 @@ export async function createStarterFranchise(teamName: string) {
     } else {
       // Trigger autofill cron asynchronously so the league fills up quickly with bots
       // We must AWAIT it so Vercel serverless doesn't kill the process before it sends
+      // EXPERIMENT: Temporarily disabled to allow 2 accounts to join the same league!
+      /*
       try {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fit-manager-game.vercel.app';
-        // Use a short timeout so we don't block the UI too long if it hangs
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
         await fetch(`${appUrl}/api/cron/league-autofill`, { signal: controller.signal }).catch(() => {});
@@ -230,6 +231,7 @@ export async function createStarterFranchise(teamName: string) {
       } catch (e) {
         console.warn("Failed to trigger autofill:", e);
       }
+      */
     }
 
     return { success: true };
