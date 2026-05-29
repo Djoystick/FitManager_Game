@@ -115,6 +115,11 @@ export default function DashboardPage() {
         <div className="bg-black/40 backdrop-blur-xl border border-neon-cyan/30 rounded-3xl p-4 shadow-[0_0_30px_rgba(0,240,255,0.15)] relative overflow-hidden flex flex-col items-center">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-neon-cyan to-transparent"></div>
           
+          {/* PROFILE / SETTINGS BUTTON */}
+          <Link href="/profile" className="absolute top-3 right-3 w-8 h-8 rounded-full bg-gray-900 border border-neon-cyan/40 flex items-center justify-center hover:bg-neon-cyan/20 transition-colors z-20 shadow-[0_0_10px_rgba(0,240,255,0.2)]">
+            <span className="text-gray-300 text-sm font-bold">⚙️</span>
+          </Link>
+          
           <h2 className="text-[10px] font-bold text-neon-cyan uppercase tracking-[0.3em] mb-2 drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]">
             {t.franchise_status}
           </h2>

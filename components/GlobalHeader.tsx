@@ -123,11 +123,8 @@ export function GlobalHeader() {
           </div>
         </div>
 
-        {/* Profile Button Placeholder to maintain height and push to right */}
+        {/* Removed profile button to avoid Telegram menu overlap */}
         <div className="flex-1"></div>
-        <Link href="/profile" className="w-8 h-8 rounded-full bg-gray-900 border border-gray-700 flex items-center justify-center hover:bg-gray-800 transition-colors z-10">
-          <span className="text-gray-400 text-xs font-bold">⚙️</span>
-        </Link>
       </div>
     </div>
   );

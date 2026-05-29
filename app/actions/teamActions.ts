@@ -217,6 +217,15 @@ export async function createStarterFranchise(teamName: string) {
       // We pass the instanceId to generateLeagueSchedule so it only generates for this instance
       const calRes = await generateLeagueSchedule(instanceId);
       if (!calRes.success) console.warn(`Failed to generate schedule for instance ${instanceId}:`, calRes.error);
+    } else {
+      // Trigger autofill cron asynchronously so the league fills up quickly with bots
+      // We do this immediately so the user doesn't wait an hour for the cron to run.
+      try {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        fetch(`${appUrl}/api/cron/league-autofill`).catch(() => {});
+      } catch (e) {
+        console.warn("Failed to trigger autofill:", e);
+      }
     }
 
     return { success: true };
