@@ -14,7 +14,7 @@ export function TooltipTour() {
   const t = dict[language as keyof typeof dict];
 
   useEffect(() => {
-    const hasSeenTour = localStorage.getItem('fitmanager_tour_completed');
+    const hasSeenTour = localStorage.getItem('fitmanager_tour_completed_v2');
     if (!hasSeenTour) {
       const timer = setTimeout(() => setIsVisible(true), 1500); // slight delay after load
       return () => clearTimeout(timer);
@@ -49,9 +49,8 @@ export function TooltipTour() {
 
   const completeTour = () => {
     setIsVisible(false);
-    localStorage.setItem('fitmanager_tour_completed', 'true');
+    localStorage.setItem('fitmanager_tour_completed_v2', 'true');
   };
-
   if (pathname === '/onboarding') return null;
   if (!isVisible) return null;
 

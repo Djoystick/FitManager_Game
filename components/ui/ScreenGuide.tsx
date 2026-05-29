@@ -15,7 +15,7 @@ interface ScreenGuideProps {
 export function ScreenGuide({ screenName, title, content }: ScreenGuideProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
-  const storageKey = `fitmanager_guide_${screenName}`;
+  const storageKey = `fitmanager_guide_v2_${screenName}`;
   const { language } = useContext(LanguageContext);
   const t = dict[language as keyof typeof dict];
 
