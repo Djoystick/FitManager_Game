@@ -43,7 +43,7 @@ export function SquadManager({ initialPlayers, teamId }: SquadManagerProps) {
   );
 
   const starting = optimisticPlayers.filter(p => p.lineup_status === 'starting');
-  const bench = optimisticPlayers.filter(p => p.lineup_status === 'bench');
+  const bench = optimisticPlayers.filter(p => p.lineup_status === 'bench' || p.lineup_status === 'reserve' || !p.lineup_status);
 
   const handleSellClick = (player: Player) => {
     if (optimisticPlayers.length <= 11) {
