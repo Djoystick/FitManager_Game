@@ -2,13 +2,20 @@ name: "Stamina Regen Cron"
 
 on:
   schedule:
-    - cron: '0 0 * * *' # Midnight UTC every day
-  workflow_dispatch:
+    - cron: '5 0 * * *'  # 00:05 UTC every day (5 min after midnight, after any midnight jobs)
+  workflow_dispatch:      # Manual trigger from GitHub UI
 
 jobs:
   trigger:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Stamina Regen
+      - name: Trigger Stamina Regeneration
         run: |
-          curl -i -X GET "https://fitmanager-game.vercel.app/api/cron/stamina-regen?secret=supersecret_trigger_123"
+          HTTP_STATUS=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
+            -X GET "https://fit-manager-game.vercel.app/api/cron/stamina-regen?secret=${{ secrets.CRON_SECRET_MANUAL }}")
+          cat /tmp/response.txt
+          echo "HTTP Status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" -ge 500 ]; then
+            echo "ERROR: Server returned $HTTP_STATUS"
+            exit 1
+          fi
