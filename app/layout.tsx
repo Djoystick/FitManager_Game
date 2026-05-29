@@ -47,6 +47,7 @@ import { LanguageProvider } from "@/components/LanguageContext";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import { Toaster } from "react-hot-toast";
+import { TooltipTour } from "@/components/onboarding/TooltipTour";
 import Script from "next/script";
 
 export default function RootLayout({
@@ -74,6 +75,7 @@ export default function RootLayout({
                 </div>
                 <BottomTabBar />
               </main>
+              <TooltipTour />
               <Toaster position="top-center" toastOptions={{ className: 'font-sans font-bold shadow-[0_0_15px_rgba(255,0,60,0.4)] bg-black text-white border border-red-500/50' }} />
             </TonProvider>
           </TelegramAuthProvider>

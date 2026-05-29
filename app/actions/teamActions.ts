@@ -157,16 +157,59 @@ export async function createStarterFranchise(teamName: string) {
       return { success: false, error: 'Failed to generate players, team creation rolled back' };
     }
 
-    // === STANDINGS & INFRASTRUCTURE ===
-    await supabaseAdmin.from('league_standings').insert({ team_id: newTeam.id, points: 0 });
+    // === INFRASTRUCTURE ===
     await supabaseAdmin.from('infrastructure').insert({ team_id: newTeam.id });
 
-    // === COLD START PHASE ===
-    const seedRes = await executeBotSeeding(supabaseAdmin);
-    if (!seedRes.success) console.warn("Failed to seed bot league:", seedRes.error);
+    // === LEAGUE PLACEMENT (Tier 15) ===
+    // 1. Find an open filling instance
+    let instanceId;
+    const { data: openInstances } = await supabaseAdmin
+      .from('league_instances')
+      .select('id')
+      .eq('tier_level', 15)
+      .eq('status', 'filling')
+      .order('created_at', { ascending: true })
+      .limit(1);
 
-    const calRes = await generateLeagueSchedule();
-    if (!calRes.success) console.warn("Failed to generate schedule:", calRes.error);
+    if (openInstances && openInstances.length > 0) {
+      instanceId = openInstances[0].id;
+    } else {
+      // Create new instance
+      const { data: newInstance, error: instError } = await supabaseAdmin
+        .from('league_instances')
+        .insert({
+          tier_level: 15,
+          name: `Sector ${getRandomInt(100, 999)}`,
+          status: 'filling'
+        })
+        .select('id')
+        .single();
+      
+      if (instError || !newInstance) throw new Error("Failed to create league instance");
+      instanceId = newInstance.id;
+    }
+
+    // 2. Insert into standings
+    await supabaseAdmin.from('league_standings').insert({
+      team_id: newTeam.id,
+      league_instance_id: instanceId,
+      points: 0
+    });
+
+    // 3. Check capacity
+    const { count } = await supabaseAdmin
+      .from('league_standings')
+      .select('*', { count: 'exact', head: true })
+      .eq('league_instance_id', instanceId);
+
+    if (count && count >= 14) {
+      // Instance is full, activate it and generate schedule
+      await supabaseAdmin.from('league_instances').update({ status: 'active' }).eq('id', instanceId);
+      
+      // We pass the instanceId to generateLeagueSchedule so it only generates for this instance
+      const calRes = await generateLeagueSchedule(instanceId);
+      if (!calRes.success) console.warn(`Failed to generate schedule for instance ${instanceId}:`, calRes.error);
+    }
 
     return { success: true };
 

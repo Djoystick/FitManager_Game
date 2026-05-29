@@ -5,7 +5,7 @@ import { validateTelegramWebAppData } from '@/lib/telegramAuth';
 
 export async function POST(req: Request) {
   try {
-    const { initData } = await req.json();
+    const { initData, photoUrl } = await req.json();
 
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (!botToken) {
@@ -37,11 +37,15 @@ export async function POST(req: Request) {
 
     if (existingUser) {
       internalUserId = existingUser.id;
+      if (photoUrl) {
+        await supabase.from('users').update({ avatar_url: photoUrl }).eq('id', internalUserId);
+      }
     } else {
       const { data: newUser, error: insertError } = await supabase
         .from('users')
         .insert({
           telegram_id: telegramId,
+          avatar_url: photoUrl || null,
         })
         .select('id')
         .single();

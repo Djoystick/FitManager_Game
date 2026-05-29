@@ -1,9 +1,6 @@
 import React from 'react';
-import { supabase } from '@/lib/supabase';
 import { createClient } from '@supabase/supabase-js';
-import { Trophy, Medal, Target } from 'lucide-react';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { Trophy, Medal, Target, Users, Loader2 } from 'lucide-react';
 import { requireTeam } from '@/lib/authGuard';
 
 export const dynamic = 'force-dynamic';
@@ -13,14 +10,45 @@ export default async function LeagueDashboard() {
   const team = await requireTeam();
   if (!team) return null;
 
-  // Initialize Admin client to fetch standings
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // 1. Fetch all standings, sorted by points (descending)
-  const { data: standingsData, error } = await supabaseAdmin
+  // 1. Fetch user's active league instance
+  const { data: userStanding } = await supabaseAdmin
+    .from('league_standings')
+    .select('league_instance_id')
+    .eq('team_id', team.id)
+    .maybeSingle();
+
+  if (!userStanding?.league_instance_id) {
+    return (
+      <div className="flex flex-col flex-1 p-4 gap-6 pb-24 h-full overflow-y-auto custom-scrollbar justify-center items-center text-center">
+        <Trophy className="text-gray-600 mb-4" size={48} />
+        <h1 className="text-2xl font-bold font-orbitron text-white">Unassigned</h1>
+        <p className="text-gray-400">Your team has not been placed in a league instance yet.</p>
+      </div>
+    );
+  }
+
+  const instanceId = userStanding.league_instance_id;
+
+  // 2. Fetch Instance and Tier details
+  const { data: instanceData } = await supabaseAdmin
+    .from('league_instances')
+    .select(`
+      *,
+      league_tiers (
+        name,
+        prize_pool_percentage
+      )
+    `)
+    .eq('id', instanceId)
+    .single();
+
+  // 3. Fetch all standings for this instance
+  const { data: standingsData } = await supabaseAdmin
     .from('league_standings')
     .select(`
       *,
@@ -31,6 +59,7 @@ export default async function LeagueDashboard() {
         logo_url
       )
     `)
+    .eq('league_instance_id', instanceId)
     .order('points', { ascending: false });
 
   let standings = standingsData || [];
@@ -43,26 +72,40 @@ export default async function LeagueDashboard() {
     return diffB - diffA;
   });
 
-  // Take top 20
-  standings = standings.slice(0, 20);
-
-  // Identity checked in loop using team.id
+  const tierName = (instanceData?.league_tiers as any)?.name || 'Unknown Tier';
+  const groupName = instanceData?.name || 'Unknown Group';
+  const isFilling = instanceData?.status === 'filling';
 
   return (
     <div className="flex flex-col flex-1 p-4 gap-6 pb-24 h-full overflow-y-auto custom-scrollbar">
       {/* Header */}
-      <header className="flex flex-col gap-1 border-b border-gray-800 pb-4">
-        <h1 className="text-2xl font-bold font-orbitron text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] uppercase tracking-wider flex items-center gap-2">
-          <Trophy className="text-neon-purple" /> 
-          Pro League Standings
-        </h1>
-        <p className="text-sm text-gray-400">Compete against global managers and climb the ranks.</p>
+      <header className="flex flex-col gap-2 border-b border-gray-800 pb-4">
+        <div className="flex items-center gap-3">
+          <Trophy className="text-neon-cyan drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]" size={28} /> 
+          <h1 className="text-2xl font-bold font-orbitron text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] uppercase tracking-wider">
+            {tierName}
+          </h1>
+        </div>
+        <div className="flex justify-between items-center">
+          <p className="text-sm font-bold text-neon-purple tracking-widest uppercase">{groupName}</p>
+          {isFilling && (
+            <span className="flex items-center gap-2 text-xs font-bold text-orange-400 bg-orange-900/30 px-3 py-1 rounded-full border border-orange-500/50">
+              <Loader2 className="animate-spin" size={14} />
+              WAITING FOR TEAMS ({standings.length}/14)
+            </span>
+          )}
+        </div>
       </header>
 
       <div className="flex flex-col gap-6 flex-1 min-h-[500px]">
         {/* Full-width Standings Table */}
         <section className="flex flex-col gap-3 h-auto bg-black/40 border border-gray-800 rounded-xl overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.5)] p-4">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-neon-cyan drop-shadow-[0_0_5px_rgba(0,240,255,0.5)] mb-2">League Standings</h2>
+          <h2 className="text-sm font-bold uppercase tracking-widest text-neon-cyan drop-shadow-[0_0_5px_rgba(0,240,255,0.5)] mb-2 flex items-center justify-between">
+            League Standings
+            <span className="text-[10px] text-gray-500 flex items-center gap-1">
+              <Users size={12} /> {standings.length} Teams
+            </span>
+          </h2>
           <div className="overflow-x-auto flex-1 custom-scrollbar">
             <table className="w-full text-left text-sm text-gray-300">
               <thead className="bg-gray-900/80 text-xs uppercase font-orbitron tracking-widest text-gray-500 border-b border-gray-800">
@@ -84,6 +127,10 @@ export default async function LeagueDashboard() {
                     const isCurrentUser = row.team_id === team.id;
                     const rank = index + 1;
                     
+                    // Highlight promotion (Top 3) and Relegation (Bottom 3)
+                    const isPromotion = rank <= 3;
+                    const isRelegation = rank >= 12; // 12, 13, 14 out of 14
+
                     return (
                       <tr 
                         key={row.id} 
@@ -94,7 +141,7 @@ export default async function LeagueDashboard() {
                             : 'border-b border-gray-800/50 hover:bg-gray-800/30'}
                         `}
                       >
-                        <td className="px-4 py-3 text-center">
+                        <td className={`px-4 py-3 text-center border-l-4 ${isPromotion ? 'border-neon-green' : isRelegation ? 'border-red-500' : 'border-transparent'}`}>
                           {rank === 1 ? (
                             <Medal className="text-yellow-500 mx-auto" size={18} />
                           ) : rank === 2 ? (
@@ -129,7 +176,7 @@ export default async function LeagueDashboard() {
                   <tr>
                     <td colSpan={9} className="px-4 py-8 text-center text-gray-500 bg-black/20">
                       <Target className="mx-auto mb-2 opacity-50" size={32} />
-                      <p className="font-bold text-neon-pink drop-shadow-[0_0_5px_rgba(255,0,60,0.5)]">League is empty. Seed bots.</p>
+                      <p className="font-bold text-neon-pink drop-shadow-[0_0_5px_rgba(255,0,60,0.5)]">League is empty.</p>
                     </td>
                   </tr>
                 )}

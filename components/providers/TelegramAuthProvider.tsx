@@ -37,9 +37,11 @@ export function TelegramAuthProvider({ children }: { children: ReactNode }) {
           const WebApp = twaModule.default;
 
           WebApp.ready();
+          WebApp.expand();
           const initData = WebApp.initData;
 
           const lang = WebApp.initDataUnsafe?.user?.language_code;
+          const photoUrl = WebApp.initDataUnsafe?.user?.photo_url;
           if (lang && lang.startsWith('ru')) {
             setLanguage('ru');
           }
@@ -56,7 +58,7 @@ export function TelegramAuthProvider({ children }: { children: ReactNode }) {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ initData }),
+            body: JSON.stringify({ initData, photoUrl }),
           });
 
           if (!response.ok) {

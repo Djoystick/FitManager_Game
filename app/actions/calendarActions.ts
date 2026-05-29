@@ -8,24 +8,28 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function generateLeagueSchedule() {
+export async function generateLeagueSchedule(instanceId?: string) {
   try {
-    // 1. Get all 14 teams
-    const { data: standings } = await supabaseAdmin.from('league_standings').select('team_id');
+    if (!instanceId) return { success: false, error: 'instanceId is required.' };
+
+    // 1. Get all 14 teams for this instance
+    const { data: standings } = await supabaseAdmin
+      .from('league_standings')
+      .select('team_id')
+      .eq('league_instance_id', instanceId);
+      
     if (!standings || standings.length !== 14) {
-      return { success: false, error: 'Must have exactly 14 teams in standings to generate a full schedule.' };
+      return { success: false, error: `Must have exactly 14 teams in standings to generate a full schedule. Found: ${standings?.length}` };
     }
 
     const teamIds = standings.map(s => s.team_id);
     const matchesToInsert = [];
 
     // Round-robin algorithm for 14 teams
-    // Fix first team, rotate the other 13.
     const numTeams = 14;
     const numRounds = 13;
     const halfSize = numTeams / 2;
     
-    // Copy array
     let teams = [...teamIds];
 
     for (let round = 1; round <= numRounds; round++) {
@@ -33,23 +37,18 @@ export async function generateLeagueSchedule() {
         const home = teams[i];
         const away = teams[numTeams - 1 - i];
         
-        // Alternate home/away based on round to balance slightly
         if (round % 2 === 0 && i === 0) {
-          matchesToInsert.push({ round_number: round, home_team_id: away, away_team_id: home, is_played: false });
+          matchesToInsert.push({ league_instance_id: instanceId, round_number: round, home_team_id: away, away_team_id: home, is_played: false });
         } else {
-          matchesToInsert.push({ round_number: round, home_team_id: home, away_team_id: away, is_played: false });
+          matchesToInsert.push({ league_instance_id: instanceId, round_number: round, home_team_id: home, away_team_id: away, is_played: false });
         }
       }
       
-      // Rotate array: element at index 1 goes to end, rest shifts down, index 0 is fixed
       const firstTeam = teams[0];
       const secondTeam = teams[1];
       teams.splice(1, 1);
       teams.push(secondTeam);
     }
-
-    // Clear existing matches (using a dummy condition that matches all UUIDs, or simply delete all)
-    await supabaseAdmin.from('league_matches').delete().neq('round_number', -1);
 
     const { error } = await supabaseAdmin.from('league_matches').insert(matchesToInsert);
     if (error) {
@@ -57,7 +56,7 @@ export async function generateLeagueSchedule() {
       throw error;
     }
 
-    return { success: true, message: `Successfully generated ${matchesToInsert.length} matches across ${numRounds} rounds.` };
+    return { success: true, message: `Successfully generated ${matchesToInsert.length} matches across ${numRounds} rounds for instance ${instanceId}.` };
   } catch (err: any) {
     return { success: false, error: err.message || 'Unknown error during schedule generation.' };
   }
