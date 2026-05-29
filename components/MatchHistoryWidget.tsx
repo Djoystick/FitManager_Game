@@ -5,7 +5,10 @@ import { getMatchHistory } from '@/app/actions/matchActions';
 import { MatchReport, MatchReportModal } from '@/components/MatchReportModal';
 import { BookOpen } from 'lucide-react';
 
-export function MatchHistoryWidget({ userId, teamName }: { userId: string; teamName: string | null }) {
+import { dict } from '@/lib/dictionaries';
+
+export function MatchHistoryWidget({ userId, teamName, language = 'en' }: { userId: string; teamName: string | null; language?: string }) {
+  const t = dict[language as keyof typeof dict];
   const [history, setHistory] = useState<MatchReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<MatchReport | null>(null);
@@ -61,7 +64,7 @@ export function MatchHistoryWidget({ userId, teamName }: { userId: string; teamN
       <div className="flex items-center gap-2 px-2">
         <BookOpen className="text-neon-pink w-5 h-5" />
         <h2 className="text-sm font-bold uppercase tracking-widest text-neon-pink drop-shadow-[0_0_5px_rgba(255,0,100,0.5)]">
-          Match Journal
+          {t.match_journal_title || 'Match Journal'}
         </h2>
       </div>
 
@@ -72,7 +75,7 @@ export function MatchHistoryWidget({ userId, teamName }: { userId: string; teamN
           </div>
         ) : history.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center items-center p-8 text-gray-500">
-            <p className="text-xs uppercase tracking-widest">No matches played yet</p>
+            <p className="text-xs uppercase tracking-widest">{t.no_matches_yet || 'No matches played yet'}</p>
           </div>
         ) : (
           <div className="flex flex-col divide-y divide-gray-800/50 max-h-[175px] overflow-y-auto custom-scrollbar">

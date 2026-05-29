@@ -57,7 +57,7 @@ export function NextMatchCountdown({ nextMatchTime, language = 'en' }: Props) {
       </div>
 
       <div className="flex justify-between items-center mt-1">
-        <span className="text-[9px] text-gray-500 uppercase tracking-widest">Simulating in</span>
+        <span className="text-[9px] text-gray-500 uppercase tracking-widest">{t.simulating_in || 'Simulating in'}</span>
         <span className="text-[10px] font-bold text-cyan-300 font-mono">
           {minutesLeft.toString().padStart(2, '0')}:{secondsLeft.toString().padStart(2, '0')}
         </span>

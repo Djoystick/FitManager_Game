@@ -65,7 +65,7 @@ export function GlobalHeader() {
 
 
   return (
-    <div className="w-full bg-black/85 backdrop-blur-md border-b border-gray-800/70 px-3 py-2 sticky top-0 z-50 shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
+    <div className="w-full bg-black/85 backdrop-blur-md border-b border-gray-800/70 px-3 pb-2 pt-10 sticky top-0 z-50 shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
       <div className="flex items-center justify-between pb-1 relative">
         
         {/* Currencies Center */}

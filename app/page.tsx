@@ -198,7 +198,7 @@ export default function DashboardPage() {
           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-3 ml-2">
             {t.match_journal}
           </h3>
-          {userId && <MatchHistoryWidget userId={userId} teamName={teamName} />}
+          {userId && <MatchHistoryWidget userId={userId} teamName={teamName} language={language} />}
         </section>
 
       </div>
