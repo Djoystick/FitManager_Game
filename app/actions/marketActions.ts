@@ -13,6 +13,7 @@ export async function listPlayerAction(playerId: string, priceTon: number) {
     const cookieStore = await cookies();
     const userId = cookieStore.get('tg_user_id')?.value;
     if (!userId) return { success: false, error: 'User not authenticated' };
+    if (priceTon <= 0 || priceTon > 1000000) return { success: false, error: 'Invalid price. Maximum 1,000,000 TON' };
 
     const { data, error } = await supabaseAdmin.rpc('list_player_on_market', {
       p_seller_id: userId,
