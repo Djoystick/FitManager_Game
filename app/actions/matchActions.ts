@@ -106,6 +106,70 @@ export async function getMatchHistory(userId: string): Promise<{ success: boolea
   }
 }
 
+export async function getMatchSchedule(userId: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
+  try {
+    const { data: teamData, error: teamError } = await supabaseAdmin
+      .from('teams')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    if (teamError || !teamData) {
+      return { success: false, error: 'Team not found for user.' };
+    }
+
+    const teamId = teamData.id;
+
+    const { data: matches, error: matchesError } = await supabaseAdmin
+      .from('league_matches')
+      .select('*')
+      .eq('is_played', false)
+      .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+      .order('round_number', { ascending: true });
+
+    if (matchesError) {
+      console.error("Error fetching match schedule:", matchesError);
+      return { success: false, error: 'Failed to fetch match schedule.' };
+    }
+
+    if (!matches || matches.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    const teamIds = new Set<string>();
+    matches.forEach(m => {
+      teamIds.add(m.home_team_id);
+      teamIds.add(m.away_team_id);
+    });
+
+    const { data: teamsData } = await supabaseAdmin
+      .from('teams')
+      .select('id, name')
+      .in('id', Array.from(teamIds));
+
+    const teamNames: Record<string, string> = {};
+    if (teamsData) {
+      teamsData.forEach(t => {
+        teamNames[t.id] = t.name;
+      });
+    }
+
+    const schedule = matches.map(match => ({
+      id: match.id,
+      home_team_id: match.home_team_id,
+      home_team_name: teamNames[match.home_team_id] || 'Unknown Home Team',
+      away_team_id: match.away_team_id,
+      away_team_name: teamNames[match.away_team_id] || 'Unknown Away Team',
+      round_number: match.round_number
+    }));
+
+    return { success: true, data: schedule };
+  } catch (err: any) {
+    console.error("Match schedule error:", err);
+    return { success: false, error: err.message || 'Unknown server error.' };
+  }
+}
+
 export async function resolveMatch(matchId: string): Promise<{ success: boolean; error?: string }> {
   try {
     console.log(`[resolveMatch] START for matchId: ${matchId}`);
