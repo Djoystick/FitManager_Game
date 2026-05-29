@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { matchService, MatchResult } from '@/services/matchService';
+import { createClient } from '@supabase/supabase-js';
+import { simulateNextRound } from '@/app/actions/calendarActions';
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -13,8 +16,8 @@ async function sendTelegramMessage(telegramId: string, message: string): Promise
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        chat_id:    telegramId,
-        text:       message,
+        chat_id: telegramId,
+        text: message,
         parse_mode: 'Markdown',
       }),
     });
@@ -24,96 +27,98 @@ async function sendTelegramMessage(telegramId: string, message: string): Promise
 }
 
 function buildMessage(
-  result:     MatchResult,
   myTeamName: string,
-  oppName:    string,
-  myScore:    number,
-  oppScore:   number
+  oppName: string,
+  myScore: number,
+  oppScore: number
 ): string {
   const icon =
-    myScore > oppScore ? '🏆 *Victory!*' :
-    myScore < oppScore ? '❌ *Defeat*'  :
-                         '🤝 *Draw*';
+    myScore > oppScore ? '🏆 *Победа!*' :
+    myScore < oppScore ? '❌ *Поражение*'  :
+                         '🤝 *Ничья*';
 
   return (
-    `${icon}\n` +
-    `Your team *${myTeamName}* vs *${oppName}*.\n\n` +
-    `Final Score: *${myScore} – ${oppScore}*\n\n` +
-    `⚠️ Starting 11 lost *${result.stamina_drained}* Stamina.\n` +
-    `📊 Power: \`${result.h_final_power ?? '?'}\` vs \`${result.a_final_power ?? '?'}\``
+    `${icon}\n\n` +
+    `Твоя команда *${myTeamName}* сыграла против *${oppName}*.\n\n` +
+    `Счет: *${myScore} – ${oppScore}*\n\n` +
+    `Зайдите в игру, чтобы посмотреть журнал событий и получить награды!`
   );
 }
 
-async function getTelegramId(teamId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('teams')
-    .select('users!inner(telegram_id)')
-    .eq('id', teamId)
-    .single();
-
-  const raw: any = data;
-  if (!raw) return null;
-
-  // Supabase may return the join as an object or array depending on the client version
-  const usersNode = Array.isArray(raw.users) ? raw.users[0] : raw.users;
-  return usersNode?.telegram_id ?? null;
-}
-
-// ─── Cron Handler ─────────────────────────────────────────────────────────────
-
-export async function GET(_req: Request) {
+export async function GET(req: Request) {
   try {
-    // 1. Fetch the processing queue via matchService (cached, type-safe)
-    const matches = await matchService.fetchPendingMatches();
-
-    if (matches.length === 0) {
-      return NextResponse.json({ success: true, message: 'No matches to process' });
+    const authHeader = req.headers.get('authorization');
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let processedCount = 0;
-    const errors: string[] = [];
+    // 1. Simulate the next unplayed round
+    const simResult = await simulateNextRound();
 
-    // 2. Sequentially simulate each match
-    for (const match of matches) {
-      const result = await matchService.conductMatch(match.id);
+    if (!simResult.success) {
+      return NextResponse.json({ success: true, message: simResult.error || 'No matches to process' });
+    }
 
-      if (!result) {
-        errors.push(match.id);
-        continue;
+    const matchReports = simResult.matchReports || [];
+
+    // 2. Fetch telegram IDs for all involved teams
+    const teamIds = new Set<string>();
+    matchReports.forEach((r: any) => {
+      teamIds.add(r.home_team_id);
+      teamIds.add(r.away_team_id);
+    });
+
+    const { data: teamsData } = await supabaseAdmin
+      .from('teams')
+      .select('id, user_id')
+      .in('id', Array.from(teamIds));
+
+    const userIds = teamsData?.map(t => t.user_id).filter(id => id) || [];
+
+    const { data: usersData } = await supabaseAdmin
+      .from('users')
+      .select('id, telegram_id')
+      .in('id', userIds)
+      .not('telegram_id', 'is', null);
+
+    const userTgMap: Record<string, string> = {};
+    if (usersData && teamsData) {
+      teamsData.forEach(t => {
+        const user = usersData.find(u => u.id === t.user_id);
+        if (user && user.telegram_id && !user.telegram_id.startsWith('bot_')) {
+          userTgMap[t.id] = user.telegram_id;
+        }
+      });
+    }
+
+    // 3. Dispatch notifications
+    const sendPromises: Promise<void>[] = [];
+
+    for (const report of matchReports) {
+      const hTgId = userTgMap[report.home_team_id];
+      const aTgId = userTgMap[report.away_team_id];
+
+      if (hTgId) {
+        sendPromises.push(sendTelegramMessage(
+          hTgId,
+          buildMessage(report.home_team_name, report.away_team_name, report.home_score, report.away_score)
+        ));
       }
 
-      processedCount++;
-
-      // 3. Resolve Telegram IDs for both managers in parallel
-      const [homeTgId, awayTgId] = await Promise.all([
-        getTelegramId(match.home_team_id),
-        getTelegramId(match.away_team_id),
-      ]);
-
-      const h_name = (match as any).home_team?.name ?? 'Home';
-      const a_name = (match as any).away_team?.name ?? 'Away';
-
-      // 4. Dispatch notifications
-      if (homeTgId) {
-        await sendTelegramMessage(
-          homeTgId,
-          buildMessage(result, h_name, a_name, result.home_score, result.away_score)
-        );
-      }
-
-      if (awayTgId) {
-        await sendTelegramMessage(
-          awayTgId,
-          buildMessage(result, a_name, h_name, result.away_score, result.home_score)
-        );
+      if (aTgId) {
+        sendPromises.push(sendTelegramMessage(
+          aTgId,
+          buildMessage(report.away_team_name, report.home_team_name, report.away_score, report.home_score)
+        ));
       }
     }
+
+    await Promise.all(sendPromises);
 
     return NextResponse.json({
-      success:   true,
-      processed: processedCount,
-      failed:    errors.length,
-      failedIds: errors,
+      success: true,
+      processed: matchReports.length,
+      message: simResult.message
     });
 
   } catch (error: any) {

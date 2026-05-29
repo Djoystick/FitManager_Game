@@ -2,6 +2,10 @@
   "buildCommand": "npm run build",
   "crons": [
     {
+      "path": "/api/cron/match-warning",
+      "schedule": "45 * * * *"
+    },
+    {
       "path": "/api/cron/process-matches",
       "schedule": "0 * * * *"
     },
