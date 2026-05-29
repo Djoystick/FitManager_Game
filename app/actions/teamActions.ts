@@ -275,3 +275,43 @@ export async function renameTeamAction(newName: string) {
     return { success: false, error: e.message };
   }
 }
+
+export async function changeLogoAction(logoUrl: string) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    
+    if (!userId || !logoUrl) return { success: false, error: 'Missing data' };
+
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // 1. Check user balance
+    const { data: user } = await supabaseAdmin.from('users').select('balance_fancoins').eq('id', userId).single();
+    if (!user || user.balance_fancoins < 500) {
+      return { success: false, error: 'error_insufficient_fc' };
+    }
+
+    // 2. Deduct 500 FC
+    const { error: deductError } = await supabaseAdmin.rpc('decrement_fancoins', {
+      user_id: userId,
+      amount: 500
+    });
+
+    if (deductError) {
+      // Fallback
+      await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins - 500 }).eq('id', userId);
+    }
+
+    // 3. Update team logo
+    const { error: updateError } = await supabaseAdmin.from('teams').update({ logo_url: logoUrl }).eq('user_id', userId);
+    
+    if (updateError) return { success: false, error: 'logo_error' };
+
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}

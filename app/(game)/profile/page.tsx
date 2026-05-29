@@ -23,7 +23,7 @@ export default async function ProfilePage() {
         .single(),
       supabase
         .from('teams')
-        .select('name')
+        .select('name, logo_url')
         .eq('user_id', sessionUuid)
         .single()
     ]);
@@ -49,6 +49,7 @@ export default async function ProfilePage() {
       <ProfileClient 
         isAdmin={isAdmin} 
         initialTeamName={team?.name || 'Unknown'} 
+        initialLogoUrl={team?.logo_url || null}
         fcBalance={user?.balance_fancoins || 0} 
       />
     </>

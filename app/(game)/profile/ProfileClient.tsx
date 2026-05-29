@@ -15,7 +15,7 @@ interface UserData {
   wallet_address: string | null;
 }
 
-export default function ProfileClient({ isAdmin, initialTeamName, fcBalance }: { isAdmin?: boolean, initialTeamName: string, fcBalance: number }) {
+export default function ProfileClient({ isAdmin, initialTeamName, initialLogoUrl, fcBalance }: { isAdmin?: boolean, initialTeamName: string, initialLogoUrl?: string | null, fcBalance: number }) {
   const { userId, isAuthenticated } = useContext(TelegramAuthContext);
   const { language, setLanguage } = useContext(LanguageContext);
   const t = dict[language];
@@ -32,6 +32,38 @@ export default function ProfileClient({ isAdmin, initialTeamName, fcBalance }: {
   const [notifications, setNotifications] = useState(true);
   const [showTerms, setShowTerms] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
+  
+  const [logoUrl, setLogoUrl] = useState(initialLogoUrl || '');
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [avatarSeed, setAvatarSeed] = useState('');
+  const [isSavingAvatar, setIsSavingAvatar] = useState(false);
+
+  const handleOpenAvatarModal = () => {
+    setAvatarSeed(Math.random().toString(36).substring(7));
+    setShowAvatarModal(true);
+  };
+  
+  const previewUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${avatarSeed}`;
+
+  const handleSaveAvatar = () => {
+    setIsSavingAvatar(true);
+    startTransition(async () => {
+      const { changeLogoAction } = await import('@/app/actions/teamActions');
+      const res = await changeLogoAction(previewUrl);
+      if (res.success) {
+        setLogoUrl(previewUrl);
+        setShowAvatarModal(false);
+        toast.success('Avatar updated!');
+        window.dispatchEvent(new Event('balanceUpdated'));
+      } else {
+        const errorMsg = res.error === 'error_insufficient_fc' 
+          ? t.error_insufficient_fc || 'Not enough FC'
+          : 'Error updating avatar';
+        toast.error(errorMsg);
+      }
+      setIsSavingAvatar(false);
+    });
+  };
 
   const handleSaveName = () => {
     if (!newName.trim() || newName === teamName) {
@@ -163,16 +195,23 @@ export default function ProfileClient({ isAdmin, initialTeamName, fcBalance }: {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gray-800 border-2 border-neon-cyan flex items-center justify-center overflow-hidden">
-              <span className="text-lg font-bold">🦊</span>
+              {logoUrl ? (
+                <img src={logoUrl} alt="Team Logo" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-lg font-bold">🦊</span>
+              )}
             </div>
             <span className="text-sm font-bold text-gray-300">{t.choose_avatar || 'Avatar'}</span>
           </div>
-          <button 
-            onClick={() => toast.success(t.avatar_success || 'Avatar Updated')}
-            className="px-4 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-xs font-bold text-gray-300 hover:text-white"
-          >
-            {t.choose_avatar || 'Change'}
-          </button>
+          <div className="flex flex-col items-center">
+            <button 
+              onClick={handleOpenAvatarModal}
+              className="px-4 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-xs font-bold text-gray-300 hover:text-white"
+            >
+              {t.choose_avatar || 'Change'}
+            </button>
+            <span className="text-[9px] text-yellow-500 font-bold mt-1">500 FC</span>
+          </div>
         </div>
       </section>
 
@@ -287,6 +326,46 @@ export default function ProfileClient({ isAdmin, initialTeamName, fcBalance }: {
               <p><strong className="text-white">Крипто-отказ (Web3):</strong> Мы не являемся биржей или брокером. Покупка игроков за TON — это внутриигровая транзакция. Курс криптовалют волатилен, ответственность за финансовые операции лежит на пользователе.</p>
             </div>
             <button onClick={() => setShowDisclaimer(false)} className="w-full py-2 bg-neon-cyan text-black font-bold rounded-lg">Закрыть</button>
+          </div>
+        </div>
+      )}
+
+      {showAvatarModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowAvatarModal(false)}>
+          <div className="w-full max-w-sm bg-gray-900 border border-gray-700 rounded-2xl p-6 flex flex-col items-center gap-4" onClick={e => e.stopPropagation()}>
+            <h3 className={`text-white font-bold text-lg ${fontClass}`}>Avatar Generator</h3>
+            
+            <div className="w-32 h-32 rounded-full border-4 border-neon-cyan overflow-hidden bg-black shadow-[0_0_20px_rgba(0,240,255,0.4)]">
+              <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+            </div>
+
+            <div className="w-full">
+              <label className="text-xs text-gray-400 mb-1 block">Seed (type anything)</label>
+              <input 
+                type="text" 
+                value={avatarSeed}
+                onChange={e => setAvatarSeed(e.target.value)}
+                className="w-full bg-black border border-gray-700 text-white px-3 py-2 rounded-lg font-orbitron focus:border-neon-cyan outline-none"
+              />
+            </div>
+
+            <div className="flex gap-2 w-full mt-2">
+              <button 
+                onClick={() => setAvatarSeed(Math.random().toString(36).substring(7))}
+                className="flex-1 py-2 bg-gray-800 border border-gray-700 text-white font-bold rounded-lg hover:bg-gray-700"
+              >
+                Randomize
+              </button>
+              <button 
+                onClick={handleSaveAvatar}
+                disabled={isSavingAvatar}
+                className="flex-1 py-2 bg-yellow-500 text-black font-black rounded-lg hover:bg-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.4)] disabled:opacity-50"
+              >
+                {isSavingAvatar ? '...' : 'Save (500 FC)'}
+              </button>
+            </div>
+            
+            <button onClick={() => setShowAvatarModal(false)} className="mt-2 text-gray-500 text-sm hover:text-white">Cancel</button>
           </div>
         </div>
       )}

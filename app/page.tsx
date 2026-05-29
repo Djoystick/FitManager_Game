@@ -18,6 +18,7 @@ export default function DashboardPage() {
 
   const [hasTeam, setHasTeam] = useState<boolean | null>(null);
   const [teamName, setTeamName] = useState<string | null>(null);
+  const [teamLogoUrl, setTeamLogoUrl] = useState<string | null>(null);
   const [teamId, setTeamId] = useState<string | null>(null);
   const [players, setPlayers] = useState<any[]>([]);
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -38,6 +39,7 @@ export default function DashboardPage() {
         } else {
           setHasTeam(true);
           setTeamName(teamJson.team.name);
+          setTeamLogoUrl(teamJson.team.logo_url);
           setTeamId(teamJson.team.id);
           setPlayers(teamJson.players || []);
           
@@ -124,10 +126,14 @@ export default function DashboardPage() {
             {t.franchise_status}
           </h2>
 
-          <div className="w-16 h-16 bg-gray-900 border-2 border-neon-cyan/50 rounded-full flex items-center justify-center mb-2 shadow-[0_0_20px_rgba(0,240,255,0.3)]">
-            <span className="text-3xl font-black font-orbitron text-white">
-              {teamName ? teamName.substring(0,2).toUpperCase() : 'FC'}
-            </span>
+          <div className="w-16 h-16 bg-gray-900 border-2 border-neon-cyan/50 rounded-full flex items-center justify-center mb-2 shadow-[0_0_20px_rgba(0,240,255,0.3)] overflow-hidden">
+            {teamLogoUrl ? (
+              <img src={teamLogoUrl} alt={teamName || 'Team'} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-3xl font-black font-orbitron text-white">
+                {teamName ? teamName.substring(0,2).toUpperCase() : 'FC'}
+              </span>
+            )}
           </div>
 
           <h1 className="text-xl font-black uppercase font-orbitron text-white drop-shadow-md mb-3 text-center">
