@@ -9,7 +9,6 @@ import {
   type ManagerProfileType,
   type CurrencyType,
   type SyncStepsResult,
-  type SyncStepsResult,
   type ConvertSpResult,
 } from '@/app/actions/economyActions';
 import { dict } from '@/lib/dictionaries';

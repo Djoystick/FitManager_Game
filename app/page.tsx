@@ -8,6 +8,8 @@ import { LanguageContext } from '@/components/LanguageContext';
 import { CyberLoader } from '@/components/ui/CyberLoader';
 import { Users, Activity, ShoppingCart, Shield, Trophy } from 'lucide-react';
 import { UnseenMatchesModal } from '@/components/UnseenMatchesModal';
+import { MatchHistoryWidget } from '@/components/MatchHistoryWidget';
+import { NextMatchCountdown } from '@/components/dashboard/NextMatchCountdown';
 
 export default function DashboardPage() {
   const { userId, isAuthenticated, isLoading: isAuthLoading } = useContext(TelegramAuthContext);
@@ -153,6 +155,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        <NextMatchCountdown />
+
         {/* LEAGUE STATUS */}
         <div className="bg-purple-900/20 backdrop-blur-md border border-purple-500/30 rounded-2xl p-4 flex items-center justify-between shadow-[0_0_20px_rgba(168,85,247,0.15)] relative overflow-hidden group">
           <div className="absolute -left-10 w-20 h-full bg-purple-500/20 blur-2xl transform -skew-x-12 group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out"></div>
@@ -188,6 +192,14 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
+
+        {/* MATCH JOURNAL */}
+        <section className="mt-4 mb-8">
+          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-3 ml-2">
+            {t.match_journal}
+          </h3>
+          {userId && <MatchHistoryWidget userId={userId} teamName={teamName} />}
+        </section>
 
       </div>
     </div>

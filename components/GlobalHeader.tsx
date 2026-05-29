@@ -28,7 +28,7 @@ export function GlobalHeader() {
   const fetchBalances = async () => {
     if (!userId) return;
     try {
-      const res = await fetch(`/api/user/me?userId=${userId}`);
+      const res = await fetch(`/api/user/me?userId=${userId}`, { cache: 'no-store' });
       if (!res.ok) return;
       const json = await res.json();
       const next: UserData = json.user;
