@@ -24,6 +24,8 @@ export default function DashboardPage() {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [unseenMatches, setUnseenMatches] = useState<any[]>([]);
   const [leagueTier, setLeagueTier] = useState<number | null>(null);
+  const [lobbyTimeLeft, setLobbyTimeLeft] = useState<number | null>(null);
+  const [lobbyTeamCount, setLobbyTeamCount] = useState<number>(1);
 
   const fetchUserData = async (id: string) => {
     try {
@@ -43,6 +45,21 @@ export default function DashboardPage() {
           setTeamId(teamJson.team.id);
           setPlayers(teamJson.players || []);
           
+          if (teamJson.instanceStatus === 'filling' && teamJson.instanceCreatedAt) {
+            setLobbyTeamCount(teamJson.teamCount || 1);
+            const createdTime = new Date(teamJson.instanceCreatedAt).getTime();
+            const now = new Date().getTime();
+            const diff = 60000 - (now - createdTime); // 60 seconds
+            if (diff > 0) {
+              setLobbyTimeLeft(Math.floor(diff / 1000));
+            } else {
+              setLobbyTimeLeft(0);
+              fetch('/api/cron/league-autofill').then(() => {
+                window.location.reload();
+              });
+            }
+          }
+
           import('@/app/actions/matchActions').then(mod => {
             mod.getUnseenMatches(teamJson.team.id).then(res => {
               if (res.success && res.matches) {
@@ -77,6 +94,24 @@ export default function DashboardPage() {
       setHasTeam(true); 
     }
   }, [isAuthenticated, userId, isAuthLoading]);
+
+  useEffect(() => {
+    if (lobbyTimeLeft !== null && lobbyTimeLeft > 0) {
+      const timer = setInterval(() => {
+        setLobbyTimeLeft(prev => {
+          if (prev && prev <= 1) {
+            clearInterval(timer);
+            fetch('/api/cron/league-autofill').then(() => {
+              window.location.reload();
+            });
+            return 0;
+          }
+          return prev ? prev - 1 : 0;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [lobbyTimeLeft]);
 
   if (isAuthLoading || isDataLoading || hasTeam === null) {
     return <CyberLoader fullScreen text={t.loading} />;

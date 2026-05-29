@@ -218,17 +218,8 @@ export async function createStarterFranchise(teamName: string) {
       const calRes = await generateLeagueSchedule(instanceId);
       if (!calRes.success) console.warn(`Failed to generate schedule for instance ${instanceId}:`, calRes.error);
     } else {
-      // Trigger autofill cron asynchronously so the league fills up quickly with bots
-      // We must AWAIT it so Vercel serverless doesn't kill the process before it sends
-      try {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fit-manager-game.vercel.app';
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
-        await fetch(`${appUrl}/api/cron/league-autofill`, { signal: controller.signal }).catch(() => {});
-        clearTimeout(timeoutId);
-      } catch (e) {
-        console.warn("Failed to trigger autofill:", e);
-      }
+      // Lobby mode enabled: we do NOT trigger the autofill immediately.
+      // The frontend will show a countdown and trigger it after 60 seconds.
     }
 
     return { success: true };

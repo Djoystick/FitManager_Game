@@ -22,6 +22,23 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: true, team: null, players: [] }, { status: 200 });
     }
 
+    // 1.5 Fetch instance info
+    let instanceStatus = 'active';
+    let instanceCreatedAt = null;
+    let teamCount = 1;
+    
+    const { data: standings } = await supabase.from('league_standings').select('league_instance_id').eq('team_id', team.id);
+    if (standings && standings.length > 0) {
+      const instanceId = standings[0].league_instance_id;
+      const { data: instance } = await supabase.from('league_instances').select('status, created_at').eq('id', instanceId).single();
+      if (instance) {
+        instanceStatus = instance.status;
+        instanceCreatedAt = instance.created_at;
+      }
+      const { count } = await supabase.from('league_standings').select('*', { count: 'exact', head: true }).eq('league_instance_id', instanceId);
+      teamCount = count || 1;
+    }
+
     // 2. Fetch all players (active and coaches) belonging to this team. STRICT FILTER APPLIED.
     const { data: players, error: playersError } = await supabase
       .from('players')
@@ -43,6 +60,9 @@ export async function GET(req: Request) {
     return NextResponse.json({
       success: true,
       team,
+      instanceStatus,
+      instanceCreatedAt,
+      teamCount,
       players: safePlayers
     });
 
