@@ -9,6 +9,7 @@ import { dict } from '@/lib/dictionaries';
 import toast from 'react-hot-toast';
 import { RefreshCw, Filter, ShieldAlert } from 'lucide-react';
 import { ScreenGuide } from '@/components/ui/ScreenGuide';
+import { MarketWallet } from '@/components/market/MarketWallet';
 
 interface MarketListing {
   id: string;
@@ -35,6 +36,7 @@ export default function TransferMarketPage() {
   const [listings, setListings] = useState<MarketListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
+  const [tonBalance, setTonBalance] = useState<number>(0);
 
   // Filters
   const [positionFilter, setPositionFilter] = useState<string>('ALL');
@@ -63,12 +65,41 @@ export default function TransferMarketPage() {
     }
   };
 
+  const fetchBalance = async () => {
+    if (!userId) return;
+    try {
+      const res = await fetch(`/api/user/me?userId=${userId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.user) {
+          setTonBalance(json.user.balance_ton || 0);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch balance', e);
+    }
+  };
+
   useEffect(() => {
-    fetchMarket();
+    if (userId) {
+      fetchMarket();
+      fetchBalance();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [positionFilter, sortOrder]);
+  }, [positionFilter, sortOrder, userId]);
+
+  useEffect(() => {
+    const handleBalanceUpdate = () => fetchBalance();
+    window.addEventListener('balanceUpdated', handleBalanceUpdate);
+    return () => window.removeEventListener('balanceUpdated', handleBalanceUpdate);
+  }, []);
 
   const handleBuy = (listing: MarketListing) => {
+    if (tonBalance < listing.price_ton) {
+      toast.error('Insufficient TON');
+      return;
+    }
+
     const msg = t.buy_confirm.replace('{name}', listing.player.name).replace('{price}', listing.price_ton.toString());
     if (!confirm(msg)) return;
     
@@ -77,6 +108,7 @@ export default function TransferMarketPage() {
       if (res.success) {
         toast.success(t.buy_success.replace('{name}', listing.player.name));
         // Trigger balance update for global header
+        fetchBalance();
         window.dispatchEvent(new Event('balanceUpdated'));
         fetchMarket();
       } else {
@@ -130,6 +162,14 @@ export default function TransferMarketPage() {
           {t.p2p_transfers}
         </p>
       </header>
+
+      {/* WALLET */}
+      <MarketWallet 
+        balance={tonBalance} 
+        userId={userId || ''} 
+        language={language}
+        onBalanceUpdate={fetchBalance}
+      />
 
       {/* TABS */}
       <div className="flex bg-black/40 border border-gray-800 p-1 rounded-lg">

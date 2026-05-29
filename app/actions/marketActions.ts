@@ -123,3 +123,31 @@ export async function getMarketListingsAction(filters?: { minOvr?: number, posit
     return { success: false, error: err.message || 'Unknown error' };
   }
 }
+
+export async function debugAddTonAction(amount: number) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+
+    const { data: user, error: userErr } = await supabaseAdmin
+      .from('users')
+      .select('balance_ton')
+      .eq('id', userId)
+      .single();
+
+    if (userErr) return { success: false, error: userErr.message };
+
+    const { error: updateErr } = await supabaseAdmin
+      .from('users')
+      .update({ balance_ton: (user.balance_ton || 0) + amount })
+      .eq('id', userId);
+
+    if (updateErr) return { success: false, error: updateErr.message };
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('[MarketActions] Exception in debugAddTonAction:', err);
+    return { success: false, error: err.message || 'Unknown error' };
+  }
+}

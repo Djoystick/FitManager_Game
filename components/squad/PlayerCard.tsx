@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Shield, Zap } from 'lucide-react';
+import { Activity, Shield, Zap, Tag } from 'lucide-react';
 
 interface Player {
   id: string;
@@ -12,7 +12,12 @@ interface Player {
   traits?: string[];
 }
 
-export function PlayerCard({ player }: { player: Player }) {
+interface PlayerCardProps {
+  player: Player;
+  onSell?: () => void;
+}
+
+export function PlayerCard({ player, onSell }: PlayerCardProps) {
   const isStarter = player.lineup_status === 'starting';
   
   // Determine stamina color based on Match Engine consequences
@@ -61,12 +66,26 @@ export function PlayerCard({ player }: { player: Player }) {
         </div>
       </div>
 
-      {/* Decorator */}
-      {player.is_nft_coach && (
-        <div className="absolute top-0 right-0 w-8 h-8 bg-gradient-to-bl from-purple-600/50 to-transparent flex items-start justify-end p-1">
-          <Zap size={10} className="text-purple-400" />
-        </div>
-      )}
+      {/* Decorators & Actions */}
+      <div className="absolute top-0 right-0 flex items-start gap-1 p-1 z-10">
+        {onSell && (
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onSell();
+            }}
+            className="w-6 h-6 bg-red-900/60 hover:bg-red-600 border border-red-500/50 rounded flex items-center justify-center text-red-400 hover:text-white transition-colors"
+            title="Sell Player"
+          >
+            <Tag size={12} />
+          </button>
+        )}
+        {player.is_nft_coach && (
+          <div className="w-6 h-6 bg-purple-900/60 border border-purple-500/50 rounded flex items-center justify-center text-purple-400">
+            <Zap size={12} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
