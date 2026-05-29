@@ -38,15 +38,23 @@ export function TelegramAuthProvider({ children }: { children: ReactNode }) {
 
           WebApp.ready();
           WebApp.expand();
-          if (WebApp.requestFullscreen) {
-            WebApp.requestFullscreen();
+          try {
+            if (WebApp.requestFullscreen) {
+              WebApp.requestFullscreen();
+            }
+          } catch (e) {
+            console.warn("requestFullscreen unsupported", e);
           }
-          if (WebApp.setHeaderColor) {
-            WebApp.setHeaderColor('#060913');
-          }
-          if (WebApp.setBackgroundColor) {
-            WebApp.setBackgroundColor('#060913');
-          }
+          try {
+            if (WebApp.setHeaderColor) {
+              WebApp.setHeaderColor('#060913');
+            }
+          } catch (e) {}
+          try {
+            if (WebApp.setBackgroundColor) {
+              WebApp.setBackgroundColor('#060913');
+            }
+          } catch (e) {}
           const initData = WebApp.initData;
 
           const lang = WebApp.initDataUnsafe?.user?.language_code;
@@ -71,7 +79,16 @@ export function TelegramAuthProvider({ children }: { children: ReactNode }) {
           });
 
           if (!response.ok) {
-            throw new Error('Failed to authenticate with backend servers');
+            let errorMsg = 'Failed to authenticate with backend servers';
+            try {
+              const errData = await response.json();
+              if (errData.error) errorMsg = errData.error;
+            } catch (e) {}
+            
+            if (errorMsg === 'Session expired') {
+              errorMsg = 'Session expired. Please completely close the Mini App (swipe down) and reopen it.';
+            }
+            throw new Error(errorMsg);
           }
 
           const data = await response.json();

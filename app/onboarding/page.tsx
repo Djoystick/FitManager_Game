@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createStarterFranchise } from '@/app/actions/teamActions';
+import Link from 'next/link';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -93,9 +94,9 @@ export default function OnboardingPage() {
             />
             <label htmlFor="terms" className="text-xs text-gray-400 leading-tight">
               I have read and agree to the{' '}
-              <a href="/terms" target="_blank" className="text-neon-cyan hover:underline">Terms of Service</a>
+              <Link href="/terms" className="text-neon-cyan hover:underline">Terms of Service</Link>
               {' '}and{' '}
-              <a href="/privacy" target="_blank" className="text-neon-cyan hover:underline">Privacy Policy</a>.
+              <Link href="/privacy" className="text-neon-cyan hover:underline">Privacy Policy</Link>.
             </label>
           </div>
 
