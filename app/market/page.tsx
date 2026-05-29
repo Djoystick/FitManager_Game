@@ -4,6 +4,8 @@ import { useEffect, useState, useTransition, useContext } from 'react';
 import { CyberLoader } from '@/components/ui/CyberLoader';
 import { getMarketListingsAction, buyPlayerAction, cancelListingAction } from '@/app/actions/marketActions';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
+import { LanguageContext } from '@/components/LanguageContext';
+import { dict } from '@/lib/dictionaries';
 import toast from 'react-hot-toast';
 import { RefreshCw, Filter, ShieldAlert } from 'lucide-react';
 import { ScreenGuide } from '@/components/ui/ScreenGuide';
@@ -26,6 +28,9 @@ interface MarketListing {
 
 export default function TransferMarketPage() {
   const { userId } = useContext(TelegramAuthContext);
+  const { language } = useContext(LanguageContext);
+  const t = dict[language as keyof typeof dict];
+
   const [activeTab, setActiveTab] = useState<'market' | 'my_lots'>('market');
   const [listings, setListings] = useState<MarketListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,31 +69,32 @@ export default function TransferMarketPage() {
   }, [positionFilter, sortOrder]);
 
   const handleBuy = (listing: MarketListing) => {
-    if (!confirm(`Вы уверены, что хотите купить ${listing.player.name} за ${listing.price_ton} TON?`)) return;
+    const msg = t.buy_confirm.replace('{name}', listing.player.name).replace('{price}', listing.price_ton.toString());
+    if (!confirm(msg)) return;
     
     startTransition(async () => {
       const res = await buyPlayerAction(listing.id);
       if (res.success) {
-        toast.success(`Игрок ${listing.player.name} успешно куплен!`);
+        toast.success(t.buy_success.replace('{name}', listing.player.name));
         // Trigger balance update for global header
         window.dispatchEvent(new Event('balanceUpdated'));
         fetchMarket();
       } else {
-        toast.error(res.error || 'Ошибка при покупке');
+        toast.error(res.error || t.buy_error);
       }
     });
   };
 
   const handleCancel = (listingId: string) => {
-    if (!confirm('Отменить продажу игрока? Налог в FC возвращен не будет.')) return;
+    if (!confirm(t.cancel_confirm)) return;
     
     startTransition(async () => {
       const res = await cancelListingAction(listingId);
       if (res.success) {
-        toast.success('Продажа отменена');
+        toast.success(t.cancel_success);
         fetchMarket();
       } else {
-        toast.error(res.error || 'Ошибка отмены');
+        toast.error(res.error || t.cancel_error);
       }
     });
   };
@@ -102,8 +108,8 @@ export default function TransferMarketPage() {
       <ScreenGuide 
         key="market"
         screenName="market"
-        title="Трансферный Рынок"
-        content="Добро пожаловать на глобальный P2P Трансферный Рынок. Здесь менеджеры со всего мира покупают и продают игроков за реальную криптовалюту TON."
+        title={t.market_title}
+        content={t.market_desc}
       />
       {/* HEADER */}
       <header className="border-b border-gray-800 pb-4">
@@ -121,7 +127,7 @@ export default function TransferMarketPage() {
         </div>
 
         <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-widest font-bold">
-          P2P Трансферы за TON
+          {t.p2p_transfers}
         </p>
       </header>
 
@@ -131,13 +137,13 @@ export default function TransferMarketPage() {
           onClick={() => setActiveTab('market')}
           className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-md transition-all duration-300 ${activeTab === 'market' ? 'bg-neon-cyan text-black shadow-[0_0_15px_rgba(0,240,255,0.4)]' : 'text-gray-400 hover:text-white'}`}
         >
-          Рынок
+          {t.tab_market}
         </button>
         <button 
           onClick={() => setActiveTab('my_lots')}
           className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-md transition-all duration-300 ${activeTab === 'my_lots' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)]' : 'text-gray-400 hover:text-white'}`}
         >
-          Мои лоты
+          {t.tab_my_lots}
         </button>
       </div>
 
@@ -145,7 +151,7 @@ export default function TransferMarketPage() {
       {activeTab === 'market' && (
         <div className="flex flex-col gap-2 p-3 bg-gray-900/50 rounded-xl border border-gray-800">
           <div className="flex items-center gap-2 text-xs text-gray-400 uppercase tracking-widest font-bold mb-1">
-            <Filter className="w-3 h-3" /> Фильтры
+            <Filter className="w-3 h-3" /> {t.filters}
           </div>
           <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
             {['ALL', 'FWD', 'MID', 'DEF', 'GK'].map(pos => (
@@ -162,9 +168,9 @@ export default function TransferMarketPage() {
           </div>
           <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1 mt-1">
             {[
-              { id: 'price_asc', label: 'Цена ↑' },
-              { id: 'price_desc', label: 'Цена ↓' },
-              { id: 'ovr_desc', label: 'OVR ↓' }
+              { id: 'price_asc', label: t.price_asc },
+              { id: 'price_desc', label: t.price_desc },
+              { id: 'ovr_desc', label: t.ovr_desc }
             ].map(sort => (
               <button 
                 key={sort.id}
@@ -186,9 +192,9 @@ export default function TransferMarketPage() {
       ) : displayListings.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-800 rounded-xl p-8 mt-4">
           <ShieldAlert className="w-12 h-12 text-gray-600 mb-4" />
-          <span className="text-sm font-black text-gray-500 uppercase tracking-widest text-center">Нет лотов</span>
+          <span className="text-sm font-black text-gray-500 uppercase tracking-widest text-center">{t.no_lots}</span>
           <p className="text-gray-600 text-[10px] uppercase tracking-widest mt-2 text-center">
-            {activeTab === 'market' ? 'Измените фильтры или зайдите позже.' : 'Вы еще никого не выставили на продажу.'}
+            {activeTab === 'market' ? t.no_lots_desc_market : t.no_lots_desc_my}
           </p>
         </div>
       ) : (
@@ -206,8 +212,8 @@ export default function TransferMarketPage() {
                     <h3 className="text-base font-bold text-white uppercase tracking-wider">{listing.player.name}</h3>
                   </div>
                   <div className="flex items-center gap-3 mt-1.5 text-[10px] text-gray-400 uppercase tracking-widest font-bold">
-                    <span>Возраст: {listing.player.age}</span>
-                    <span>Сезонов: {listing.player.seasons_played}</span>
+                    <span>{t.age_label}: {listing.player.age}</span>
+                    <span>{t.seasons_played}: {listing.player.seasons_played}</span>
                   </div>
                   
                   {listing.player.traits && listing.player.traits.length > 0 && (
@@ -229,7 +235,7 @@ export default function TransferMarketPage() {
               
               <div className="flex justify-between items-center mt-2 border-t border-gray-800/60 pt-3 z-10">
                 <div className="flex flex-col">
-                  <span className="text-[9px] text-gray-500 uppercase tracking-widest font-bold">Цена лота</span>
+                  <span className="text-[9px] text-gray-500 uppercase tracking-widest font-bold">{t.lot_price}</span>
                   <span className="text-base font-black text-white flex items-center gap-1.5 mt-0.5">
                     <span className="text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.8)] text-sm">💎</span> 
                     <span className="font-orbitron tracking-wider">{listing.price_ton}</span>
@@ -243,7 +249,7 @@ export default function TransferMarketPage() {
                     disabled={isPending}
                     className="px-5 py-2.5 rounded border border-neon-cyan/50 font-black uppercase text-[10px] tracking-widest transition-all bg-neon-cyan/10 text-neon-cyan hover:bg-neon-cyan hover:text-black shadow-[0_0_10px_rgba(0,240,255,0.1)] disabled:opacity-50"
                   >
-                    Купить
+                    {t.buy_button}
                   </button>
                 ) : (
                   <button 
@@ -251,7 +257,7 @@ export default function TransferMarketPage() {
                     disabled={isPending}
                     className="px-4 py-2 rounded border border-red-500/50 font-black uppercase text-[10px] tracking-widest transition-all bg-red-900/20 text-red-400 hover:bg-red-600 hover:text-white disabled:opacity-50"
                   >
-                    Отменить
+                    {t.cancel_button}
                   </button>
                 )}
               </div>

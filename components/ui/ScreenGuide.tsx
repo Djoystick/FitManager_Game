@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HelpCircle } from 'lucide-react';
+import { LanguageContext } from '@/components/LanguageContext';
+import { dict } from '@/lib/dictionaries';
 
 interface ScreenGuideProps {
   screenName: string;
@@ -14,6 +16,8 @@ export function ScreenGuide({ screenName, title, content }: ScreenGuideProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
   const storageKey = `fitmanager_guide_${screenName}`;
+  const { language } = useContext(LanguageContext);
+  const t = dict[language as keyof typeof dict];
 
   useEffect(() => {
     setHasMounted(true);
@@ -80,7 +84,7 @@ export function ScreenGuide({ screenName, title, content }: ScreenGuideProps) {
                 onClick={handleClose}
                 className="w-full py-3 bg-neon-cyan text-black font-orbitron font-bold text-sm tracking-wider rounded-xl hover:bg-white hover:text-neon-cyan transition-all duration-300 shadow-[0_0_15px_rgba(0,240,255,0.4)]"
               >
-                Understood
+                {t.understood}
               </button>
             </motion.div>
           </motion.div>

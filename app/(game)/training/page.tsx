@@ -2,11 +2,16 @@ import React from 'react';
 import { supabase } from '@/lib/supabase';
 import { LogSessionButton } from '@/components/training/LogSessionButton';
 import { Activity, AlertTriangle, CheckCircle2, XCircle, Zap } from 'lucide-react';
+import { dict } from '@/lib/dictionaries';
+import { cookies } from 'next/headers';
 import { ScreenGuide } from '@/components/ui/ScreenGuide';
 
 export default async function TrainingDashboard({ searchParams }: { searchParams: Promise<{ userId?: string }> | { userId?: string } }) {
   const resolvedParams = await searchParams;
   const userId = resolvedParams.userId;
+  const cookieStore = await cookies();
+  const language = cookieStore.get('fitmanager_lang')?.value || 'en';
+  const t = dict[language as keyof typeof dict];
 
   if (!userId) {
     return (
@@ -40,20 +45,14 @@ export default async function TrainingDashboard({ searchParams }: { searchParams
 
   return (
     <div className="flex flex-col flex-1 p-4 gap-6 pb-24 h-full overflow-y-auto custom-scrollbar">
-      <ScreenGuide 
-        key="training"
-        screenName="training"
-        title="Тренировочная база"
-        content="Ваша реальная физическая активность (шаги) конвертируется в Sweat Points (SP). Используйте SP для тренировки кибер-атлетов и буста их характеристик!"
-      />
       
       {/* Header */}
       <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-gray-800 pb-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold font-orbitron text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] uppercase tracking-wider">
-            Training Hub
+            {t.training_hub}
           </h1>
-          <p className="text-sm text-gray-400">Proof-of-Effort Validation Dashboard</p>
+          <p className="text-sm text-gray-400">{t.training_hub_desc}</p>
         </div>
         
         <LogSessionButton userId={userId} />
@@ -61,7 +60,7 @@ export default async function TrainingDashboard({ searchParams }: { searchParams
 
       {/* Anti-Cheat / Overtraining Status Indicator */}
       <section className="flex flex-col gap-2">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-gray-500">Current Multiplier Status</h2>
+        <h2 className="text-xs font-bold uppercase tracking-widest text-gray-500">{t.multiplier_status}</h2>
         
         <div className={`
           relative overflow-hidden rounded-lg p-4 border flex items-center gap-4 shadow-lg transition-all
@@ -83,23 +82,19 @@ export default async function TrainingDashboard({ searchParams }: { searchParams
           </div>
           
           <div className="flex flex-col flex-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-gray-400">XP Multiplier</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-gray-400">{t.xp_multiplier}</span>
             <div className="flex items-baseline gap-2">
               <span className={`text-2xl font-black font-orbitron ${
                 isExhausted ? 'text-red-500' : isPenalized ? 'text-yellow-500' : 'text-neon-green'
               }`}>
                 {(currentPenaltyFactor * 100).toFixed(0)}%
               </span>
-              <span className="text-sm text-gray-400 font-medium">Yield</span>
+              <span className="text-sm text-gray-400 font-medium">{t.yield}</span>
             </div>
           </div>
 
           <div className="hidden sm:block text-xs text-gray-400 max-w-xs leading-relaxed">
-            {isExhausted 
-              ? "You are completely exhausted. Further training today will yield 0 TP." 
-              : isPenalized 
-                ? "Overtraining detected. Your TP yield is reduced to prevent fatigue and injury."
-                : "You are fresh. Next session yields 100% of standard Training Points."}
+            {isExhausted ? t.exhausted_msg : isPenalized ? t.penalized_msg : t.fresh_msg}
           </div>
         </div>
       </section>
@@ -107,7 +102,7 @@ export default async function TrainingDashboard({ searchParams }: { searchParams
       {/* Recent Sessions List */}
       <section className="flex flex-col gap-4 mt-2">
         <h2 className="text-sm font-bold uppercase tracking-widest text-neon-cyan drop-shadow-[0_0_5px_rgba(0,240,255,0.5)]">
-          Recent Activity
+          {t.recent_activity}
         </h2>
         
         {sessions && sessions.length > 0 ? (
@@ -123,18 +118,18 @@ export default async function TrainingDashboard({ searchParams }: { searchParams
                     {new Date(session.created_at).toLocaleString()}
                   </span>
                   <span className="text-sm font-bold text-white uppercase tracking-wider">
-                    {session.duration_minutes} MIN RUN/WALK
+                    {session.duration_minutes} {t.min_run_walk}
                   </span>
                 </div>
 
                 {/* Center: Details */}
                 <div className="flex gap-4 text-xs font-mono">
                   <div className="flex flex-col items-center">
-                    <span className="text-gray-500">STEPS</span>
+                    <span className="text-gray-500">{t.steps}</span>
                     <span className="text-gray-300">{session.steps_logged}</span>
                   </div>
                   <div className="flex flex-col items-center">
-                    <span className="text-gray-500">MET</span>
+                    <span className="text-gray-500">{t.met}</span>
                     <span className="text-gray-300">{session.met_value}</span>
                   </div>
                 </div>
@@ -142,7 +137,7 @@ export default async function TrainingDashboard({ searchParams }: { searchParams
                 {/* Right: TP & Status */}
                 <div className="flex items-center gap-3 self-end sm:self-auto">
                   <div className="flex flex-col items-end">
-                    <span className="text-[10px] uppercase text-gray-500 tracking-wider">Yield</span>
+                    <span className="text-[10px] uppercase text-gray-500 tracking-wider">{t.yield}</span>
                     <span className={`text-sm font-bold font-orbitron ${
                       session.status === 'rejected' ? 'text-gray-500' : 'text-neon-cyan'
                     }`}>
@@ -169,9 +164,9 @@ export default async function TrainingDashboard({ searchParams }: { searchParams
         ) : (
           <div className="text-center p-8 border border-dashed border-gray-800 rounded-lg bg-black/40">
             <Activity className="mx-auto text-gray-700 mb-2" size={32} />
-            <h3 className="text-gray-400 font-bold mb-1">No Activity Found</h3>
+            <h3 className="text-gray-400 font-bold mb-1">{t.no_activity}</h3>
             <p className="text-xs text-gray-600 max-w-xs mx-auto">
-              You haven't logged any training sessions yet. Connect your step tracker to start earning TP.
+              {t.no_activity_desc}
             </p>
           </div>
         )}

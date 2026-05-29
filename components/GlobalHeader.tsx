@@ -96,7 +96,7 @@ export function GlobalHeader() {
               ? 'text-yellow-300 drop-shadow-[0_0_12px_rgba(250,204,21,1)]'
               : 'text-yellow-500 drop-shadow-[0_0_4px_rgba(234,179,8,0.7)]'
           }`}>
-            {fc.toLocaleString()}
+            {fc.toLocaleString('en-US')}
           </span>
         </div>
 
@@ -117,7 +117,7 @@ export function GlobalHeader() {
               ? 'text-white drop-shadow-[0_0_12px_rgba(0,240,255,1)]'
               : 'text-neon-cyan drop-shadow-[0_0_4px_rgba(0,240,255,0.7)]'
           }`}>
-            {sp.toLocaleString()}
+            {sp.toLocaleString('en-US')}
           </span>
         </div>
       </div>

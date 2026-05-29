@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useState, ReactNode } from 'react';
+import React, { createContext, useState, ReactNode, useEffect } from 'react';
 
 type Language = 'en' | 'ru';
 
@@ -15,7 +15,35 @@ export const LanguageContext = createContext<LanguageContextType>({
 });
 
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguageState] = useState<Language>('en');
+
+  useEffect(() => {
+    const initLanguage = async () => {
+      try {
+        const saved = localStorage.getItem('fitmanager_lang');
+        if (saved === 'ru' || saved === 'en') {
+          setLanguageState(saved);
+        } else {
+          const module = await import('@twa-dev/sdk');
+          const WebApp = module.default;
+          const twaLang = WebApp.initDataUnsafe?.user?.language_code;
+          if (twaLang === 'ru') {
+            setLanguageState('ru');
+          } else {
+            setLanguageState('en');
+          }
+        }
+      } catch (e) {
+        console.warn('LanguageContext init error', e);
+      }
+    };
+    initLanguage();
+  }, []);
+
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang);
+    localStorage.setItem('fitmanager_lang', lang);
+  };
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage }}>

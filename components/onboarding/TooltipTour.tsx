@@ -1,13 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { LanguageContext } from '@/components/LanguageContext';
+import { dict } from '@/lib/dictionaries';
 
 export function TooltipTour() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const pathname = usePathname();
+  const { language } = useContext(LanguageContext);
+  const t = dict[language as keyof typeof dict];
 
   useEffect(() => {
     const hasSeenTour = localStorage.getItem('fitmanager_tour_completed');
@@ -19,18 +23,18 @@ export function TooltipTour() {
 
   const steps = [
     {
-      title: 'Welcome to FitManager!',
-      content: 'This is your futuristic control center. Here you manage your cyber-athletes.',
+      title: t.tour_welcome,
+      content: t.tour_welcome_desc,
       position: 'bottom-20 left-4 right-4 mx-auto', 
     },
     {
-      title: 'Step Conversion',
-      content: 'Every 1000 real-world steps you take equal 1 Sweat Point (SP). Use SP to heal and train your players.',
+      title: t.tour_steps,
+      content: t.tour_steps_desc,
       position: 'top-24 left-4 right-4 mx-auto', 
     },
     {
-      title: 'Match Engine',
-      content: 'Set up your starting 11. Matches happen automatically twice a day. Get ready to climb the leagues!',
+      title: t.tour_match,
+      content: t.tour_match_desc,
       position: 'bottom-24 left-4 right-4 mx-auto', 
     }
   ];
@@ -94,7 +98,7 @@ export function TooltipTour() {
                   onClick={handleNext}
                   className="px-4 py-2 bg-neon-cyan/10 hover:bg-neon-cyan/20 border border-neon-cyan/50 text-neon-cyan font-orbitron text-xs rounded transition-colors active:scale-95"
                 >
-                  {currentStep === steps.length - 1 ? 'START' : 'NEXT'}
+                  {currentStep === steps.length - 1 ? t.tour_start : t.tour_next}
                 </button>
               </div>
             </div>

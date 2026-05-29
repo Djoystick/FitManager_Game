@@ -2,64 +2,32 @@
 
 import { useContext, useEffect, useState } from 'react';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
-import { WalletConnect } from '@/components/WalletConnect';
 import Link from 'next/link';
 import { dict } from '@/lib/dictionaries';
 import { LanguageContext } from '@/components/LanguageContext';
-import { MatchHistoryWidget } from '@/components/MatchHistoryWidget';
 import { CyberLoader } from '@/components/ui/CyberLoader';
-import { Users, Trophy, User, Shield, Activity, Coins } from 'lucide-react';
-import { getUnviewedMatch } from '@/app/actions/matchActions';
-import { MatchReport } from '@/components/MatchReportModal';
+import { Users, Activity, ShoppingCart, Shield, Trophy } from 'lucide-react';
 import { UnseenMatchesModal } from '@/components/UnseenMatchesModal';
-
-interface UserData {
-  wallet_address:   string | null;
-  balance_fancoins: number;
-  cardio_coin:      number;
-  fitness_coin:     number;
-  ball_coin:        number;
-  strength_coin:    number;
-}
 
 export default function DashboardPage() {
   const { userId, isAuthenticated, isLoading: isAuthLoading } = useContext(TelegramAuthContext);
   const { language } = useContext(LanguageContext);
-  const t = dict[language];
-  const headerFontClass = language === 'ru' ? 'font-russo' : 'font-orbitron';
-  const buttonFontClass = language === 'ru' ? 'font-russo' : 'font-orbitron';
+  const t = dict[language as keyof typeof dict];
 
-  const [userData, setUserData] = useState<UserData | null>(null);
   const [hasTeam, setHasTeam] = useState<boolean | null>(null);
   const [teamName, setTeamName] = useState<string | null>(null);
+  const [teamId, setTeamId] = useState<string | null>(null);
   const [players, setPlayers] = useState<any[]>([]);
   const [isDataLoading, setIsDataLoading] = useState(true);
-  const [firstName, setFirstName] = useState('Manager');
-  const [teamId, setTeamId] = useState<string | null>(null);
   const [unseenMatches, setUnseenMatches] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      import('@twa-dev/sdk').then((module) => {
-        const WebApp = module.default;
-        if (WebApp.initDataUnsafe?.user?.first_name) {
-          setFirstName(WebApp.initDataUnsafe.user.first_name);
-        }
-      });
-    }
-  }, []);
+  const [leagueTier, setLeagueTier] = useState<number | null>(null);
 
   const fetchUserData = async (id: string) => {
     try {
-      const [userRes, teamRes] = await Promise.all([
-        fetch(`/api/user/me?userId=${id}`),
-        fetch(`/api/team/my-team?userId=${id}`)
+      const [teamRes, leagueRes] = await Promise.all([
+        fetch(`/api/team/my-team?userId=${id}`),
+        fetch(`/api/league/standings?userId=${id}`)
       ]);
-
-      if (userRes.ok) {
-        const json = await userRes.json();
-        setUserData(json.user);
-      }
 
       if (teamRes.ok) {
         const teamJson = await teamRes.json();
@@ -71,7 +39,6 @@ export default function DashboardPage() {
           setTeamId(teamJson.team.id);
           setPlayers(teamJson.players || []);
           
-          // Fetch unseen matches in background
           import('@/app/actions/matchActions').then(mod => {
             mod.getUnseenMatches(teamJson.team.id).then(res => {
               if (res.success && res.matches) {
@@ -83,8 +50,15 @@ export default function DashboardPage() {
       } else {
         setHasTeam(true);
       }
+
+      if (leagueRes.ok) {
+        const lJson = await leagueRes.json();
+        if (lJson.league_instance?.tier_level) {
+          setLeagueTier(lJson.league_instance.tier_level);
+        }
+      }
     } catch (error) {
-      console.error("Failed to fetch user data", error);
+      console.error("Failed to fetch dashboard data", error);
       setHasTeam(true);
     } finally {
       setIsDataLoading(false);
@@ -100,26 +74,22 @@ export default function DashboardPage() {
     }
   }, [isAuthenticated, userId, isAuthLoading]);
 
-  const shortenAddress = (address: string) => {
-    return `${address.slice(0, 4)}...${address.slice(-4)}`;
-  };
-
   if (isAuthLoading || isDataLoading || hasTeam === null) {
-    return <CyberLoader fullScreen />;
+    return <CyberLoader fullScreen text={t.loading} />;
   }
 
   if (hasTeam === false && userId) {
     if (typeof window !== 'undefined') {
       window.location.href = '/onboarding';
     }
-    return <CyberLoader fullScreen />;
+    return <CyberLoader fullScreen text={t.loading} />;
   }
 
   const teamOvr = players.length ? Math.round(players.reduce((sum, p) => sum + (p.ovr || 0), 0) / players.length) : 0;
   const avgStamina = players.length ? Math.round(players.reduce((sum, p) => sum + (p.stamina || 0), 0) / players.length) : 0;
 
   const handleAcknowledgeUnseen = async (matchIds: string[]) => {
-    setUnseenMatches([]); // Optimistic UI close
+    setUnseenMatches([]);
     if (teamId) {
       const mod = await import('@/app/actions/matchActions');
       await mod.markMatchesAsViewed(matchIds, teamId);
@@ -127,75 +97,99 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex flex-col flex-1 p-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <UnseenMatchesModal matches={unseenMatches} onAcknowledge={handleAcknowledgeUnseen} />
+    <div className="flex flex-col flex-1 relative bg-[#060913] text-white overflow-y-auto overflow-x-hidden min-h-screen p-4 pb-24">
+      {/* BACKGROUND EFFECTS */}
+      <div className="fixed inset-0 pointer-events-none opacity-20"
+           style={{ backgroundImage: 'linear-gradient(rgba(0, 240, 255, 0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 240, 255, 0.2) 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neon-cyan/5 via-transparent to-transparent opacity-50 blur-3xl"></div>
+      
+      {/* SCANLINE */}
+      <div className="fixed inset-0 pointer-events-none bg-[linear-gradient(transparent_50%,_rgba(0,0,0,0.25)_50%)] bg-[length:100%_4px] opacity-20 z-0"></div>
 
-      {/* PREMIUM TOP BAR */}
-      <header className="flex items-center justify-between bg-black/60 border border-gray-800 rounded-2xl p-3 shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          {/* Clickable profile button */}
-          <Link
-            href="/profile"
-            id="home-profile-btn"
-            className="flex items-center gap-2 px-3 h-10 rounded-full bg-gray-900 border border-neon-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)] hover:border-neon-cyan/80 hover:shadow-[0_0_18px_rgba(0,240,255,0.5)] transition-all duration-200 active:scale-95"
-          >
-            <User className="text-neon-cyan w-4 h-4 shrink-0" />
-            <span className="text-[10px] font-black uppercase text-neon-cyan tracking-widest mt-0.5">Profile</span>
-          </Link>
-          <div className="flex flex-col">
-            <h1 className={`text-sm font-black text-white uppercase tracking-wider ${headerFontClass}`}>
-              {teamName || 'Unknown Team'}
-            </h1>
-            <span className="text-[10px] text-gray-500 font-mono">@{firstName}</span>
+      <div className="relative z-10 w-full max-w-md mx-auto flex flex-col gap-6 mt-4">
+        <UnseenMatchesModal matches={unseenMatches} onAcknowledge={handleAcknowledgeUnseen} />
+
+        {/* HOLO DISPLAY (FRANCHISE STATUS) */}
+        <div className="bg-black/40 backdrop-blur-xl border border-neon-cyan/30 rounded-3xl p-6 shadow-[0_0_30px_rgba(0,240,255,0.15)] relative overflow-hidden flex flex-col items-center">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-neon-cyan to-transparent"></div>
+          
+          <h2 className="text-[10px] font-bold text-neon-cyan uppercase tracking-[0.3em] mb-4 drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]">
+            {t.franchise_status}
+          </h2>
+
+          <div className="w-20 h-20 bg-gray-900 border-2 border-neon-cyan/50 rounded-full flex items-center justify-center mb-3 shadow-[0_0_20px_rgba(0,240,255,0.3)]">
+            <span className="text-3xl font-black font-orbitron text-white">
+              {teamName ? teamName.substring(0,2).toUpperCase() : 'FC'}
+            </span>
+          </div>
+
+          <h1 className="text-2xl font-black uppercase font-orbitron text-white drop-shadow-md mb-6 text-center">
+            {teamName}
+          </h1>
+
+          {/* STATS PROGRESS BARS */}
+          <div className="w-full flex flex-col gap-4">
+            {/* OVR */}
+            <div>
+              <div className="flex justify-between items-end mb-1">
+                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">{t.team_ovr}</span>
+                <span className="text-sm font-black text-neon-cyan font-orbitron">{teamOvr}</span>
+              </div>
+              <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden border border-gray-700">
+                <div className="h-full bg-neon-cyan shadow-[0_0_10px_rgba(0,240,255,0.8)] transition-all duration-1000" style={{ width: `${Math.min(100, teamOvr)}%` }}></div>
+              </div>
+            </div>
+
+            {/* Stamina */}
+            <div>
+              <div className="flex justify-between items-end mb-1">
+                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">{t.avg_stamina}</span>
+                <span className="text-sm font-black text-green-400 font-orbitron">{avgStamina}%</span>
+              </div>
+              <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden border border-gray-700">
+                <div className="h-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)] transition-all duration-1000" style={{ width: `${avgStamina}%` }}></div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Real FC balance from API */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-yellow-900/20 border border-yellow-600/40 shadow-[0_0_8px_rgba(234,179,8,0.2)]">
-          <Coins className="w-3.5 h-3.5 text-yellow-500" />
-          <span className="text-xs font-black font-orbitron text-yellow-400">
-            {(userData?.balance_fancoins ?? 0).toLocaleString()}
-          </span>
-        </div>
-      </header>
-
-      {/* TEAM STATUS WIDGET */}
-      <section className="grid grid-cols-2 gap-4">
-        <div className="bg-gradient-to-br from-black to-gray-900 border border-gray-800 rounded-2xl p-4 flex flex-col items-center justify-center relative overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.3)] group">
-          <div className="absolute top-0 right-0 w-20 h-20 bg-neon-cyan/5 rounded-full blur-2xl group-hover:bg-neon-cyan/10 transition-colors" />
-          <Shield className="w-6 h-6 text-neon-cyan mb-2 opacity-80" />
-          <span className="text-3xl font-black text-white drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]">{teamOvr}</span>
-          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Team OVR</span>
-        </div>
-
-        <div className="bg-gradient-to-br from-black to-gray-900 border border-gray-800 rounded-2xl p-4 flex flex-col items-center justify-center relative overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.3)] group">
-          <div className="absolute top-0 right-0 w-20 h-20 bg-green-500/5 rounded-full blur-2xl group-hover:bg-green-500/10 transition-colors" />
-          <Activity className="w-6 h-6 text-green-500 mb-2 opacity-80" />
-          <span className="text-3xl font-black text-white drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]">{avgStamina}%</span>
-          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Avg Stamina</span>
-        </div>
-      </section>
-
-      {/* TRAINING BANK (SPEC COINS) */}
-      <section className="grid grid-cols-4 gap-2">
-        {[
-          { emoji: '🏃', val: userData?.cardio_coin ?? 0, bg: 'bg-cyan-900/20', border: 'border-cyan-800/50', color: 'text-cyan-400' },
-          { emoji: '🤸', val: userData?.fitness_coin ?? 0, bg: 'bg-emerald-900/20', border: 'border-emerald-800/50', color: 'text-emerald-400' },
-          { emoji: '⚽', val: userData?.ball_coin ?? 0, bg: 'bg-orange-900/20', border: 'border-orange-800/50', color: 'text-orange-400' },
-          { emoji: '💪', val: userData?.strength_coin ?? 0, bg: 'bg-rose-900/20', border: 'border-rose-800/50', color: 'text-rose-400' }
-        ].map((c, i) => (
-          <div key={i} className={`flex flex-col items-center justify-center p-2 rounded-xl border ${c.bg} ${c.border} shadow-inner`}>
-            <span className="text-sm mb-0.5">{c.emoji}</span>
-            <span className={`text-[10px] font-bold font-mono ${c.color}`}>{c.val}</span>
+        {/* LEAGUE STATUS */}
+        <div className="bg-purple-900/20 backdrop-blur-md border border-purple-500/30 rounded-2xl p-4 flex items-center justify-between shadow-[0_0_20px_rgba(168,85,247,0.15)] relative overflow-hidden group">
+          <div className="absolute -left-10 w-20 h-full bg-purple-500/20 blur-2xl transform -skew-x-12 group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out"></div>
+          <div className="flex items-center gap-3 relative z-10">
+            <div className="w-10 h-10 bg-purple-900/50 rounded-full flex items-center justify-center border border-purple-500/50">
+              <Trophy className="w-5 h-5 text-purple-400 drop-shadow-[0_0_5px_rgba(168,85,247,0.8)]" />
+            </div>
+            <span className="font-orbitron font-bold text-sm tracking-widest text-purple-100">
+              {leagueTier ? t.active_league.replace('{tier}', leagueTier.toString()) : t.loading}
+            </span>
           </div>
-        ))}
-      </section>
+        </div>
 
-      {/* MATCH JOURNAL */}
-      <section className="flex-1 flex flex-col min-h-0">
-        {userId && <MatchHistoryWidget userId={userId} teamName={teamName} />}
-      </section>
+        {/* QUICK TERMINALS */}
+        <div>
+          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-3 ml-2">
+            {t.quick_actions}
+          </h3>
+          <div className="grid grid-cols-3 gap-3">
+            <Link href="/squad" className="bg-black/60 backdrop-blur-md border border-blue-500/30 rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:bg-blue-900/20 hover:border-blue-400 hover:scale-105 hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all duration-300">
+              <Users className="w-6 h-6 text-blue-400" />
+              <span className="text-[9px] font-bold uppercase tracking-widest text-blue-100">{t.dashboard_squad}</span>
+            </Link>
 
+            <Link href="/training" className="bg-black/60 backdrop-blur-md border border-emerald-500/30 rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:bg-emerald-900/20 hover:border-emerald-400 hover:scale-105 hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all duration-300">
+              <Activity className="w-6 h-6 text-emerald-400" />
+              <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-100">{t.dashboard_training}</span>
+            </Link>
+
+            <Link href="/market" className="bg-black/60 backdrop-blur-md border border-amber-500/30 rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:bg-amber-900/20 hover:border-amber-400 hover:scale-105 hover:shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all duration-300">
+              <ShoppingCart className="w-6 h-6 text-amber-400" />
+              <span className="text-[9px] font-bold uppercase tracking-widest text-amber-100">{t.dashboard_market}</span>
+            </Link>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }
