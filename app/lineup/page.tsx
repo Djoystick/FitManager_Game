@@ -71,6 +71,7 @@ export default function LineupPage() {
   const [activeHUD, setActiveHUD] = useState<{player: Player, x: number, y: number, isBelow?: boolean} | null>(null);
   const [profilePlayer, setProfilePlayer] = useState<Player | null>(null);
   const [showChemistry, setShowChemistry] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
   
   const router = useRouter();
 
@@ -642,6 +643,12 @@ export default function LineupPage() {
                 {showChemistry ? t.hide_links : t.chemistry}
               </span>
             </button>
+            <button
+              onClick={() => setShowLegend(true)}
+              className="w-7 h-7 rounded-full bg-black/80 border border-neon-cyan/30 flex items-center justify-center shadow-[0_0_15px_rgba(0,255,255,0.2)] text-neon-cyan font-bold hover:bg-neon-cyan/20 transition-colors"
+            >
+              ?
+            </button>
           </div>
           <div className="flex justify-center gap-2 shrink-0 z-20 mt-1 mb-2">
             {['4-4-2', '4-3-3', '3-5-2'].map(f => {
@@ -830,6 +837,75 @@ export default function LineupPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Legend Modal */}
+      {showLegend && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm pointer-events-auto"
+          onClick={() => setShowLegend(false)}
+        >
+          <div 
+            className="w-full max-w-sm bg-black/90 border border-neon-cyan/50 rounded-2xl p-6 shadow-[0_0_30px_rgba(0,240,255,0.3)] relative"
+            onClick={e => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => setShowLegend(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-white"
+            >
+              ✕
+            </button>
+            <h3 className="text-white font-bold text-base mb-4 uppercase tracking-wider flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-neon-cyan animate-pulse"></span>
+              Синергия (Match Engine)
+            </h3>
+            
+            <div className="space-y-4 text-sm text-gray-300">
+              <p className="border-b border-gray-800 pb-3">
+                <span className="text-neon-cyan font-bold block mb-1">Как это работает:</span>
+                Связки стилей дают <strong className="text-neon-green">+10%</strong> к статам в дуэлях. Конфликты (два Лидера) забирают <strong className="text-red-500">-15%</strong>.
+              </p>
+
+              <div>
+                <span className="text-gray-400 block mb-2">Комбинации трейтов:</span>
+                <ul className="space-y-2">
+                  <li className="flex items-center justify-between bg-gray-900/50 p-2 rounded">
+                    <span>Playmaker + Poacher</span>
+                    <span className="text-neon-green font-bold">+10%</span>
+                  </li>
+                  <li className="flex items-center justify-between bg-gray-900/50 p-2 rounded">
+                    <span>Engine + Speedster</span>
+                    <span className="text-neon-green font-bold">+10%</span>
+                  </li>
+                  <li className="flex items-center justify-between bg-gray-900/50 p-2 rounded">
+                    <span>Anchor + Wall</span>
+                    <span className="text-neon-green font-bold">+10%</span>
+                  </li>
+                  <li className="flex items-center justify-between bg-red-900/20 p-2 rounded mt-2 border border-red-900/50">
+                    <span>Leader + Leader</span>
+                    <span className="text-red-500 font-bold">-15%</span>
+                  </li>
+                </ul>
+              </div>
+              
+              <div className="mt-4 pt-3 border-t border-gray-800">
+                <span className="text-gray-400 block mb-2">Связи на поле (Линии):</span>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-1 bg-[#39ff14] shadow-[0_0_5px_#39ff14]"></div>
+                  <span>Отличная (Матчи + Стиль)</span>
+                </div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-1 bg-yellow-500"></div>
+                  <span>Базовая (Позиции)</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 border-t-2 border-dashed border-red-500"></div>
+                  <span>Конфликт</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ScreenGuide 
         screenName="squad" 
