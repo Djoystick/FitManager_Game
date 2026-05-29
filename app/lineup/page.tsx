@@ -755,19 +755,40 @@ export default function LineupPage() {
                {submitMessage.text}
              </div>
            )}
-           <div className="text-[9px] uppercase tracking-widest text-gray-500 text-center font-bold mb-1">Скамейка</div>
-           <div className="flex gap-2 overflow-x-auto custom-scrollbar justify-center">
-             {[11, 12, 13, 14, 15].map(idx => renderPitchMarker(idx))}
+           <div className="flex items-center justify-center gap-3 mb-2 text-[9px] uppercase tracking-widest font-bold">
+             <span className="text-neon-cyan drop-shadow-[0_0_5px_rgba(0,240,255,0.3)]">СКАМЕЙКА</span>
+             {activePlayers.filter(p => p.lineup_status === 'reserve').length > 0 && (
+               <>
+                 <span className="text-gray-700">|</span>
+                 <span className="text-gray-500">ГЛУБОКИЙ РЕЗЕРВ</span>
+               </>
+             )}
            </div>
-           
-           {activePlayers.filter(p => p.lineup_status === 'reserve').length > 0 && (
-             <>
-               <div className="text-[9px] uppercase tracking-widest text-gray-500 text-center font-bold mt-2 border-t border-gray-800 pt-2">Глубокий резерв</div>
-               <div className="flex gap-2 overflow-x-auto custom-scrollbar justify-center">
-                 {activePlayers.filter(p => p.lineup_status === 'reserve').map(p => renderReservePlayer(p))}
-               </div>
-             </>
-           )}
+
+           <div className="flex gap-3 overflow-x-auto custom-scrollbar px-2 pb-2 justify-start md:justify-center items-center relative">
+             {/* BENCH PLAYERS */}
+             <div className="flex gap-2 shrink-0">
+               {[11, 12, 13, 14, 15].map(idx => (
+                 <div key={idx} className="shrink-0">
+                   {renderPitchMarker(idx)}
+                 </div>
+               ))}
+             </div>
+             
+             {/* VERTICAL DIVIDER */}
+             {activePlayers.filter(p => p.lineup_status === 'reserve').length > 0 && (
+               <div className="w-px h-16 bg-gradient-to-b from-transparent via-gray-700 to-transparent shrink-0 mx-1"></div>
+             )}
+
+             {/* DEEP RESERVE PLAYERS */}
+             <div className="flex gap-2 shrink-0">
+               {activePlayers.filter(p => p.lineup_status === 'reserve').map(p => (
+                 <div key={p.id} className="shrink-0 opacity-70 hover:opacity-100 transition-opacity scale-95">
+                   {renderReservePlayer(p)}
+                 </div>
+               ))}
+             </div>
+           </div>
 
            {players.filter(p => p.stamina < 100).length > 0 && (
              <button 
