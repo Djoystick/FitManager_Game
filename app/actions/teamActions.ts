@@ -5,6 +5,7 @@ import { executeBotSeeding } from '@/app/actions/adminActions';
 import { generateLeagueSchedule } from '@/app/actions/calendarActions';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { containsProfanity } from '@/app/utils/censor';
 
 export interface PlayerStats {
   pace: number;
@@ -94,6 +95,10 @@ export async function createStarterFranchise(teamName: string) {
 
     if (!userId || !teamName) {
       return { success: false, error: 'Missing userId or teamName' };
+    }
+
+    if (containsProfanity(teamName)) {
+      return { success: false, error: 'error_censorship' }; // Special key for frontend dictionary
     }
 
     const supabaseAdmin = createClient(
@@ -215,9 +220,49 @@ export async function createStarterFranchise(teamName: string) {
     }
 
     return { success: true };
-
   } catch (error: any) {
     console.error("createStarterFranchise Error:", error);
     return { success: false, error: error.message || 'Internal Server Error' };
+  }
+}
+
+export async function renameTeamAction(newName: string) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    
+    if (!userId || !newName) return { success: false, error: 'Missing data' };
+    if (containsProfanity(newName)) return { success: false, error: 'error_censorship' };
+
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // 1. Check user balance
+    const { data: user } = await supabaseAdmin.from('users').select('balance_fancoins').eq('id', userId).single();
+    if (!user || user.balance_fancoins < 1000) {
+      return { success: false, error: 'error_insufficient_fc' };
+    }
+
+    // 2. Deduct 1000 FC
+    const { error: deductError } = await supabaseAdmin.rpc('decrement_fancoins', {
+      user_id: userId,
+      amount: 1000
+    });
+
+    if (deductError) {
+      // Fallback if rpc doesn't exist
+      await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins - 1000 }).eq('id', userId);
+    }
+
+    // 3. Update team name
+    const { error: updateError } = await supabaseAdmin.from('teams').update({ name: newName }).eq('user_id', userId);
+    
+    if (updateError) return { success: false, error: 'rename_error' };
+
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message };
   }
 }

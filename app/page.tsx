@@ -108,24 +108,24 @@ export default function DashboardPage() {
       {/* SCANLINE */}
       <div className="fixed inset-0 pointer-events-none bg-[linear-gradient(transparent_50%,_rgba(0,0,0,0.25)_50%)] bg-[length:100%_4px] opacity-20 z-0"></div>
 
-      <div className="relative z-10 w-full max-w-md mx-auto flex flex-col gap-6 mt-4">
+      <div className="relative z-10 w-full max-w-md mx-auto flex flex-col gap-4 mt-2">
         <UnseenMatchesModal matches={unseenMatches} onAcknowledge={handleAcknowledgeUnseen} />
 
         {/* HOLO DISPLAY (FRANCHISE STATUS) */}
-        <div className="bg-black/40 backdrop-blur-xl border border-neon-cyan/30 rounded-3xl p-6 shadow-[0_0_30px_rgba(0,240,255,0.15)] relative overflow-hidden flex flex-col items-center">
+        <div className="bg-black/40 backdrop-blur-xl border border-neon-cyan/30 rounded-3xl p-4 shadow-[0_0_30px_rgba(0,240,255,0.15)] relative overflow-hidden flex flex-col items-center">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-neon-cyan to-transparent"></div>
           
-          <h2 className="text-[10px] font-bold text-neon-cyan uppercase tracking-[0.3em] mb-4 drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]">
+          <h2 className="text-[10px] font-bold text-neon-cyan uppercase tracking-[0.3em] mb-2 drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]">
             {t.franchise_status}
           </h2>
 
-          <div className="w-20 h-20 bg-gray-900 border-2 border-neon-cyan/50 rounded-full flex items-center justify-center mb-3 shadow-[0_0_20px_rgba(0,240,255,0.3)]">
+          <div className="w-16 h-16 bg-gray-900 border-2 border-neon-cyan/50 rounded-full flex items-center justify-center mb-2 shadow-[0_0_20px_rgba(0,240,255,0.3)]">
             <span className="text-3xl font-black font-orbitron text-white">
               {teamName ? teamName.substring(0,2).toUpperCase() : 'FC'}
             </span>
           </div>
 
-          <h1 className="text-2xl font-black uppercase font-orbitron text-white drop-shadow-md mb-6 text-center">
+          <h1 className="text-xl font-black uppercase font-orbitron text-white drop-shadow-md mb-3 text-center">
             {teamName}
           </h1>
 
@@ -155,7 +155,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <NextMatchCountdown />
+        <NextMatchCountdown language={language} />
 
         {/* LEAGUE STATUS */}
         <div className="bg-purple-900/20 backdrop-blur-md border border-purple-500/30 rounded-2xl p-4 flex items-center justify-between shadow-[0_0_20px_rgba(168,85,247,0.15)] relative overflow-hidden group">
@@ -194,7 +194,7 @@ export default function DashboardPage() {
         </div>
 
         {/* MATCH JOURNAL */}
-        <section className="mt-4 mb-8">
+        <section className="mt-2 mb-4">
           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-3 ml-2">
             {t.match_journal}
           </h3>

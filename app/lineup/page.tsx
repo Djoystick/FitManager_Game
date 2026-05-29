@@ -511,7 +511,7 @@ export default function LineupPage() {
                <span className="text-[10px] bg-green-900/40 text-neon-green border border-neon-green/30 px-1.5 py-0.5 rounded uppercase font-bold">Tax Exempt</span>
             )}
           </div>
-          <p className="text-[10px] text-neon-cyan uppercase tracking-widest mt-1">Squad Management</p>
+          <p className="text-[10px] text-neon-cyan uppercase tracking-widest mt-1">{t.squad_management}</p>
         </div>
         <div className="flex flex-col items-end justify-center">
           <div className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Power</div>
@@ -579,10 +579,10 @@ export default function LineupPage() {
                       <div className="flex justify-between items-start">
                         <div>
                           <h3 className="text-white text-lg font-black uppercase tracking-wider">{scoutReport.opponent_team_name}</h3>
-                          <p className="text-[10px] text-red-400 uppercase tracking-widest">Next Target (Round {scoutReport.round_number})</p>
+                          <p className="text-[10px] text-red-400 uppercase tracking-widest">{t.next_target} ({t.round} {scoutReport.round_number})</p>
                         </div>
                         <div className="flex flex-col items-end">
-                          <span className="text-[9px] uppercase tracking-widest text-red-500/70 font-bold">Team OVR</span>
+                          <span className="text-[9px] uppercase tracking-widest text-red-500/70 font-bold">{t.team_ovr}</span>
                           <span className="text-xl font-black text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">
                             {scoutReport.fog_level === 'full' ? scoutReport.team_ovr_estimated : `~${scoutReport.team_ovr_estimated}`}
                           </span>
@@ -593,9 +593,9 @@ export default function LineupPage() {
                     {scoutReport.fog_level === 'hidden' ? (
                       <div className="flex-1 flex flex-col items-center justify-center py-16 text-center">
                         <Lock className="w-10 h-10 text-red-900 mb-3" />
-                        <p className="text-sm uppercase tracking-widest font-black text-red-500">Отдел Скаутов Ур. 3</p>
+                        <p className="text-sm uppercase tracking-widest font-black text-red-500">{t.scout_dept_lv3}</p>
                         <p className="text-[10px] uppercase tracking-widest text-gray-500 mt-2 max-w-[200px]">
-                          Требуется для просмотра состава противника
+                          {t.scout_required}
                         </p>
                       </div>
                     ) : (
@@ -639,7 +639,7 @@ export default function LineupPage() {
             >
               {showChemistry ? <EyeOff size={14} /> : <Zap size={14} />}
               <span className="text-[10px] uppercase tracking-widest font-black">
-                {showChemistry ? 'Hide Links' : 'Chemistry'}
+                {showChemistry ? t.hide_links : t.chemistry}
               </span>
             </button>
           </div>

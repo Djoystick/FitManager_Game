@@ -162,6 +162,22 @@ export const dict = {
     toast_invalid_sp: "Enter a valid amount of SP",
     toast_insufficient_sp: "Not enough Sweat Points",
     bonus_multiplier: "Bonus multiplier for SP → Coins conversion:",
+    
+    // Profile & Legal
+    profile_settings: "Profile Settings",
+    change_team_name: "Change Team Name",
+    change_name_desc: "Cost: 1000 FanCoins",
+    new_team_name: "New Team Name",
+    save_button: "Save",
+    choose_avatar: "Choose Logo",
+    notifications: "Notifications",
+    terms_of_use: "Terms of Use",
+    disclaimer: "Disclaimer",
+    error_censorship: "Invalid team name. Please choose another one.",
+    rename_success: "Team name changed successfully!",
+    rename_error: "Error changing team name",
+    avatar_success: "Logo updated!",
+    error_insufficient_fc: "Not enough FanCoins",
   },
   ru: {
     welcome: "Добро пожаловать",
@@ -326,5 +342,21 @@ export const dict = {
     toast_invalid_sp: "Введи корректное количество SP",
     toast_insufficient_sp: "Недостаточно Sweat Points",
     bonus_multiplier: "Бонусный множитель конвертации SP → Монеты:",
+    
+    // Profile & Legal
+    profile_settings: "Настройки Профиля",
+    change_team_name: "Изменить Название",
+    change_name_desc: "Стоимость: 1000 FanCoins",
+    new_team_name: "Новое Название",
+    save_button: "Сохранить",
+    choose_avatar: "Выбрать Логотип",
+    notifications: "Уведомления",
+    terms_of_use: "Пользовательское Соглашение",
+    disclaimer: "Отказ от Ответственности",
+    error_censorship: "Недопустимое название команды.",
+    rename_success: "Название успешно изменено!",
+    rename_error: "Ошибка при смене названия",
+    avatar_success: "Логотип обновлен!",
+    error_insufficient_fc: "Недостаточно FanCoins",
   }
 };

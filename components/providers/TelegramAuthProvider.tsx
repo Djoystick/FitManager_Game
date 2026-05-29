@@ -38,6 +38,15 @@ export function TelegramAuthProvider({ children }: { children: ReactNode }) {
 
           WebApp.ready();
           WebApp.expand();
+          if (WebApp.requestFullscreen) {
+            WebApp.requestFullscreen();
+          }
+          if (WebApp.setHeaderColor) {
+            WebApp.setHeaderColor('#060913');
+          }
+          if (WebApp.setBackgroundColor) {
+            WebApp.setBackgroundColor('#060913');
+          }
           const initData = WebApp.initData;
 
           const lang = WebApp.initDataUnsafe?.user?.language_code;

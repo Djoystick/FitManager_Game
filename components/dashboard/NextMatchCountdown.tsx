@@ -2,8 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { Clock } from 'lucide-react';
+import { dict } from '@/lib/dictionaries';
 
-export function NextMatchCountdown() {
+interface Props {
+  nextMatchTime?: string;
+  language?: string;
+}
+
+export function NextMatchCountdown({ nextMatchTime, language = 'en' }: Props) {
+  const t = dict[language as keyof typeof dict];
   const [minutesLeft, setMinutesLeft] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [targetHour, setTargetHour] = useState('');
@@ -35,7 +42,7 @@ export function NextMatchCountdown() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-cyan-400">
           <Clock className="w-4 h-4 animate-pulse" />
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em]">NEXT FIXTURE</span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em]">{t.next_fixture || 'NEXT FIXTURE'}</span>
         </div>
         <span className="text-sm font-black text-white font-orbitron drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]">
           {targetHour}

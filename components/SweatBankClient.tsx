@@ -17,7 +17,7 @@ import { dict } from '@/lib/dictionaries';
 // Constants & Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DAILY_STEP_CAP = 25_000;
+const DAILY_STEP_CAP = 20_000;
 
 // Profile labels moved inside component to support translations
 
@@ -170,7 +170,7 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
           <div className="flex justify-between text-[10px] text-gray-600 font-bold">
             <span>0</span>
             <span className="text-gray-500">{stepPct.toFixed(1)}%</span>
-            <span>25K</span>
+            <span>20K</span>
           </div>
         </div>
 

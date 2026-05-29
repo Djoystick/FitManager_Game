@@ -2,6 +2,7 @@
 
 import { useContext, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
@@ -65,61 +66,68 @@ export function GlobalHeader() {
 
   return (
     <div className="w-full bg-black/85 backdrop-blur-md border-b border-gray-800/70 px-3 py-2 sticky top-0 z-50 shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
-
-      {/* Row 1: Currencies */}
-      <div className="flex items-center justify-evenly pb-1">
+      <div className="flex items-center justify-between pb-1 relative">
         
-        {/* TON */}
-        <div className="flex items-center gap-1.5 shrink-0 ml-1">
-          <div className="w-5 h-5 rounded-full border border-blue-600 bg-blue-500/20 shadow-[0_0_8px_rgba(59,130,246,0.3)] flex items-center justify-center">
-            <span className="text-[10px] text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.8)]">💎</span>
+        {/* Currencies Center */}
+        <div className="flex items-center justify-center flex-1 absolute inset-0 pointer-events-none">
+          {/* TON */}
+          <div className="flex items-center gap-1.5 shrink-0 pointer-events-auto">
+            <div className="w-5 h-5 rounded-full border border-blue-600 bg-blue-500/20 shadow-[0_0_8px_rgba(59,130,246,0.3)] flex items-center justify-center">
+              <span className="text-[10px] text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.8)]">💎</span>
+            </div>
+            <span className="text-sm font-black font-orbitron text-blue-400 drop-shadow-[0_0_4px_rgba(96,165,250,0.7)]">
+              {Number(userData?.balance_ton ?? 0).toFixed(2)}
+            </span>
           </div>
-          <span className="text-sm font-black font-orbitron text-blue-400 drop-shadow-[0_0_4px_rgba(96,165,250,0.7)]">
-            {Number(userData?.balance_ton ?? 0).toFixed(2)}
-          </span>
+
+          {/* Divider */}
+          <div className="h-4 w-px bg-gray-700/60 mx-2 shrink-0" />
+
+          {/* FanCoins */}
+          <div className={`flex items-center gap-1.5 shrink-0 transition-transform duration-300 pointer-events-auto ${animatingFC ? 'scale-110' : 'scale-100'}`}>
+            <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-300 ${
+              animatingFC
+                ? 'bg-yellow-400 border-yellow-300 shadow-[0_0_16px_rgba(250,204,21,1)]'
+                : 'bg-yellow-500/20 border-yellow-600 shadow-[0_0_8px_rgba(234,179,8,0.3)]'
+            }`}>
+              <span className={`text-[8px] font-black ${animatingFC ? 'text-black' : 'text-yellow-500'}`}>FC</span>
+            </div>
+            <span className={`text-base font-black font-orbitron transition-all duration-300 ${
+              animatingFC
+                ? 'text-yellow-300 drop-shadow-[0_0_12px_rgba(250,204,21,1)]'
+                : 'text-yellow-500 drop-shadow-[0_0_4px_rgba(234,179,8,0.7)]'
+            }`}>
+              {fc.toLocaleString('en-US')}
+            </span>
+          </div>
+
+          {/* Divider */}
+          <div className="h-4 w-px bg-gray-700/60 mx-2 shrink-0" />
+
+          {/* Sweat Points */}
+          <div className={`flex items-center gap-1.5 transition-transform duration-300 pointer-events-auto ${animatingSP ? 'scale-110' : 'scale-100'}`}>
+            <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-300 ${
+              animatingSP
+                ? 'bg-neon-cyan border-white shadow-[0_0_16px_rgba(0,240,255,1)]'
+                : 'bg-neon-cyan/20 border-neon-cyan shadow-[0_0_8px_rgba(0,240,255,0.3)]'
+            }`}>
+              <span className={`text-[8px] font-black ${animatingSP ? 'text-black' : 'text-neon-cyan'}`}>SP</span>
+            </div>
+            <span className={`text-base font-black font-orbitron transition-all duration-300 ${
+              animatingSP
+                ? 'text-white drop-shadow-[0_0_12px_rgba(0,240,255,1)]'
+                : 'text-neon-cyan drop-shadow-[0_0_4px_rgba(0,240,255,0.7)]'
+            }`}>
+              {sp.toLocaleString('en-US')}
+            </span>
+          </div>
         </div>
 
-        {/* Divider */}
-        <div className="h-4 w-px bg-gray-700/60 mx-2 shrink-0" />
-
-        {/* FanCoins */}
-        <div className={`flex items-center gap-1.5 shrink-0 transition-transform duration-300 ${animatingFC ? 'scale-110' : 'scale-100'}`}>
-          <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-300 ${
-            animatingFC
-              ? 'bg-yellow-400 border-yellow-300 shadow-[0_0_16px_rgba(250,204,21,1)]'
-              : 'bg-yellow-500/20 border-yellow-600 shadow-[0_0_8px_rgba(234,179,8,0.3)]'
-          }`}>
-            <span className={`text-[8px] font-black ${animatingFC ? 'text-black' : 'text-yellow-500'}`}>FC</span>
-          </div>
-          <span className={`text-base font-black font-orbitron transition-all duration-300 ${
-            animatingFC
-              ? 'text-yellow-300 drop-shadow-[0_0_12px_rgba(250,204,21,1)]'
-              : 'text-yellow-500 drop-shadow-[0_0_4px_rgba(234,179,8,0.7)]'
-          }`}>
-            {fc.toLocaleString('en-US')}
-          </span>
-        </div>
-
-        {/* Divider */}
-        <div className="h-4 w-px bg-gray-700/60 mx-2 shrink-0" />
-
-        {/* Sweat Points */}
-        <div className={`flex items-center gap-1.5 transition-transform duration-300 ${animatingSP ? 'scale-110' : 'scale-100'}`}>
-          <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-300 ${
-            animatingSP
-              ? 'bg-neon-cyan border-white shadow-[0_0_16px_rgba(0,240,255,1)]'
-              : 'bg-neon-cyan/20 border-neon-cyan shadow-[0_0_8px_rgba(0,240,255,0.3)]'
-          }`}>
-            <span className={`text-[8px] font-black ${animatingSP ? 'text-black' : 'text-neon-cyan'}`}>SP</span>
-          </div>
-          <span className={`text-base font-black font-orbitron transition-all duration-300 ${
-            animatingSP
-              ? 'text-white drop-shadow-[0_0_12px_rgba(0,240,255,1)]'
-              : 'text-neon-cyan drop-shadow-[0_0_4px_rgba(0,240,255,0.7)]'
-          }`}>
-            {sp.toLocaleString('en-US')}
-          </span>
-        </div>
+        {/* Profile Button Placeholder to maintain height and push to right */}
+        <div className="flex-1"></div>
+        <Link href="/profile" className="w-8 h-8 rounded-full bg-gray-900 border border-gray-700 flex items-center justify-center hover:bg-gray-800 transition-colors z-10">
+          <span className="text-gray-400 text-xs font-bold">⚙️</span>
+        </Link>
       </div>
     </div>
   );
