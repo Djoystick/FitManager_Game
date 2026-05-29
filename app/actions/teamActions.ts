@@ -10,6 +10,7 @@ export interface PlayerStats {
   pace: number;
   shooting: number;
   passing: number;
+  dribbling: number;
   defending: number;
   physical: number;
 }
@@ -32,6 +33,7 @@ function generatePlayer(
     pace: Math.max(30, getRandomInt(45, 55)),
     shooting: Math.max(30, getRandomInt(45, 55)),
     passing: Math.max(30, getRandomInt(45, 55)),
+    dribbling: Math.max(30, getRandomInt(45, 55)),
     defending: Math.max(30, getRandomInt(45, 55)),
     physical: Math.max(30, getRandomInt(45, 55)),
   };
@@ -42,6 +44,7 @@ function generatePlayer(
     stats.pace = getRandomInt(75, 85);
     stats.shooting = getRandomInt(80, 90);
     stats.passing = getRandomInt(80, 90);
+    stats.dribbling = getRandomInt(80, 90);
     stats.defending = getRandomInt(65, 75);
     stats.physical = getRandomInt(70, 80);
     traits.push(Math.random() > 0.5 ? 'Sniper' : 'Playmaker');
@@ -61,7 +64,7 @@ function generatePlayer(
     }
   }
   
-  const ovr = Math.floor((stats.pace + stats.shooting + stats.passing + stats.defending + stats.physical) / 5);
+  const ovr = Math.floor((stats.pace + stats.shooting + stats.passing + stats.dribbling! + stats.defending + stats.physical) / 6);
   const age = getRandomInt(18, 25);
   
   const firstNames = ['Liam', 'Noah', 'Oliver', 'Elijah', 'James', 'William', 'Benjamin', 'Lucas', 'Henry', 'Alexander', 'Mateo', 'Sebastian', 'Jack', 'Owen', 'Theodore'];

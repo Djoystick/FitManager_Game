@@ -1,14 +1,20 @@
 // =============================================================================
-// FitManager Match Engine v2.1 — "Micro-Duel Architecture" (HOTFIX)
+// FitManager Match Engine v3.0 — "Swiss Watch Architecture"
 // =============================================================================
-// HOTFIX over v2.0:
-//  1. FIXED: Infinite minute loop — deduplication now uses a bounded approach
-//     that never increments past minute 89. Max 89 unique slots guaranteed.
-//  2. FIXED: Attack minimums — Math.max(5, ...) guarantees at least 5 attacks
-//     per team so events are always generated.
-//  3. FIXED: Added kickoff (min 1) and final whistle (min 90) info events so
-//     the events array is never empty.
-//  4. FIXED: Attack count hard-capped at 12 per team to prevent runaway scoring.
+// Changes over v2.1:
+//  [P0] Guard against pick([]) crash — all pools have safe fallbacks
+//  [P0] NaN/null stat protection via safeNum()
+//  [P0] Score cap check BEFORE pushing goal event (fixes transcript mismatch)
+//  [P1] duel() → logistic S-curve (3% floor, 97% ceiling — upsets always possible)
+//  [P1] eff() → buffMult capped at 1.35x; conflict halves buffs before penalty
+//  [P1] Green Links filtered by lineupIds — only active if BOTH players start
+//  [P2] weightedPick() — players selected proportional to role-stat × stamina
+//  [P2] Wing assist branch — WNG players contribute a cross bonus
+//  [P2] Penalty branch in Penetration phase (35% of fouls in box)
+//  [P2] Corner branch in Finishing phase (30% of misses go to corner)
+//  [P2] drainStamina — pressing factor for low-possession teams, Engine trait
+//  [P3] AttackContext interface — replaces 13-param resolveAttack signature
+//  [P3] TeamLinks interface + makeStatGetter() DRY helper
 // =============================================================================
 
 export interface MatchPlayerStats {
@@ -47,66 +53,182 @@ export interface MatchResult {
   };
 }
 
+import { hasTraitSynergy, hasTraitConflict } from './chemistry';
+
+// =============================================================================
+// Types for clean architecture
+// =============================================================================
+
+export interface TeamLinks {
+  greenLinks: Record<string, boolean>;
+  synergies: Record<string, boolean>;
+  conflicts: Record<string, boolean>;
+}
+
+interface AttackContext {
+  minute: number;
+  attackingTeam: MatchPlayer[];
+  defendingTeam: MatchPlayer[];
+  attackingTeamKey: 'home' | 'away';
+  atkLinks: TeamLinks;
+  defLinks: TeamLinks;
+  liveStamina: Record<string, number>;
+  score: { home: number; away: number };
+  events: MatchEvent[];
+  maxGoals: number;
+}
+
 // =============================================================================
 // Internal helpers
 // =============================================================================
 
+/** Guard against NaN/null/undefined values from DB. */
+function safeNum(val: unknown, fallback = 50): number {
+  const n = Number(val);
+  return isFinite(n) ? n : fallback;
+}
+
 /**
- * Biased dice roll. The better stat wins ~72% of duels at +10 advantage.
- * Noise window: ±15. At +30 advantage the stronger stat wins ~100%.
+ * Logistic duel — win probability follows an S-curve.
+ * P = clamp(sigmoid(k × diff) + bias, 0.03, 0.97)
+ *   k = 0.045 → at +40 diff: ~96% win; at -40 diff: ~4% (upsets stay possible)
+ *   attackerBias = +0.08 default (replaces old flat +12 constant)
  */
-function duel(atkStat: number, defStat: number): boolean {
-  // +12 Attacker advantage to counteract the 3-phase probability crush
-  // ±25 noise to allow occasional upsets by weaker teams
-  const atkRoll = atkStat + 12 + (Math.random() * 50 - 25);
-  const defRoll = defStat + (Math.random() * 50 - 25);
-  return atkRoll > defRoll;
+function duel(atkStat: number, defStat: number, attackerBias = 0.08): boolean {
+  const a = safeNum(atkStat, 50);
+  const d = safeNum(defStat, 50);
+  const diff = a - d;
+  const raw = 1 / (1 + Math.exp(-0.045 * diff)) + attackerBias;
+  const p = Math.min(0.97, Math.max(0.03, raw));
+  return Math.random() < p;
 }
 
 /** Stamina multiplier — linear above 50, steep penalty below 25. */
 function staminaMult(stamina: number): number {
-  if (stamina >= 75) return 1.00;
-  if (stamina >= 50) return 0.95;
-  if (stamina >= 35) return 0.88;
-  if (stamina >= 25) return 0.78;
+  const s = Math.max(0, stamina);
+  if (s >= 75) return 1.00;
+  if (s >= 50) return 0.95;
+  if (s >= 35) return 0.88;
+  if (s >= 25) return 0.78;
   return 0.60;
 }
 
-/** Effective stat value: applies stamina penalty and chemistry bonus. */
+/**
+ * Effective stat: applies stamina, chemistry, and trait modifiers.
+ * Buff stacking is capped at 1.35× to prevent invincible teams.
+ * Conflicts halve all active buffs first, then apply -15% penalty.
+ */
 function eff(
   rawStat: number,
   hasGreenLink: boolean,
-  currentStamina: number
+  currentStamina: number,
+  hasSynergy: boolean = false,
+  hasConflict: boolean = false
 ): number {
-  let val = rawStat * staminaMult(currentStamina);
-  if (hasGreenLink) val *= 1.10;
-  return val;
+  const base = safeNum(rawStat, 0);
+  const stamMult = staminaMult(Math.max(0, currentStamina));
+
+  let buffMult = 1.0;
+  if (hasGreenLink) buffMult += 0.10;
+  if (hasSynergy)   buffMult += 0.10;
+
+  // Cap total buff before conflict resolution
+  buffMult = Math.min(1.35, buffMult);
+
+  if (hasConflict) {
+    // Conflict halves any accumulated buff, then applies the -15% penalty
+    const buffGain = buffMult - 1.0;
+    buffMult = 1.0 + buffGain * 0.5;
+    buffMult *= 0.85;
+  }
+
+  return base * stamMult * buffMult;
 }
 
-/** Pick a random element from a non-empty array. */
-function pick<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
+/**
+ * DRY helper — returns an eff() shorthand bound to a team's link/synergy/conflict maps.
+ * Replaces the repeated gl(p, map) / syn(p, map) / con(p, map) pattern.
+ */
+function makeStatGetter(links: TeamLinks, liveStamina: Record<string, number>) {
+  return (player: MatchPlayer, rawStat: number): number =>
+    eff(
+      rawStat,
+      links.greenLinks[player.id] ?? false,
+      liveStamina[player.id] ?? player.stamina,
+      links.synergies[player.id] ?? false,
+      links.conflicts[player.id] ?? false
+    );
+}
+
+/**
+ * Weighted random pick — probability proportional to (statVal × stamina factor).
+ * Falls back to uniform pick if pool is empty (P0 guard).
+ */
+function weightedPick<T extends { id: string; stats: MatchPlayerStats; stamina: number }>(
+  pool: T[],
+  statKey: keyof MatchPlayerStats,
+  fallback: T[]
+): T {
+  const source = pool.length > 0 ? pool : fallback;
+  if (source.length === 0) throw new Error('[matchEngine] weightedPick: both pool and fallback are empty');
+  if (source.length === 1) return source[0];
+
+  const weights = source.map(p => {
+    const sv = Math.max(1, safeNum(p.stats[statKey], 50));
+    const sf = 0.5 + 0.5 * Math.max(0, Math.min(100, p.stamina)) / 100;
+    return sv * sf;
+  });
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < source.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return source[i];
+  }
+  return source[source.length - 1];
 }
 
 // Position group predicates
-const isMID = (pos: string) => ['MID', 'CM', 'CAM', 'CDM', 'RM', 'LM'].includes(pos || '');
-const isFWD = (pos: string) => ['FWD', 'ST', 'CF', 'LWF', 'RWF', 'CAM'].includes(pos || '');
-const isWNG = (pos: string) => ['RM', 'LM', 'LWF', 'RWF'].includes(pos || '');
-const isDEF = (pos: string) => ['DEF', 'CB', 'LB', 'RB', 'LWB', 'RWB', 'CDM'].includes(pos || '');
+const isMID = (pos: string) => ['MID', 'CM', 'CAM', 'CDM', 'RM', 'LM'].includes(pos ?? '');
+const isFWD = (pos: string) => ['FWD', 'ST', 'CF', 'LWF', 'RWF', 'CAM'].includes(pos ?? '');
+const isWNG = (pos: string) => ['RM', 'LM', 'LWF', 'RWF'].includes(pos ?? '');
+const isDEF = (pos: string) => ['DEF', 'CB', 'LB', 'RB', 'LWB', 'RWB', 'CDM'].includes(pos ?? '');
+
+// Safe uniform pick (never crashes on empty array)
+function pick<T>(arr: T[], fallback?: T[]): T {
+  const src = arr.length > 0 ? arr : (fallback ?? []);
+  if (src.length === 0) throw new Error('[matchEngine] pick: empty array with no fallback');
+  return src[Math.floor(Math.random() * src.length)];
+}
 
 // =============================================================================
-// Stamina drain
+// Stamina drain (P2 — pressing factor + Engine trait)
 // =============================================================================
 
 function drainStamina(
   players: MatchPlayer[],
   teamKey: 'home' | 'away',
+  possession: number,             // this team's possession share (0.0–1.0)
   staminaDrain: { home: Record<string, number>; away: Record<string, number> }
 ) {
+  // Low possession → high pressing → more drain
+  const pressingFactor = possession < 0.40 ? 1.25
+                       : possession < 0.50 ? 1.10
+                       : 1.00;
+
   for (const p of players) {
-    let drain = Math.floor(Math.random() * 11) + 16; // 16–26
-    if (p.traits.includes('Engine')) drain = Math.max(8, drain - 6);
-    staminaDrain[teamKey][p.id] = Math.max(0, p.stamina - drain);
+    let base = Math.floor(Math.random() * 7) + 16; // 16–22
+
+    // Positional modifier — midfielders run most, keepers rest
+    if (p.position === 'GK')   base = Math.floor(base * 0.50);
+    else if (isMID(p.position)) base = Math.floor(base * 1.15);
+
+    const pressedDrain = Math.floor(base * pressingFactor);
+    // Engine trait reduces drain by 30%
+    const finalDrain = p.traits.includes('Engine')
+      ? Math.floor(pressedDrain * 0.70)
+      : pressedDrain;
+
+    staminaDrain[teamKey][p.id] = Math.max(0, p.stamina - finalDrain);
   }
 }
 
@@ -116,46 +238,31 @@ function drainStamina(
 
 function midfieldScore(
   players: MatchPlayer[],
-  greenLinks: Record<string, boolean>,
+  links: TeamLinks,
   liveStamina: Record<string, number>
 ): number {
   const mids = players.filter(p => isMID(p.position));
   const pool = mids.length > 0 ? mids : players.filter(p => p.position !== 'GK');
   if (pool.length === 0) return 100; // safety fallback
 
-  return pool.reduce((sum, p) => {
-    const st = liveStamina[p.id] ?? p.stamina;
-    const gl = greenLinks[p.id] ?? false;
-    return (
-      sum +
-      eff(p.stats.passing,          gl, st) +
-      eff(p.stats.dribbling,        gl, st) +
-      eff(p.stats.physical * 0.4,   gl, st)
-    );
-  }, 0);
+  const get = makeStatGetter(links, liveStamina);
+  return pool.reduce((sum, p) =>
+    sum +
+    get(p, safeNum(p.stats.passing, 50)) +
+    get(p, safeNum(p.stats.dribbling, 50)) +
+    get(p, safeNum(p.stats.physical, 50) * 0.4),
+  0);
 }
 
 // =============================================================================
 // Narrative pools
 // =============================================================================
 
-const BUILDUP_LOSE = [
-  'loses the ball in midfield',
-  'is dispossessed before reaching the final third',
-  'misplaces the pass under pressure',
-  'tackled cleanly — the move breaks down',
-];
 const PENET_WIN = [
   'bursts past the last defender',
   'leaves the defender in the dust with a brilliant feint',
   'accelerates into the box',
   'dribbles around two defenders',
-];
-const PENET_LOSE = [
-  'is tracked and stopped by a brilliant tackle',
-  'runs into a wall of defenders',
-  'hesitates and loses the ball near the box',
-  'is shoulder-barged off the ball',
 ];
 const SAVE_MSGS = [
   'makes a brilliant save!',
@@ -171,133 +278,250 @@ const MISS_MSGS = [
 ];
 
 // =============================================================================
-// Attack resolver
+// Set-piece resolvers (P2/P3)
 // =============================================================================
 
-interface AttackContext {
-  attackingTeam: MatchPlayer[];
-  defendingTeam: MatchPlayer[];
-  atkKey: 'home' | 'away';
-  defKey: 'home' | 'away';
-  atkGreenLinks: Record<string, boolean>;
-  defGreenLinks: Record<string, boolean>;
-  liveStamina: Record<string, number>;
-  minute: number;
-  events: MatchEvent[];
-  score: { home: number; away: number };
+/** Corner kick — best header in attack vs keeper. No attacker bias (50/50). */
+function resolveCorner(ctx: AttackContext) {
+  const { minute, attackingTeam, defendingTeam, attackingTeamKey, atkLinks, defLinks, liveStamina, score, events, maxGoals } = ctx;
+  const outfieldAtk = attackingTeam.filter(p => p.position !== 'GK');
+  const gk = defendingTeam.find(p => p.position === 'GK') ?? pick(defendingTeam);
+
+  // Best header = highest Physical + Shooting blend
+  const header = outfieldAtk.reduce((best, p) =>
+    (safeNum(p.stats.physical) + safeNum(p.stats.shooting) * 0.4) >
+    (safeNum(best.stats.physical) + safeNum(best.stats.shooting) * 0.4)
+      ? p : best,
+    outfieldAtk[0] ?? attackingTeam[0]
+  );
+
+  const atkGet = makeStatGetter(atkLinks, liveStamina);
+  const defGet = makeStatGetter(defLinks, liveStamina);
+
+  const headerEff = atkGet(header, safeNum(header.stats.physical) * 1.2 + safeNum(header.stats.shooting) * 0.8);
+  const saveEff   = defGet(gk,     safeNum(gk.stats.defending) * 1.0 + safeNum(gk.stats.physical) * 0.5);
+
+  if (duel(headerEff, saveEff, 0.0) && score[attackingTeamKey] < maxGoals) {
+    score[attackingTeamKey]++;
+    events.push({
+      type: 'goal', minute,
+      player_id: header.id, player_name: header.name, team: attackingTeamKey,
+      details: `⚽ ГОЛ с углового! ${header.name} замыкает подачу мощным ударом головой!`,
+    });
+  } else {
+    events.push({
+      type: 'save', minute,
+      player_id: gk.id, player_name: gk.name,
+      team: attackingTeamKey === 'home' ? 'away' : 'home',
+      details: `🧤 ${gk.name} уверенно выбивает кулаком после углового!`,
+    });
+  }
 }
 
-function resolveAttack(ctx: AttackContext): void {
-  const { attackingTeam, defendingTeam, atkKey, defKey, atkGreenLinks, defGreenLinks, liveStamina, minute, events, score } = ctx;
+/** Penalty kick — pure Shooting vs GK Defending. Attacker has slight edge. */
+function resolvePenalty(
+  ctx: AttackContext,
+  atkFwd: MatchPlayer,
+  gk: MatchPlayer
+) {
+  const { minute, attackingTeamKey, atkLinks, defLinks, liveStamina, score, events, maxGoals } = ctx;
+  const defTeamKey: 'home' | 'away' = attackingTeamKey === 'home' ? 'away' : 'home';
 
-  // ── Role selection with safe fallbacks ─────────────────────────────────────
-  const outfieldAtk  = attackingTeam.filter(p => p.position !== 'GK');
-  const outfieldDef  = defendingTeam.filter(p => p.position !== 'GK');
+  const atkGet = makeStatGetter(atkLinks, liveStamina);
+  const defGet = makeStatGetter(defLinks, liveStamina);
 
-  const atkMidPool   = attackingTeam.filter(p => isMID(p.position));
-  const defMidPool   = defendingTeam.filter(p => isMID(p.position));
-  const atkFwdPool   = attackingTeam.filter(p => isFWD(p.position) || isWNG(p.position));
-  const defDefPool   = defendingTeam.filter(p => isDEF(p.position));
-  const gk           = defendingTeam.find(p => p.position === 'GK');
+  let shotPower = safeNum(atkFwd.stats.shooting) * 2.0;
+  if (atkFwd.traits.includes('Poacher')) shotPower *= 1.10;
 
-  const atkMid  = atkMidPool.length > 0  ? pick(atkMidPool)  : pick(outfieldAtk);
-  const defMid  = defMidPool.length > 0  ? pick(defMidPool)  : pick(outfieldDef);
-  const atkFwd  = atkFwdPool.length > 0  ? pick(atkFwdPool)  : atkMid;
-  const defDef  = defDefPool.length > 0  ? pick(defDefPool)  : defMid;
-  const keeper  = gk ?? pick(defendingTeam);
+  const saveVal = safeNum(gk.stats.defending) * 1.0 + safeNum(gk.stats.physical) * 0.5;
 
-  const st = (p: MatchPlayer) => liveStamina[p.id] ?? p.stamina;
-  const gl = (p: MatchPlayer, links: Record<string, boolean>) => links[p.id] ?? false;
+  const shotEff = atkGet(atkFwd, shotPower);
+  const saveEff = defGet(gk, saveVal);
+
+  events.push({
+    type: 'info', minute,
+    player_id: atkFwd.id, player_name: atkFwd.name, team: attackingTeamKey,
+    details: `⚠️ ПЕНАЛЬТИ! ${atkFwd.name} выходит к точке против ${gk.name}!`,
+  });
+
+  if (duel(shotEff, saveEff, 0.15) && score[attackingTeamKey] < maxGoals) {
+    score[attackingTeamKey]++;
+    events.push({
+      type: 'goal', minute: minute + 1,
+      player_id: atkFwd.id, player_name: atkFwd.name, team: attackingTeamKey,
+      details: `⚽ ГОЛ! ${atkFwd.name} хладнокровно реализует пенальти — вратарь не угадал угол!`,
+    });
+  } else {
+    events.push({
+      type: 'save', minute: minute + 1,
+      player_id: gk.id, player_name: gk.name, team: defTeamKey,
+      details: `🧤 ЧУДО-СЕЙВ! ${gk.name} угадывает угол и отражает удар ${atkFwd.name}!`,
+    });
+  }
+}
+
+// =============================================================================
+// Attack resolver (P3 — AttackContext, P2 — wing assist, penalty, corner)
+// =============================================================================
+
+function resolveAttack(ctx: AttackContext) {
+  const {
+    minute, attackingTeam, defendingTeam, attackingTeamKey,
+    atkLinks, defLinks, liveStamina, score, events, maxGoals,
+  } = ctx;
+
+  const defTeamKey: 'home' | 'away' = attackingTeamKey === 'home' ? 'away' : 'home';
+
+  // ── Safe pool construction (P0 guard) ──────────────────────────────────────
+  const allAtk      = attackingTeam;
+  const allDef      = defendingTeam;
+  const outfieldAtk = allAtk.filter(p => p.position !== 'GK');
+  const outfieldDef = allDef.filter(p => p.position !== 'GK');
+
+  const atkMidPool  = allAtk.filter(p => isMID(p.position));
+  const defMidPool  = allDef.filter(p => isMID(p.position));
+  const atkFwdPool  = allAtk.filter(p => isFWD(p.position) || isWNG(p.position));
+  const defDefPool  = allDef.filter(p => isDEF(p.position));
+  const atkWngPool  = allAtk.filter(p => isWNG(p.position));
+  const gk          = allDef.find(p => p.position === 'GK') ?? pick(allDef);
+
+  // weightedPick with fallback prevents crash if pool is empty
+  const atkMid = weightedPick(atkMidPool, 'passing',   outfieldAtk);
+  const defMid = weightedPick(defMidPool, 'defending', outfieldDef);
+  const atkFwd = weightedPick(atkFwdPool, 'shooting',  outfieldAtk.length > 0 ? outfieldAtk : [atkMid]);
+  const defDef = weightedPick(defDefPool, 'defending', outfieldDef.length > 0 ? outfieldDef : [defMid]);
+
+  const atkGet = makeStatGetter(atkLinks, liveStamina);
+  const defGet = makeStatGetter(defLinks, liveStamina);
 
   // ── PHASE 1: Build-up ──────────────────────────────────────────────────────
-  const atkBuild = eff(atkMid.stats.passing + atkMid.stats.dribbling, gl(atkMid, atkGreenLinks), st(atkMid));
-  const defBuild = eff(defMid.stats.defending + defMid.stats.physical, gl(defMid, defGreenLinks), st(defMid));
+  const atkBuild = atkGet(atkMid, safeNum(atkMid.stats.passing) + safeNum(atkMid.stats.dribbling));
+  const defBuild = defGet(defMid, safeNum(defMid.stats.defending) + safeNum(defMid.stats.physical));
 
   if (!duel(atkBuild, defBuild)) {
     events.push({
-      type: 'info',
-      minute,
-      player_id: defMid.id,
-      player_name: defMid.name,
-      team: defKey,
-      details: `Неточный пас в центре поля, владение переходит к сопернику.`,
+      type: 'info', minute,
+      player_id: defMid.id, player_name: defMid.name, team: defTeamKey,
+      details: `${defMid.name} перехватывает мяч в центре поля — атака сорвана.`,
     });
     return;
   }
 
-  // ── PHASE 2: Penetration ───────────────────────────────────────────────────
-  let atkPaceVal = atkFwd.stats.pace + atkFwd.stats.dribbling;
-  let defStopVal = defDef.stats.pace + defDef.stats.defending;
-  if (atkFwd.traits.includes('Sniper'))   atkPaceVal += 5;
-  if (atkFwd.traits.includes('Paceman'))  atkPaceVal += 7;
-  if (defDef.traits.includes('Wall'))     defStopVal += 8;
+  // ── Wing Assist (P2) — 35% chance a winger contributes a cross ────────────
+  let hasWingAssist = false;
+  let assistPlayer: MatchPlayer = atkMid;
+  if (atkWngPool.length > 0 && Math.random() < 0.35) {
+    hasWingAssist = true;
+    assistPlayer = pick(atkWngPool);
+  }
 
-  // 5% foul chance — fires and stops the attack
+  // ── PHASE 2: Penetration ───────────────────────────────────────────────────
+  let atkPaceVal = safeNum(atkFwd.stats.pace) + safeNum(atkFwd.stats.dribbling);
+  if (atkFwd.traits.includes('Speedster')) atkPaceVal *= 1.15;
+
+  let defDefVal = safeNum(defDef.stats.defending) + safeNum(defDef.stats.physical);
+  if (defDef.traits.includes('Anchor')) defDefVal *= 1.15;
+
+  const atkPenet = atkGet(atkFwd, atkPaceVal);
+  const defPenet = defGet(defDef, defDefVal);
+
+  // 5% foul chance — fires discipline event, possibly penalty
   if (Math.random() < 0.05) {
+    const isInBox = Math.random() < 0.35; // 35% of fouls are in the penalty area
+
+    if (isInBox) {
+      // Red card + penalty
+      events.push({
+        type: 'red_card', minute,
+        player_id: defDef.id, player_name: defDef.name, team: defTeamKey,
+        details: `🔴 КРАСНАЯ! ${defDef.name} сбивает ${atkFwd.name} в штрафной — ПЕНАЛЬТИ!`,
+      });
+      resolvePenalty(ctx, atkFwd, gk);
+      return;
+    }
+
     const r = Math.random();
     if (r < 0.55) {
-      events.push({ type: 'yellow_card', minute, player_id: defDef.id, player_name: defDef.name, team: defKey, details: `🟡 ЖЁЛТАЯ! ${defDef.name} срубает ${atkFwd.name} на подходе к штрафной.` });
+      events.push({
+        type: 'yellow_card', minute,
+        player_id: defDef.id, player_name: defDef.name, team: defTeamKey,
+        details: `🟡 ЖЁЛТАЯ! ${defDef.name} срубает ${atkFwd.name} на подходе к штрафной.`,
+      });
     } else if (r < 0.80) {
-      events.push({ type: 'injury', minute, player_id: atkFwd.id, player_name: atkFwd.name, team: atkKey, details: `🚑 ТРАВМА! ${atkFwd.name} получает повреждение в стыке с ${defDef.name}.` });
+      events.push({
+        type: 'injury', minute,
+        player_id: atkFwd.id, player_name: atkFwd.name, team: attackingTeamKey,
+        details: `🚑 ТРАВМА! ${atkFwd.name} получает повреждение в стыке с ${defDef.name}.`,
+      });
     } else {
-      events.push({ type: 'red_card', minute, player_id: defDef.id, player_name: defDef.name, team: defKey, details: `🔴 КРАСНАЯ! ${defDef.name} удалён за фол последней надежды на ${atkFwd.name}!` });
+      events.push({
+        type: 'red_card', minute,
+        player_id: defDef.id, player_name: defDef.name, team: defTeamKey,
+        details: `🔴 КРАСНАЯ! ${defDef.name} удалён за фол последней надежды на ${atkFwd.name}!`,
+      });
     }
     return;
   }
 
-  const atkPace = eff(atkPaceVal, gl(atkFwd, atkGreenLinks), st(atkFwd));
-  const defStop = eff(defStopVal, gl(defDef, defGreenLinks), st(defDef));
-
-  if (!duel(atkPace, defStop)) {
+  if (!duel(atkPenet, defPenet)) {
     events.push({
-      type: 'breakthrough_failed',
-      minute,
-      player_id: defDef.id,
-      player_name: defDef.name,
-      team: defKey,
-      details: `Отличный подкат! Защита нейтрализует угрозу.`,
+      type: 'breakthrough_failed', minute,
+      player_id: defDef.id, player_name: defDef.name, team: defTeamKey,
+      details: `Отличный подкат ${defDef.name}! Защита нейтрализует угрозу.`,
     });
     return;
   }
 
   // ── PHASE 3: Finishing ─────────────────────────────────────────────────────
-  let shotVal = atkFwd.stats.shooting * 1.5 + atkFwd.stats.pace * 0.5;
-  let saveVal = keeper.stats.defending * 1.5 + keeper.stats.physical * 0.5;
-  if (atkFwd.traits.includes('Sniper'))    shotVal += 10;
-  if (keeper.traits.includes('Wall'))      saveVal += 8;
-  if (keeper.traits.includes('Reflexes'))  saveVal += 6;
+  let shotVal = safeNum(atkFwd.stats.shooting) * 1.5 + safeNum(atkFwd.stats.pace) * 0.5;
+  if (atkFwd.traits.includes('Poacher'))   shotVal *= 1.20;
+  if (atkMid.traits.includes('Playmaker')) shotVal *= 1.10; // playmaker pass bonus
+  if (hasWingAssist)                       shotVal *= 1.08; // winger cross bonus
 
-  const atkShot = eff(shotVal, gl(atkFwd, atkGreenLinks), st(atkFwd));
-  const defSave = eff(saveVal, gl(keeper, defGreenLinks), st(keeper)) * 0.85;
+  let saveVal = safeNum(gk.stats.defending) * 1.5 + safeNum(gk.stats.physical) * 0.5;
+  if (gk.traits.includes('Wall')) saveVal *= 1.20;
 
-  if (duel(atkShot, defSave)) {
-    score[atkKey]++;
-    events.push({
-      type: 'goal',
-      minute,
-      player_id: atkFwd.id,
-      player_name: atkFwd.name,
-      team: atkKey,
-      details: `⚽ ГОЛ! ${atkFwd.name} ${pick(PENET_WIN)} и прошивает ворота ${keeper.name}! (пас: ${atkMid.name})`,
-    });
+  const atkFinish = atkGet(atkFwd, shotVal);
+  const defSave   = defGet(gk,     saveVal);
+
+  // [P0 FIX] Check score cap BEFORE pushing goal event
+  if (duel(atkFinish, defSave)) {
+    if (score[attackingTeamKey] < maxGoals) {
+      score[attackingTeamKey]++;
+      const goalDetail = hasWingAssist
+        ? `⚽ ГОЛ! Крест от ${assistPlayer.name} — ${atkFwd.name} замыкает в касание! (${atkMid.name} разрезал защиту)`
+        : `⚽ ГОЛ! ${atkFwd.name} ${pick(PENET_WIN)} и прошивает ворота ${gk.name}! (пас: ${atkMid.name})`;
+      events.push({
+        type: 'goal', minute,
+        player_id: atkFwd.id, player_name: atkFwd.name, team: attackingTeamKey,
+        details: goalDetail,
+      });
+    }
+    // If score cap reached, the attack silently fizzles — no goal event added
   } else {
-    const keeperHeroic = !duel(atkShot, defSave * 0.75);
+    // Corner kick check — 30% of misses produce a corner
+    if (Math.random() < 0.30) {
+      events.push({
+        type: 'info', minute,
+        player_id: atkFwd.id, player_name: atkFwd.name, team: attackingTeamKey,
+        details: `🚩 Угловой! ${atkFwd.name} бьёт — мяч уходит за лицевую.`,
+      });
+      resolveCorner({ ...ctx, minute: minute + 1 });
+      return;
+    }
+
+    // Heroic save vs. simple miss
+    const keeperHeroic = !duel(atkFinish, defSave * 0.75);
     if (keeperHeroic) {
       events.push({
-        type: 'save',
-        minute,
-        player_id: keeper.id,
-        player_name: keeper.name,
-        team: defKey,
-        details: `🧤 СЭЙВ! ${keeper.name} ${pick(SAVE_MSGS)} ${atkFwd.name} не верит своим глазам!`,
+        type: 'save', minute,
+        player_id: gk.id, player_name: gk.name, team: defTeamKey,
+        details: `🧤 СЭЙВ! ${gk.name} ${pick(SAVE_MSGS)} — ${atkFwd.name} не верит своим глазам!`,
       });
     } else {
       events.push({
-        type: 'save',
-        minute,
-        player_id: atkFwd.id,
-        player_name: atkFwd.name,
-        team: atkKey,
+        type: 'save', minute,
+        player_id: atkFwd.id, player_name: atkFwd.name, team: attackingTeamKey,
         details: `💨 ${atkFwd.name} ${pick(MISS_MSGS)} после отличного прохода.`,
       });
     }
@@ -305,18 +529,13 @@ function resolveAttack(ctx: AttackContext): void {
 }
 
 // =============================================================================
-// Timeline builder — FIXED: no infinite loop past minute 89
+// Timeline builder — guaranteed no infinite loop (pool of 87 unique slots)
 // =============================================================================
 
-/**
- * Distribute N attacks across minutes 2–89.
- * Uses pre-assigned unique slots from a shuffled pool — guarantees no loop.
- */
 function buildTimeline(
   homeCount: number,
   awayCount: number
 ): Array<{ team: 'home' | 'away'; minute: number }> {
-  // Create a pool of available minutes (2 to 88 inclusive = 87 slots)
   const availableMinutes: number[] = [];
   for (let m = 2; m <= 88; m++) availableMinutes.push(m);
 
@@ -326,18 +545,15 @@ function buildTimeline(
     [availableMinutes[i], availableMinutes[j]] = [availableMinutes[j], availableMinutes[i]];
   }
 
-  const safeHomeCount = Math.max(0, Math.floor(homeCount || 0));
-  const safeAwayCount = Math.max(0, Math.floor(awayCount || 0));
-  const total = safeHomeCount + safeAwayCount;
-  
-  // Take only as many slots as we have attacks (pool has 87 — always enough)
+  const safeHome = Math.max(0, Math.floor(homeCount || 0));
+  const safeAway = Math.max(0, Math.floor(awayCount || 0));
+  const total = safeHome + safeAway;
+
   const selectedMinutes = availableMinutes.slice(0, total).sort((a, b) => a - b);
 
-  // Assign teams: interleave home/away proportionally
-  const homeSlots = Math.min(safeHomeCount, selectedMinutes.length);
+  const homeSlots = Math.min(safeHome, selectedMinutes.length);
   const result: Array<{ team: 'home' | 'away'; minute: number }> = [];
 
-  // Shuffle which indices go to home vs away
   const indices = [...Array(total).keys()];
   for (let i = indices.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -366,16 +582,54 @@ export function simulateMatch(
   const score = { home: 0, away: 0 };
   const staminaDrain: { home: Record<string, number>; away: Record<string, number> } = { home: {}, away: {} };
 
-  // Safety: if teams are empty, return a boring 0-0 immediately
+  // [P0] Safety: empty teams → 0-0 immediately
   if (homeTeam.length === 0 || awayTeam.length === 0) {
     return { score, events, staminaDrain };
   }
 
-  // ── 1. Stamina drain ───────────────────────────────────────────────────────
-  drainStamina(homeTeam, 'home', staminaDrain);
-  drainStamina(awayTeam, 'away', staminaDrain);
+  // ── Trait synergy/conflict maps ────────────────────────────────────────────
+  const homeSyn: Record<string, boolean> = {};
+  const homeCon: Record<string, boolean> = {};
+  const awaySyn: Record<string, boolean> = {};
+  const awayCon: Record<string, boolean> = {};
 
-  // Live stamina = midpoint of start and end (simulates gradual fatigue)
+  const calcTraits = (team: MatchPlayer[], syn: Record<string, boolean>, con: Record<string, boolean>) => {
+    for (let i = 0; i < team.length; i++) {
+      for (let j = i + 1; j < team.length; j++) {
+        if (hasTraitSynergy(team[i].traits, team[j].traits)) {
+          syn[team[i].id] = true;
+          syn[team[j].id] = true;
+        }
+        if (hasTraitConflict(team[i].traits, team[j].traits)) {
+          con[team[i].id] = true;
+          con[team[j].id] = true;
+        }
+      }
+    }
+  };
+
+  calcTraits(homeTeam, homeSyn, homeCon);
+  calcTraits(awayTeam, awaySyn, awayCon);
+
+  const homeLinks: TeamLinks = { greenLinks: homeGreenLinks, synergies: homeSyn, conflicts: homeCon };
+  const awayLinks: TeamLinks = { greenLinks: awayGreenLinks, synergies: awaySyn, conflicts: awayCon };
+
+  // ── Stamina drain (initial) ────────────────────────────────────────────────
+  // We need possession first for pressing — use a quick midfield estimate
+  const quickMidScore = (team: MatchPlayer[]) =>
+    team.filter(p => isMID(p.position)).reduce((s, p) =>
+      s + safeNum(p.stats.passing, 50) + safeNum(p.stats.dribbling, 50), 0) || 100;
+
+  const quickHome = quickMidScore(homeTeam);
+  const quickAway = quickMidScore(awayTeam);
+  const quickTotal = quickHome + quickAway;
+  const estHomePoss = quickHome / quickTotal;
+  const estAwayPoss = 1 - estHomePoss;
+
+  drainStamina(homeTeam, 'home', estHomePoss, staminaDrain);
+  drainStamina(awayTeam, 'away', estAwayPoss, staminaDrain);
+
+  // ── Live stamina map (average of pre/post match) ───────────────────────────
   const liveStaminaMap: Record<string, number> = {};
   for (const p of [...homeTeam, ...awayTeam]) {
     const tk = homeTeam.includes(p) ? 'home' : 'away';
@@ -383,65 +637,68 @@ export function simulateMatch(
     liveStaminaMap[p.id] = Math.round((p.stamina + end) / 2);
   }
 
-  // ── 2. Possession / attack count ──────────────────────────────────────────
-  const homeMid  = midfieldScore(homeTeam, homeGreenLinks, liveStaminaMap);
-  const awayMid  = midfieldScore(awayTeam, awayGreenLinks, liveStaminaMap);
-  const totalMid = homeMid + awayMid || 1; // avoid division by zero
+  // ── True midfield score (with live stamina + links) ────────────────────────
+  const homeMid = midfieldScore(homeTeam, homeLinks, liveStaminaMap);
+  const awayMid = midfieldScore(awayTeam, awayLinks, liveStaminaMap);
+  const totalMid = homeMid + awayMid || 1;
 
   const homePoss = isNaN(homeMid / totalMid) ? 0.5 : (homeMid / totalMid);
   const awayPoss = 1 - homePoss;
 
-  // Formula: base 5 attacks + up to 7 bonus based on possession, ±1 jitter
-  // Capped at 12 max per team (hard cap to prevent runaway goals)
-  // Minimum 3 per team to guarantee events (safeguarded against NaN)
+  // Attack count: base 5 + up to 7 bonus based on possession ± 1 jitter
   const homeAttacks = Math.min(12, Math.max(3, Math.round(5 + homePoss * 7 + Math.random() * 2 - 1) || 3));
   const awayAttacks = Math.min(12, Math.max(3, Math.round(5 + awayPoss * 7 + Math.random() * 2 - 1) || 3));
 
-  // ── 3. Kickoff info event ──────────────────────────────────────────────────
-  const homeAnchor = homeTeam[0];
-  const awayAnchor = awayTeam[0];
+  // ── OVR disparity score cap ────────────────────────────────────────────────
+  const avgOVR = (team: MatchPlayer[]) =>
+    team.reduce((s, p) =>
+      s + (safeNum(p.stats.pace) + safeNum(p.stats.shooting) + safeNum(p.stats.passing) +
+           safeNum(p.stats.dribbling) + safeNum(p.stats.defending) + safeNum(p.stats.physical)) / 6,
+    0) / (team.length || 1);
+
+  const ovrDiff = Math.abs(avgOVR(homeTeam) - avgOVR(awayTeam));
+  const maxGoals = ovrDiff >= 20 ? 99
+                 : ovrDiff >= 10 ? 6
+                 : ovrDiff >= 5  ? 5
+                 : 4;
+
+  // ── Kickoff event ──────────────────────────────────────────────────────────
   events.push({
-    type: 'info',
-    minute: 1,
-    player_id: homeAnchor?.id ?? 'sys',
-    player_name: 'Referee',
-    team: 'home',
-    details: `⚽ Матч начался! Владение мячом: Дом ${Math.round(homePoss * 100)}% — Гости ${Math.round(awayPoss * 100)}%.`,
+    type: 'info', minute: 1,
+    player_id: homeTeam[0]?.id ?? 'sys', player_name: 'Referee', team: 'home',
+    details: `⚽ Матч начался! Владение: Дом ${Math.round(homePoss * 100)}% — Гости ${Math.round(awayPoss * 100)}%.`,
   });
 
-  // ── 4. Build & process timeline ────────────────────────────────────────────
+  // ── Process timeline ───────────────────────────────────────────────────────
   const timeline = buildTimeline(homeAttacks, awayAttacks);
 
   for (const slot of timeline) {
-    if (slot.team === 'home') {
-      resolveAttack({ attackingTeam: homeTeam, defendingTeam: awayTeam, atkKey: 'home', defKey: 'away', atkGreenLinks: homeGreenLinks, defGreenLinks: awayGreenLinks, liveStamina: liveStaminaMap, minute: slot.minute, events, score });
-    } else {
-      resolveAttack({ attackingTeam: awayTeam, defendingTeam: homeTeam, atkKey: 'away', defKey: 'home', atkGreenLinks: awayGreenLinks, defGreenLinks: homeGreenLinks, liveStamina: liveStaminaMap, minute: slot.minute, events, score });
-    }
+    const isHomeAtk = slot.team === 'home';
+    const ctx: AttackContext = {
+      minute: slot.minute,
+      attackingTeam: isHomeAtk ? homeTeam : awayTeam,
+      defendingTeam: isHomeAtk ? awayTeam : homeTeam,
+      attackingTeamKey: isHomeAtk ? 'home' : 'away',
+      atkLinks: isHomeAtk ? homeLinks : awayLinks,
+      defLinks: isHomeAtk ? awayLinks : homeLinks,
+      liveStamina: liveStaminaMap,
+      score,
+      events,
+      maxGoals,
+    };
+    resolveAttack(ctx);
   }
 
-  // ── 5. Score cap by OVR disparity ─────────────────────────────────────────
-  const avgOVR = (team: MatchPlayer[]) =>
-    team.reduce((s, p) => s + (p.stats.pace + p.stats.shooting + p.stats.passing + p.stats.dribbling + p.stats.defending + p.stats.physical) / 6, 0) / (team.length || 1);
-
-  const ovrDiff = Math.abs(avgOVR(homeTeam) - avgOVR(awayTeam));
-  const maxGoals = ovrDiff >= 20 ? 99 : ovrDiff >= 10 ? 6 : ovrDiff >= 5 ? 5 : 4;
-  score.home = Math.min(score.home, maxGoals);
-  score.away = Math.min(score.away, maxGoals);
-
-  // ── 6. Final whistle event ─────────────────────────────────────────────────
-  const resultStr = score.home > score.away ? 'Победа хозяев!' : score.away > score.home ? 'Победа гостей!' : 'Ничья!';
+  // ── Final whistle ──────────────────────────────────────────────────────────
+  const resultStr = score.home > score.away ? 'Победа хозяев!'
+                  : score.away > score.home ? 'Победа гостей!'
+                  : 'Ничья!';
   events.push({
-    type: 'info',
-    minute: 90,
-    player_id: 'sys',
-    player_name: 'Referee',
-    team: 'home',
+    type: 'info', minute: 90,
+    player_id: 'sys', player_name: 'Referee', team: 'home',
     details: `🏁 Финальный свисток! ${score.home}:${score.away} — ${resultStr}`,
   });
 
-  // ── 7. Sort by minute ──────────────────────────────────────────────────────
   events.sort((a, b) => a.minute - b.minute);
-
   return { score, events, staminaDrain };
 }

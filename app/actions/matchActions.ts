@@ -179,32 +179,50 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
     const { data: homeChem } = await supabaseAdmin.from('player_chemistry').select('*').eq('team_id', match.home_team_id);
     const { data: awayChem } = await supabaseAdmin.from('player_chemistry').select('*').eq('team_id', match.away_team_id);
 
-    // Рассчитываем кто имеет зеленую связь
-    const getGreenLinks = (chemRecords: any[]) => {
+    // [P1 FIX] Green Links only activate if BOTH players are in the active lineup
+    const getGreenLinks = (chemRecords: any[], lineupIds: Set<string>) => {
       const greenMap: Record<string, boolean> = {};
       if (!chemRecords) return greenMap;
       
       chemRecords.forEach(c => {
          const score = (c.matches_together || 0) + ((c.sweat_points || 0) * 5);
-         if (score >= 70) { 
+         if (score >= 70 && lineupIds.has(c.player_1_id) && lineupIds.has(c.player_2_id)) { 
             greenMap[c.player_1_id] = true;
             greenMap[c.player_2_id] = true;
          }
       });
       return greenMap;
     };
-    const homeGreen = getGreenLinks(homeChem || []);
-    const awayGreen = getGreenLinks(awayChem || []);
+    const homeLineupIds = new Set(homePlayers.map((p: any) => p.id as string));
+    const awayLineupIds = new Set(awayPlayers.map((p: any) => p.id as string));
+    const homeGreen = getGreenLinks(homeChem || [], homeLineupIds);
+    const awayGreen = getGreenLinks(awayChem || [], awayLineupIds);
 
     // ШАГ Б: Прогон через Ядро
-    const mapToMatchPlayer = (p: any): MatchPlayer => ({
-      id: p.id,
-      name: p.name,
-      position: p.lineup_slot?.split('_')[0] || p.position,
-      stats: p.stats,
-      stamina: p.stamina,
-      traits: p.traits || []
+    // [P0 FIX] safeStats ensures NaN/null values from DB don't silently break the engine
+    const safeStats = (raw: any) => ({
+      pace:      Math.max(1, Math.min(99, Number(raw?.pace      ?? 50) || 50)),
+      shooting:  Math.max(1, Math.min(99, Number(raw?.shooting  ?? 50) || 50)),
+      passing:   Math.max(1, Math.min(99, Number(raw?.passing   ?? 50) || 50)),
+      dribbling: Math.max(1, Math.min(99, Number(raw?.dribbling ?? 50) || 50)),
+      defending: Math.max(1, Math.min(99, Number(raw?.defending ?? 50) || 50)),
+      physical:  Math.max(1, Math.min(99, Number(raw?.physical  ?? 50) || 50)),
     });
+
+    const mapToMatchPlayer = (p: any): MatchPlayer => {
+      let resolvedPos = p.position ?? 'MID';
+      if (p.lineup_slot && isNaN(Number(p.lineup_slot))) {
+        resolvedPos = p.lineup_slot.split('_')[0];
+      }
+      return {
+        id: p.id,
+        name: p.name ?? 'Unknown',
+        position: resolvedPos,
+        stats: safeStats(p.stats),
+        stamina: Math.max(0, Math.min(100, Number(p.stamina ?? 70) || 70)),
+        traits: Array.isArray(p.traits) ? p.traits : []
+      };
+    };
 
     const homeLineup = homePlayers.map(mapToMatchPlayer);
     const awayLineup = awayPlayers.map(mapToMatchPlayer);
