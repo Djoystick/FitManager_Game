@@ -1,0 +1,14 @@
+name: "Process Matches Cron"
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Every hour at minute 0
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Matches
+        run: |
+          curl -i -X GET "https://fit-manager-game.vercel.app/api/cron/process-matches?secret=supersecret_trigger_123"

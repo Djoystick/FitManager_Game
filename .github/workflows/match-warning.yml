@@ -1,0 +1,14 @@
+name: "Match Warning Cron"
+
+on:
+  schedule:
+    - cron: '45 * * * *' # Every hour at minute 45
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Warning
+        run: |
+          curl -i -X GET "https://fit-manager-game.vercel.app/api/cron/match-warning?secret=supersecret_trigger_123"

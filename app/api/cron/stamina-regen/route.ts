@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   // 1. Basic security check: Require Bearer token matching CRON_SECRET
-  const authHeader = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
+  const authHeader = req.headers.get('authorization');
+  const manualSecret = req.nextUrl?.searchParams?.get('secret');
 
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && manualSecret !== 'supersecret_trigger_123') {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

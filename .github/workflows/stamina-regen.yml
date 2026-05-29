@@ -1,0 +1,14 @@
+name: "Stamina Regen Cron"
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Midnight UTC every day
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Stamina Regen
+        run: |
+          curl -i -X GET "https://fitmanager-game.vercel.app/api/cron/stamina-regen?secret=supersecret_trigger_123"
