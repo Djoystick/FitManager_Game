@@ -178,6 +178,12 @@ export const dict = {
     rename_error: "Error changing team name",
     avatar_success: "Logo updated!",
     error_insufficient_fc: "Not enough FanCoins",
+    next_target: "Next Target",
+    round: "Round",
+    scout_dept_lv3: "Scout Dept Lv. 3",
+    scout_required: "Required to view opponent's squad",
+    hide_links: "Hide Links",
+    chemistry: "Chemistry",
   },
   ru: {
     welcome: "Добро пожаловать",
@@ -358,5 +364,11 @@ export const dict = {
     rename_error: "Ошибка при смене названия",
     avatar_success: "Логотип обновлен!",
     error_insufficient_fc: "Недостаточно FanCoins",
+    next_target: "Следующая Цель",
+    round: "Раунд",
+    scout_dept_lv3: "Отдел Скаутов Ур. 3",
+    scout_required: "Требуется для просмотра состава противника",
+    hide_links: "Скрыть связи",
+    chemistry: "Синергия",
   }
 };

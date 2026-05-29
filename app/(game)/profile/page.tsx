@@ -9,25 +9,48 @@ export default async function ProfilePage() {
   const sessionUuid = tgCookie?.value;
   
   let isAdmin = false;
+  let user = null;
+
+  let fcBalance = 0;
+  let team = null;
 
   if (sessionUuid) {
-    const { data: user } = await supabase
-      .from('users')
-      .select('telegram_id')
-      .eq('id', sessionUuid)
-      .single();
+    const [{ data: userRes }, { data: teamRes }] = await Promise.all([
+      supabase
+        .from('users')
+        .select('telegram_id, balance_fancoins')
+        .eq('id', sessionUuid)
+        .single(),
+      supabase
+        .from('teams')
+        .select('name')
+        .eq('user_id', sessionUuid)
+        .single()
+    ]);
 
-    if (user && user.telegram_id) {
-      const rawAdminIds = process.env.ADMIN_TG_IDS || '';
-      const adminIdsArray = rawAdminIds.split(',').map(id => id.trim().toString());
-      const currentUserIdStr = String(user.telegram_id).trim();
-      isAdmin = adminIdsArray.includes(currentUserIdStr);
+    if (userRes) {
+      user = userRes;
+      fcBalance = userRes.balance_fancoins || 0;
+      if (userRes.telegram_id) {
+        const rawAdminIds = process.env.ADMIN_TG_IDS || '';
+        const adminIdsArray = rawAdminIds.split(',').map(id => id.trim().toString());
+        const currentUserIdStr = String(userRes.telegram_id).trim();
+        isAdmin = adminIdsArray.includes(currentUserIdStr);
+      }
+    }
+    
+    if (teamRes) {
+      team = teamRes;
     }
   }
 
   return (
     <>
-      <ProfileClient isAdmin={isAdmin} />
+      <ProfileClient 
+        isAdmin={isAdmin} 
+        initialTeamName={team?.name || 'Unknown'} 
+        fcBalance={user?.balance_fancoins || 0} 
+      />
     </>
   );
 }
