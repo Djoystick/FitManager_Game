@@ -8,8 +8,8 @@ import { ScreenGuide } from '@/components/ui/ScreenGuide';
 
 export default async function TrainingDashboard({ searchParams }: { searchParams: Promise<{ userId?: string }> | { userId?: string } }) {
   const resolvedParams = await searchParams;
-  const userId = resolvedParams.userId;
   const cookieStore = await cookies();
+  const userId = resolvedParams.userId || cookieStore.get('tg_user_id')?.value;
   const language = cookieStore.get('fitmanager_lang')?.value || 'en';
   const t = dict[language as keyof typeof dict];
 
