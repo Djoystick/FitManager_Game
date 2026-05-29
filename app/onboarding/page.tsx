@@ -9,6 +9,7 @@ export default function OnboardingPage() {
   const [teamName, setTeamName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,11 +83,27 @@ export default function OnboardingPage() {
             </div>
           )}
           
+          <div className="flex items-start gap-3 px-1">
+            <input
+              type="checkbox"
+              id="terms"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded border-gray-600 text-neon-cyan focus:ring-neon-cyan focus:ring-offset-0 bg-black/60 cursor-pointer"
+            />
+            <label htmlFor="terms" className="text-xs text-gray-400 leading-tight">
+              I have read and agree to the{' '}
+              <a href="/terms" target="_blank" className="text-neon-cyan hover:underline">Terms of Service</a>
+              {' '}and{' '}
+              <a href="/privacy" target="_blank" className="text-neon-cyan hover:underline">Privacy Policy</a>.
+            </label>
+          </div>
+
           <button 
             type="submit"
-            disabled={isCreating || !teamName.trim()}
+            disabled={isCreating || !teamName.trim() || !agreedToTerms}
             className={`w-full py-4 rounded-xl font-bold uppercase tracking-widest transition-all duration-300 font-orbitron relative overflow-hidden ${
-              isCreating || !teamName.trim()
+              isCreating || !teamName.trim() || !agreedToTerms
                 ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
                 : 'bg-neon-cyan text-black hover:bg-white hover:text-neon-cyan hover:shadow-[0_0_25px_rgba(0,240,255,0.6)] shadow-[0_0_15px_rgba(0,240,255,0.4)] border border-neon-cyan/50'
             }`}
