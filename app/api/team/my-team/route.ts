@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 import { cookies } from 'next/headers';
 
 export async function GET(req: Request) {
@@ -12,7 +17,7 @@ export async function GET(req: Request) {
     }
 
     // 1. Fetch the team metadata for the user securely
-    const { data: team, error: teamError } = await supabase
+    const { data: team, error: teamError } = await supabaseAdmin
       .from('teams')
       .select('id, name, logo_url, is_ready_for_match, formation')
       .eq('user_id', userId)
@@ -27,20 +32,20 @@ export async function GET(req: Request) {
     let instanceCreatedAt = null;
     let teamCount = 1;
     
-    const { data: standings } = await supabase.from('league_standings').select('league_instance_id').eq('team_id', team.id);
+    const { data: standings } = await supabaseAdmin.from('league_standings').select('league_instance_id').eq('team_id', team.id);
     if (standings && standings.length > 0) {
       const instanceId = standings[0].league_instance_id;
-      const { data: instance } = await supabase.from('league_instances').select('status, created_at').eq('id', instanceId).single();
+      const { data: instance } = await supabaseAdmin.from('league_instances').select('status, created_at').eq('id', instanceId).single();
       if (instance) {
         instanceStatus = instance.status;
         instanceCreatedAt = instance.created_at;
       }
-      const { count } = await supabase.from('league_standings').select('*', { count: 'exact', head: true }).eq('league_instance_id', instanceId);
+      const { count } = await supabaseAdmin.from('league_standings').select('*', { count: 'exact', head: true }).eq('league_instance_id', instanceId);
       teamCount = count || 1;
     }
 
     // 2. Fetch all players (active and coaches) belonging to this team. STRICT FILTER APPLIED.
-    const { data: players, error: playersError } = await supabase
+    const { data: players, error: playersError } = await supabaseAdmin
       .from('players')
       .select('id, name, age, ovr, is_nft_coach, traits, position, stats, stamina, lineup_status, lineup_slot, injury_matches_left, is_for_sale, is_retired, seasons_played')
       .eq('team_id', team.id);
