@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { simulateNextRound } from '@/app/actions/calendarActions';
+import { resolveMatch } from '@/app/actions/matchActions';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -52,73 +52,93 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 1. Simulate the next unplayed round
-    const simResult = await simulateNextRound();
+    const { data: unplayedMatches } = await supabaseAdmin
+      .from('league_matches')
+      .select('round_number')
+      .eq('status', 'pending')
+      .order('round_number', { ascending: true })
+      .limit(1);
 
-    if (!simResult.success) {
-      return NextResponse.json({ success: true, message: simResult.error || 'No matches to process' });
+    if (!unplayedMatches || unplayedMatches.length === 0) {
+      return NextResponse.json({ success: true, message: 'No unplayed rounds left.' });
     }
 
-    const matchReports = simResult.matchReports || [];
+    const targetRound = unplayedMatches[0].round_number;
 
-    // 2. Fetch telegram IDs for all involved teams
-    const teamIds = new Set<string>();
-    matchReports.forEach((r: any) => {
-      teamIds.add(r.home_team_id);
-      teamIds.add(r.away_team_id);
-    });
+    const { data: matches } = await supabaseAdmin
+      .from('league_matches')
+      .select('id, home_team_id, away_team_id, home_team:teams!home_team_id(name), away_team:teams!away_team_id(name)')
+      .eq('round_number', targetRound)
+      .eq('status', 'pending');
 
-    const { data: teamsData } = await supabaseAdmin
-      .from('teams')
-      .select('id, user_id')
-      .in('id', Array.from(teamIds));
+    if (!matches || matches.length === 0) {
+      return NextResponse.json({ success: true, message: 'No matches found.' });
+    }
 
-    const userIds = teamsData?.map(t => t.user_id).filter(id => id) || [];
+    for (const match of matches) {
+      await resolveMatch(match.id);
+    }
 
-    const { data: usersData } = await supabaseAdmin
-      .from('users')
-      .select('id, telegram_id')
-      .in('id', userIds)
-      .not('telegram_id', 'is', null);
+    // After resolving, fetch the updated match scores to send notifications
+    const { data: resolvedMatches } = await supabaseAdmin
+      .from('league_matches')
+      .select('id, home_team_id, away_team_id, home_score, away_score, home_team:teams!home_team_id(name), away_team:teams!away_team_id(name)')
+      .eq('round_number', targetRound);
 
-    const userTgMap: Record<string, string> = {};
-    if (usersData && teamsData) {
-      teamsData.forEach(t => {
-        const user = usersData.find(u => u.id === t.user_id);
-        if (user && user.telegram_id && !user.telegram_id.startsWith('bot_')) {
-          userTgMap[t.id] = user.telegram_id;
-        }
+    if (resolvedMatches) {
+      const teamIds = new Set<string>();
+      resolvedMatches.forEach(r => {
+        teamIds.add(r.home_team_id);
+        teamIds.add(r.away_team_id);
       });
-    }
 
-    // 3. Dispatch notifications
-    const sendPromises: Promise<void>[] = [];
+      const { data: teamsData } = await supabaseAdmin
+        .from('teams')
+        .select('id, user_id')
+        .in('id', Array.from(teamIds));
 
-    for (const report of matchReports) {
-      const hTgId = userTgMap[report.home_team_id];
-      const aTgId = userTgMap[report.away_team_id];
+      const userIds = teamsData?.map(t => t.user_id).filter(id => id) || [];
 
-      if (hTgId) {
-        sendPromises.push(sendTelegramMessage(
-          hTgId,
-          buildMessage(report.home_team_name, report.away_team_name, report.home_score, report.away_score)
-        ));
+      const { data: usersData } = await supabaseAdmin
+        .from('users')
+        .select('id, telegram_id')
+        .in('id', userIds)
+        .not('telegram_id', 'is', null);
+
+      const userTgMap: Record<string, string> = {};
+      if (usersData && teamsData) {
+        teamsData.forEach(t => {
+          const user = usersData.find(u => u.id === t.user_id);
+          if (user && user.telegram_id && !user.telegram_id.startsWith('bot_')) {
+            userTgMap[t.id] = user.telegram_id;
+          }
+        });
       }
 
-      if (aTgId) {
-        sendPromises.push(sendTelegramMessage(
-          aTgId,
-          buildMessage(report.away_team_name, report.home_team_name, report.away_score, report.home_score)
-        ));
-      }
-    }
+      const sendPromises: Promise<void>[] = [];
+      for (const report of resolvedMatches) {
+        const hTgId = userTgMap[report.home_team_id];
+        const aTgId = userTgMap[report.away_team_id];
+        
+        const homeName = (report.home_team as any)?.name || 'Home';
+        const awayName = (report.away_team as any)?.name || 'Away';
+        const homeScore = report.home_score || 0;
+        const awayScore = report.away_score || 0;
 
-    await Promise.all(sendPromises);
+        if (hTgId) {
+          sendPromises.push(sendTelegramMessage(hTgId, buildMessage(homeName, awayName, homeScore, awayScore)));
+        }
+        if (aTgId) {
+          sendPromises.push(sendTelegramMessage(aTgId, buildMessage(awayName, homeName, awayScore, homeScore)));
+        }
+      }
+      await Promise.all(sendPromises);
+    }
 
     return NextResponse.json({
       success: true,
-      processed: matchReports.length,
-      message: simResult.message
+      processed: matches.length,
+      message: `Processed round ${targetRound}`
     });
 
   } catch (error: any) {

@@ -13,9 +13,10 @@ interface UnseenMatch {
 interface UnseenMatchesModalProps {
   matches: UnseenMatch[];
   onAcknowledge: (matchIds: string[]) => void;
+  onViewStats?: (matchId: string) => void;
 }
 
-export function UnseenMatchesModal({ matches, onAcknowledge }: UnseenMatchesModalProps) {
+export function UnseenMatchesModal({ matches, onAcknowledge, onViewStats }: UnseenMatchesModalProps) {
   if (!matches || matches.length === 0) return null;
 
   const handleAcknowledge = () => {
@@ -57,6 +58,15 @@ export function UnseenMatchesModal({ matches, onAcknowledge }: UnseenMatchesModa
               <span className={`mt-4 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full ${matches[0].result === 'win' ? 'bg-green-900/30 text-neon-green border border-neon-green/30' : matches[0].result === 'loss' ? 'bg-red-900/30 text-red-500 border border-red-500/30' : 'bg-gray-800 text-gray-400 border border-gray-700'}`}>
                 {matches[0].result === 'win' ? 'Победа' : matches[0].result === 'loss' ? 'Поражение' : 'Ничья'}
               </span>
+              
+              {onViewStats && (
+                <button
+                  onClick={() => onViewStats(matches[0].id)}
+                  className="mt-6 px-4 py-2 border border-neon-cyan/50 text-neon-cyan rounded-lg text-xs font-black uppercase tracking-widest hover:bg-neon-cyan/10 transition-colors"
+                >
+                  Посмотреть статистику
+                </button>
+              )}
             </div>
           ) : (
             <div className="flex flex-col gap-2">
