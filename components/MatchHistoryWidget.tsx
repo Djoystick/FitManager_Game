@@ -148,6 +148,7 @@ export function MatchHistoryWidget({ userId, teamName, language = 'en' }: { user
               );
             })}
           </div>
+          )
         ) : (
           schedule.length === 0 ? (
             <div className="flex-1 flex flex-col justify-center items-center p-8 text-gray-500">
