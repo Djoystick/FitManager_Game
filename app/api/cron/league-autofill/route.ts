@@ -57,7 +57,7 @@ export async function GET(request: Request) {
       // or if it's just triggered manually.
       const ageHours = (new Date().getTime() - new Date(instance.created_at).getTime()) / (1000 * 60 * 60);
       
-      if (currentCount < targetCount && ageHours > 1) {
+      if (currentCount < targetCount && ageHours >= 0) {
         console.log(`[CRON AutoFill] Instance ${instance.id} has ${currentCount} teams. Filling with ${targetCount - currentCount} bots.`);
         
         const botsNeeded = targetCount - currentCount;

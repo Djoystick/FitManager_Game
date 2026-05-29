@@ -24,6 +24,7 @@ export default async function SquadPage() {
   return (
     <div className="flex flex-col flex-1 p-4 gap-4 pb-24 h-full overflow-y-auto custom-scrollbar">
       <ScreenGuide 
+        key="squad"
         screenName="squad"
         title="Управление составом"
         content="Здесь вы управляете своим составом. Перетаскивайте игроков, чтобы собрать лучшую стартовую 11-ку. Помните: общий рейтинг (OVR) и Сыгранность напрямую решают исход матчей!"

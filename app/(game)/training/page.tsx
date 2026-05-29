@@ -41,6 +41,7 @@ export default async function TrainingDashboard({ searchParams }: { searchParams
   return (
     <div className="flex flex-col flex-1 p-4 gap-6 pb-24 h-full overflow-y-auto custom-scrollbar">
       <ScreenGuide 
+        key="training"
         screenName="training"
         title="Тренировочная база"
         content="Ваша реальная физическая активность (шаги) конвертируется в Sweat Points (SP). Используйте SP для тренировки кибер-атлетов и буста их характеристик!"

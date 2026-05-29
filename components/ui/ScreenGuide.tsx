@@ -17,6 +17,7 @@ export function ScreenGuide({ screenName, title, content }: ScreenGuideProps) {
 
   useEffect(() => {
     setHasMounted(true);
+    setIsVisible(false); // Reset visibility on key/screen change
     const hasSeen = localStorage.getItem(storageKey);
     if (!hasSeen) {
       // Slight delay so the user sees the page first

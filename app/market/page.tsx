@@ -100,6 +100,7 @@ export default function TransferMarketPage() {
   return (
     <div className="flex flex-col flex-1 p-4 gap-4 min-h-screen bg-space-dark text-white pb-24">
       <ScreenGuide 
+        key="market"
         screenName="market"
         title="Трансферный Рынок"
         content="Добро пожаловать на глобальный P2P Трансферный Рынок. Здесь менеджеры со всего мира покупают и продают игроков за реальную криптовалюту TON."
