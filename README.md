@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="public/logo.png" alt="FitManager Logo" width="120" height="120" style="border-radius: 20px; margin-bottom: 20px;" />
+  <img src="public/logo.png" alt="FitManager Logo" width="100%" style="border-radius: 10px; margin-bottom: 20px;" />
   <br/>
   <img src="https://img.shields.io/badge/Status-Beta-00f0ff?style=for-the-badge&logo=rocket" alt="Status" />
   <img src="https://img.shields.io/badge/Platform-Telegram_Mini_App-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram" />
