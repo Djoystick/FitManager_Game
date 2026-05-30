@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/process-matches",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/age-players",
+      "schedule": "0 0 * * 1"
+    },
+    {
+      "path": "/api/cron/stamina-regen",
+      "schedule": "0 */12 * * *"
+    }
+  ]
+}
