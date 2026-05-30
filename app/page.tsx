@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { dict } from '@/lib/dictionaries';
 import { LanguageContext } from '@/components/LanguageContext';
 import { CyberLoader } from '@/components/ui/CyberLoader';
-import { Users, Activity, ShoppingCart, Trophy, ChevronRight, Zap } from 'lucide-react';
+import { Users, Activity, ShoppingCart, Trophy, ChevronRight, Zap, Lock } from 'lucide-react';
 import { UnseenMatchesModal } from '@/components/UnseenMatchesModal';
 import { NextMatchCountdown } from '@/components/dashboard/NextMatchCountdown';
 import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
