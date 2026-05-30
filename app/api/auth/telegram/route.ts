@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { validateTelegramWebAppData } from '@/lib/telegramAuth';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(req: Request) {
   try {
@@ -23,7 +28,7 @@ export async function POST(req: Request) {
     const telegramId = validation.user.id.toString();
 
     // 2. Supabase User Sync (Upsert)
-    const { data: existingUser, error: selectError } = await supabase
+    const { data: existingUser, error: selectError } = await supabaseAdmin
       .from('users')
       .select('id')
       .eq('telegram_id', telegramId)
@@ -38,10 +43,10 @@ export async function POST(req: Request) {
     if (existingUser) {
       internalUserId = existingUser.id;
       if (photoUrl) {
-        await supabase.from('users').update({ avatar_url: photoUrl }).eq('id', internalUserId);
+        await supabaseAdmin.from('users').update({ avatar_url: photoUrl }).eq('id', internalUserId);
       }
     } else {
-      const { data: newUser, error: insertError } = await supabase
+      const { data: newUser, error: insertError } = await supabaseAdmin
         .from('users')
         .insert({
           telegram_id: telegramId,

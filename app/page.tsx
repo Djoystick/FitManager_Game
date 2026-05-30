@@ -149,7 +149,7 @@ export default function DashboardPage() {
       setLobbyTimeLeft(prev => {
         if (!prev || prev <= 1) {
           clearInterval(timer);
-          fetch('/api/cron/league-autofill').then(() => window.location.reload());
+          fetch('/api/league/trigger-autofill', { method: 'POST' }).then(() => window.location.reload());
           return 0;
         }
         return prev - 1;
