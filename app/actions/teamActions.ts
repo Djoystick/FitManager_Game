@@ -168,13 +168,13 @@ export async function createStarterFranchise(teamName: string) {
     // === INFRASTRUCTURE ===
     await supabaseAdmin.from('infrastructure').insert({ team_id: newTeam.id });
 
-    // === LEAGUE PLACEMENT (Tier 15) ===
+    // === LEAGUE PLACEMENT (Tier 10) ===
     // 1. Find an open filling instance
     let instanceId;
     const { data: openInstances } = await supabaseAdmin
       .from('league_instances')
       .select('id')
-      .eq('tier_level', 15)
+      .eq('tier_level', 10)
       .eq('status', 'filling')
       .order('created_at', { ascending: true })
       .limit(1);
@@ -186,7 +186,7 @@ export async function createStarterFranchise(teamName: string) {
       const { data: newInstance, error: instError } = await supabaseAdmin
         .from('league_instances')
         .insert({
-          tier_level: 15,
+          tier_level: 10,
           name: `Sector ${getRandomInt(100, 999)}`,
           status: 'filling'
         })

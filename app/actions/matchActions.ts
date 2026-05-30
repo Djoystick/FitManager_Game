@@ -371,9 +371,24 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
     await updateStandings(match.home_team_id, result.score.home, result.score.away);
     await updateStandings(match.away_team_id, result.score.away, result.score.home);
 
-    // ── ШАГ Е.1: Salary Sink (exponential FC cost per player OVR) ─────────────
-    // Formula: salaryCost(ovr) = FLOOR(0.5 * 1.04^(ovr - 50)) FC per player
-    // OVR 55 ≈ 1 FC | OVR 70 ≈ 2 FC | OVR 85 ≈ 6 FC | OVR 99 ≈ 17 FC
+    // ── ШАГ Е.1: Salary Sink — прогрессивная зарплата по OVR и возрасту ──────
+    //
+    // Формула: FLOOR( MAX(0, ovr - 40)^1.3 × 0.8 ) + MAX(0, age - 28)
+    //
+    // Ориентиры (FC за матч, на каждого игрока):
+    //   OVR 50, age 22 →  ~15 FC   | OVR 65, age 26 →  ~43 FC
+    //   OVR 80, age 28 →  ~82 FC   | OVR 90, age 30 → ~113 FC
+    //   OVR 99, age 28 → ~138 FC
+    //
+    // Смысл: команда из звёзд (OVR 90) при 24 матчах/день тратит ~29 800 FC/день.
+    // Это превышает доход от стадиона lvl 4 (~18 000 FC/день) → ОБЯЗАТЕЛЕН стадион lvl 8+.
+    // Создаёт органичную прогрессию: рост OVR = рост требований к инфраструктуре.
+    const calcPlayerSalary = (ovr: number, age: number): number => {
+      const ovrPart = Math.floor(Math.pow(Math.max(0, ovr - 40), 1.3) * 0.8);
+      const agePart = Math.max(0, (age ?? 25) - 28);
+      return ovrPart + agePart;
+    };
+
     const deductSquadSalary = async (players: any[], teamId: string) => {
       const { data: teamData } = await supabaseAdmin
         .from('teams')
@@ -384,8 +399,9 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
 
       const userId = teamData.user_id;
       const totalSalary = players.reduce((sum, p) => {
-        const ovr = p.ovr ?? 55;
-        return sum + Math.floor(0.5 * Math.pow(1.04, ovr - 50));
+        const ovr = Number(p.ovr ?? 55);
+        const age = Number(p.age ?? 25);
+        return sum + calcPlayerSalary(ovr, age);
       }, 0);
 
       const { data: userData } = await supabaseAdmin
@@ -398,17 +414,17 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       const newBalance = currentBalance - totalSalary;
 
       if (newBalance < 0) {
-        // Bankrupt penalty: clamp FC to 0 and cap stamina of all players at 30
-        console.warn(`[resolveMatch] Team ${teamId} is BANKRUPT. Applying stamina penalty.`);
+        // Bankruptcy penalty: FC → 0, all players capped at 30 stamina
+        console.warn(`[resolveMatch] Team ${teamId} BANKRUPT (salary: ${totalSalary} FC, balance: ${currentBalance} FC). Stamina penalty applied.`);
         await supabaseAdmin.from('users').update({ balance_fancoins: 0 }).eq('id', userId);
         const penaltyPromises = players.map(p =>
-          supabaseAdmin.from('players').update({ stamina: Math.min(p.stamina ?? 30, 30) }).eq('id', p.id)
+          supabaseAdmin.from('players').update({ stamina: Math.min(Number(p.stamina ?? 30), 30) }).eq('id', p.id)
         );
         await Promise.all(penaltyPromises);
       } else {
         await supabaseAdmin.from('users').update({ balance_fancoins: newBalance }).eq('id', userId);
       }
-      console.log(`[resolveMatch] Salary deducted for team ${teamId}: ${totalSalary} FC`);
+      console.log(`[resolveMatch] Salary deducted for team ${teamId}: ${totalSalary} FC (balance: ${currentBalance} → ${Math.max(0, newBalance)})`);
     };
 
     await deductSquadSalary(homePlayersData, match.home_team_id);

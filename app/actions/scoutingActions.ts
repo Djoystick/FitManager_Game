@@ -92,11 +92,21 @@ function generateRandomPlayer(
   const position  = POSITIONS[Math.floor(Math.random() * POSITIONS.length)];
   const age       = Math.floor(Math.random() * 4) + 16; // 16–19
 
-  // Academy OVR bonus: +2 per level, capped so floor+range don't exceed 93
+  // ────────────────────────────────────────────────────────────────────
+  // ECONOMY HARD CAP: Максимальный OVR бота, доступного через Академию/FC-рынок = 62.
+  // Всё выше 62 OVR — только через Sweat Coins (W2E) или P2P TON-рынок.
+  // Стеклянный потолок для FC: стат ≥ 70 можно прокачать только за W2E-монеты.
+  // ────────────────────────────────────────────────────────────────────
+  const FC_MARKET_OVR_CAP = 62;
+
+  // Academy OVR bonus: +2 per level, but the generated OVR is ALWAYS capped at FC_MARKET_OVR_CAP.
+  // Academy levels instead IMPROVE the ovr floor (better average starting quality),
+  // but cannot push a bot above the hard cap.
   const academyBonus = Math.min((academyLevel - 1) * 2, 18);
-  const ovrFloor     = Math.min(55 + academyBonus, 73);
-  const ovr          = Math.floor(Math.random() * 21) + ovrFloor; // floor → floor+20
-  const potentialLimit = Math.min(99, Math.floor(Math.random() * (99 - (ovr + 5) + 1)) + (ovr + 5));
+  const ovrFloor     = Math.min(48 + academyBonus, 58); // floor: 48 (lvl1) → 58 (lvl6+)
+  const rawOvr       = Math.floor(Math.random() * 15) + ovrFloor; // floor+0 to floor+14
+  const ovr          = Math.min(rawOvr, FC_MARKET_OVR_CAP);       // HARD CAP at 62
+  const potentialLimit = Math.min(99, Math.floor(Math.random() * (99 - (ovr + 8) + 1)) + (ovr + 8));
 
   // Generate stats clustered around OVR (Phase 8 W2E keys)
   const genStat = () => Math.min(99, Math.max(1, Math.round(ovr + (Math.random() * 20 - 10))));

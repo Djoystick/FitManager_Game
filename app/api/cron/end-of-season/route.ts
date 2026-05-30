@@ -1,12 +1,24 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
-import { generateLeagueSchedule } from '@/app/actions/calendarActions';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+async function sendTelegramMessage(telegramId: string, message: string): Promise<void> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: telegramId, text: message, parse_mode: 'Markdown' })
+    });
+  } catch (err) {
+    console.error('[end-of-season] Telegram send error:', err);
+  }
+}
 
 export async function GET(request: Request) {
   try {
@@ -49,7 +61,7 @@ export async function GET(request: Request) {
         .select('team_id, points, goals_for, goals_against')
         .eq('league_instance_id', instance.id)
         .order('points', { ascending: false })
-        .order('goals_for', { ascending: false }); // simple tie-breaker
+        .order('goals_for', { ascending: false });
 
       if (!finalStandings || finalStandings.length === 0) continue;
 
@@ -59,26 +71,90 @@ export async function GET(request: Request) {
         .update({ status: 'finished' })
         .eq('id', instance.id);
 
-      // Re-distribute teams
-      // Top 3 -> tier_level - 1 (min 1)
-      // Bottom 3 -> tier_level + 1 (max 15)
-      // Middle -> tier_level
+      // --- PRIZE WATERFALL (Asynchronous Treasury Drain) ---
+      const { data: treasuryData } = await supabaseAdmin.from('treasury').select('prize_pool_ton').eq('id', 1).single();
+      const currentPool = treasuryData?.prize_pool_ton || 0;
+      
+      let drainPercentage = 0;
+      const t = instance.tier_level;
+      if (t === 1) drainPercentage = 0.10;
+      else if (t === 2) drainPercentage = 0.04;
+      else if (t === 3) drainPercentage = 0.02;
+      else if (t === 4) drainPercentage = 0.01;
+      else if (t === 5) drainPercentage = 0.005;
+      else if (t === 6 || t === 7) drainPercentage = 0.001;
+      else drainPercentage = 0; // Tiers 8-10
+      
+      const instancePrizeTon = currentPool * drainPercentage;
+      let usedTon = 0;
+
+      // --- REASSIGNMENTS AND PRIZES ---
       const newAssignments: { team_id: string, new_tier: number }[] = [];
       
       for (let i = 0; i < finalStandings.length; i++) {
         let nextTier = instance.tier_level;
+        let position = i + 1;
+        
         if (i < 3) nextTier = Math.max(1, instance.tier_level - 1); // Top 3
-        else if (i >= finalStandings.length - 3) nextTier = Math.min(15, instance.tier_level + 1); // Bottom 3
+        else if (i >= finalStandings.length - 3) nextTier = Math.min(10, instance.tier_level + 1); // Bottom 3 -> max Tier 10
         
         newAssignments.push({
           team_id: finalStandings[i].team_id,
           new_tier: nextTier
         });
+
+        // Distribute Prizes
+        const { data: teamData } = await supabaseAdmin.from('teams').select('user_id, name').eq('id', finalStandings[i].team_id).single();
+        if (teamData?.user_id) {
+          const { data: userData } = await supabaseAdmin.from('users').select('telegram_id, balance_ton, balance_fancoins').eq('id', teamData.user_id).single();
+          
+          let tonWon = 0;
+          let fcWon = 0;
+          
+          if (i === 0) tonWon = instancePrizeTon * 0.50; // 1st Place
+          else if (i === 1) tonWon = instancePrizeTon * 0.30; // 2nd Place
+          else if (i === 2) tonWon = instancePrizeTon * 0.20; // 3rd Place
+          
+          // FC reward
+          if (position === 1) fcWon = 15000 + ((11 - t) * 2000);
+          else if (position <= 3) fcWon = 10000 + ((11 - t) * 1500);
+          else fcWon = 3000 + ((11 - t) * 500);
+          
+          const newTon = (userData?.balance_ton || 0) + tonWon;
+          const newFc = (userData?.balance_fancoins || 0) + fcWon;
+          
+          await supabaseAdmin.from('users')
+            .update({ balance_ton: newTon, balance_fancoins: newFc })
+            .eq('id', teamData.user_id);
+
+          if (tonWon > 0) {
+            usedTon += tonWon;
+          }
+
+          if (userData?.telegram_id) {
+            let msg = `🏆 *Сезон завершен!*\n\nТвоя команда *${teamData.name}* заняла *${position} место* в Tier ${instance.tier_level}.\n`;
+            if (tonWon > 0) msg += `💰 Призовые TON: *+${tonWon.toFixed(4)} TON*\n`;
+            msg += `🪙 Призовые FC: *+${fcWon} FC*\n\n`;
+            
+            if (nextTier < instance.tier_level) msg += `🚀 *Поздравляем с выходом в Tier ${nextTier}!*`;
+            else if (nextTier > instance.tier_level) msg += `📉 К сожалению, ты вылетаешь в Tier ${nextTier}.`;
+            else msg += `👉 В следующем сезоне ты остаешься в Tier ${nextTier}.`;
+            
+            await sendTelegramMessage(userData.telegram_id, msg);
+          }
+        }
+      }
+
+      // Deduct from Treasury
+      if (usedTon > 0) {
+        const { data: currentTreasury } = await supabaseAdmin.from('treasury').select('prize_pool_ton').eq('id', 1).single();
+        const safePool = currentTreasury?.prize_pool_ton || 0;
+        await supabaseAdmin.from('treasury').update({ prize_pool_ton: Math.max(0, safePool - usedTon) }).eq('id', 1);
+        console.log(`[CRON EndOfSeason] Deducted ${usedTon.toFixed(4)} TON from Treasury for Tier ${instance.tier_level}`);
       }
 
       // We need to put these teams into 'filling' instances of their new tiers
       for (const assignment of newAssignments) {
-        // Find open instance
         let targetInstanceId;
         const { data: openInstances } = await supabaseAdmin
           .from('league_instances')
@@ -91,7 +167,6 @@ export async function GET(request: Request) {
         if (openInstances && openInstances.length > 0) {
           targetInstanceId = openInstances[0].id;
         } else {
-          // Create new
           const { data: newInstance } = await supabaseAdmin
             .from('league_instances')
             .insert({
@@ -104,7 +179,6 @@ export async function GET(request: Request) {
           targetInstanceId = newInstance!.id;
         }
 
-        // Insert new standing for the new season
         await supabaseAdmin.from('league_standings').insert({
           team_id: assignment.team_id,
           league_instance_id: targetInstanceId,

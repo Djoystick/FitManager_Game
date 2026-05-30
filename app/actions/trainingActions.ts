@@ -259,13 +259,21 @@ export async function batchTrainPlayerAction(
     if (userErr || !user) return { success: false, error: 'User not found.' };
 
     // 4. Calculate progressive costs
-    const getCost = (val: number) => {
-      if (val <= 50) return 5;
-      if (val <= 65) return 10;
-      if (val <= 75) return 25;
-      if (val <= 85) return 60;
-      if (val <= 90) return 120;
-      return 300;
+    // ── Прогрессивная стоимость прокачки (Production-кривая) ────────────────
+    // Новые тиры специально откалиброваны под 2 матча/день расписание:
+    //   stat ≤ 60 →    5 монет  (быстрый старт, хукает новичка)
+    //   stat ≤ 70 →   30 монет  (1–2 дня для среднего ходока)
+    //   stat ≤ 78 →  120 монет  (≈1 неделя)
+    //   stat ≤ 85 →  400 монет  (≈3 недели)
+    //   stat ≤ 91 → 1200 монет  (≈7 недель, элита)
+    //   stat > 91 → 4000 монет  (3–6+ месяцев, легенда)
+    const getCost = (val: number): number => {
+      if (val <= 60) return 5;
+      if (val <= 70) return 30;
+      if (val <= 78) return 120;
+      if (val <= 85) return 400;
+      if (val <= 91) return 1200;
+      return 4000;
     };
 
     const currencyMap: Record<StatKey, SpecCurrencyType> = {
@@ -400,9 +408,12 @@ export async function upgradeBuildingAction(
     if (infraErr || !infra) return { success: false, error: 'Infrastructure record not found.' };
 
     const currentLevel = (infra as unknown as Record<string, number>)[column] ?? 1;
-    // Exponential cost formula: FLOOR(500 × level^1.5)
-    // Mirrors the SQL building_upgrade_cost() function in migration 00030.
-    const upgradeCost  = Math.floor(500 * Math.pow(currentLevel, 1.5));
+    // Exponential cost formula: FLOOR(800 × level^1.8)
+    // Более агрессивная кривая vs старой (500 × level^1.5):
+    //   lvl 3→4:  ~5 177 FC (было 2 598)   | lvl 7→8:  ~27 560 FC (было 9 193)
+    //   lvl 9→10: ~47 200 FC (было 13 500) | lvl 10→11: ~57 243 FC (было 15 811)
+    // При 2 матчах/день стадион 10+ займёт 4+ месяцев — правильный темп.
+    const upgradeCost  = Math.floor(800 * Math.pow(currentLevel, 1.8));
 
     if (user.balance_fancoins < upgradeCost) {
       return {
