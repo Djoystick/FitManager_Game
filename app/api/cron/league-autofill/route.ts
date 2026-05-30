@@ -151,7 +151,7 @@ export async function GET(request: Request) {
         await supabaseAdmin.from('league_standings').insert(standingsToInsert);
 
         // Activate and generate schedule
-        const startTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        const startTime = new Date(Date.now()).toISOString();
         await supabaseAdmin.from('league_instances').update({ status: 'active', start_time: startTime }).eq('id', instance.id);
 
         // ── L2 FIX: Only generate schedule if none exists yet ────────────────
@@ -171,7 +171,7 @@ export async function GET(request: Request) {
         console.log(`[CRON AutoFill] Instance ${instance.id} activated and scheduled! Starts at ${startTime}`);
       } else if (currentCount >= targetCount) {
         // Just in case it's full but status didn't update
-        const startTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        const startTime = new Date(Date.now()).toISOString();
         await supabaseAdmin.from('league_instances').update({ status: 'active', start_time: startTime }).eq('id', instance.id);
         await generateLeagueSchedule(instance.id);
       }
