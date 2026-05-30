@@ -61,7 +61,7 @@ export default function DashboardPage() {
   const { userId, isAuthenticated, isLoading: isAuthLoading } = useContext(TelegramAuthContext);
   const { language } = useContext(LanguageContext);
   const t = dict[language as keyof typeof dict];
-  const { step, isDone, nextStep, setUserId: setTutorialUserId } = useTutorial();
+  const { step, isDone, nextStep, skipTutorial, setUserId: setTutorialUserId } = useTutorial();
   const { paddingStyle, setUserId: setPaddingUserId } = usePadding();
 
   const [hasTeam,       setHasTeam]       = useState<boolean | null>(null);
@@ -199,6 +199,22 @@ export default function DashboardPage() {
       <div className="absolute inset-0 pointer-events-none opacity-[0.07]"
            style={{ backgroundImage: 'linear-gradient(rgba(0,240,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,240,255,1) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_70%_50%_at_50%_0%,rgba(0,240,255,0.06)_0%,transparent_100%)]" />
+
+      {/* ── Manual Skip Onboarding Button (Temporary/Debug Fix) ─────────── */}
+      {!isDone && (
+        <div className="absolute top-16 left-0 right-0 z-50 px-4">
+          <button
+            onClick={() => {
+              skipTutorial();
+              localStorage.setItem('fitmanager_tour_completed_v2', 'true');
+            }}
+            className="w-full bg-red-500/20 border border-red-500 text-red-100 p-3 rounded-xl flex items-center justify-center gap-2 font-bold backdrop-blur-md animate-pulse"
+          >
+            <Lock size={18} />
+            <span>Пройти обучение (Разблокировать меню)</span>
+          </button>
+        </div>
+      )}
 
       {/* ── Lobby waiting overlay ────────────────────────────────────────── */}
       <AnimatePresence>
