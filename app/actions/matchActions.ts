@@ -205,25 +205,53 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       return { success: false, error: 'Failed to load players' };
     }
 
-    // Вспомогательная функция для выделения стартового состава
-    const getStarters = (players: any[]) => {
-      let starters = players.filter(p => p.lineup_slot !== null && parseInt(p.lineup_slot) <= 10);
+    // Вспомогательная функция для выделения стартового состава и скамейки
+    // ── R7 FIX: Filter out injured players from starters AND bench ──────────
+    // Previously, injured players could appear in the starting lineup, meaning
+    // the technical forfeit check was never triggered even if the whole squad
+    // was injured. This caused bots to play with 0-OVR injured players.
+    const getSquad = (players: any[]) => {
+      let starters = players.filter(
+        p => p.lineup_slot !== null && parseInt(p.lineup_slot) <= 10 && !p.is_injured
+      );
+      let bench = players.filter(
+        p => (p.lineup_status === 'bench' || p.lineup_status === 'reserve') && !p.is_injured
+      );
+
+      const healthyCount = starters.length;
+
       if (starters.length < 11) {
-        console.warn(`[resolveMatch] Lineup incomplete (${starters.length}). Using Iron GK OVR fallback.`);
-        const gks = players.filter(p => p.position === 'GK').sort((a, b) => (b.ovr || 0) - (a.ovr || 0));
-        const fields = players.filter(p => p.position !== 'GK').sort((a, b) => (b.ovr || 0) - (a.ovr || 0));
-        
+        // ── R7: Log when the squad is critically depleted due to injuries ────
+        const injuredCount = players.filter(p => p.is_injured).length;
+        if (injuredCount > 0) {
+          console.warn(
+            `[resolveMatch] Squad depleted by injuries: ${injuredCount} injured, only ${healthyCount} healthy starters available. Using best-available fallback.`
+          );
+        } else {
+          console.warn(`[resolveMatch] Lineup incomplete (${starters.length}). Using fallback.`);
+        }
+
+        // Fallback: best healthy players by OVR (including bench)
+        const allHealthy = players.filter(p => !p.is_injured).sort((a, b) => (b.ovr || 0) - (a.ovr || 0));
+        const gks    = allHealthy.filter(p => p.position === 'GK');
+        const fields = allHealthy.filter(p => p.position !== 'GK');
+
         if (gks.length > 0) {
           starters = [gks[0], ...fields.slice(0, 10)];
         } else {
-          starters = fields.slice(0, 11);
+          starters = allHealthy.slice(0, 11);
         }
+        bench = []; // Disable bench on fallback to avoid duplicate player references
       }
-      return starters;
+
+      return { starters, bench: bench.slice(0, 7) }; // Max 7 subs
     };
 
-    const homePlayers = getStarters(homePlayersData);
-    const awayPlayers = getStarters(awayPlayersData);
+    const homeSquad = getSquad(homePlayersData);
+    const awaySquad = getSquad(awayPlayersData);
+    
+    const homePlayers = homeSquad.starters;
+    const awayPlayers = awaySquad.starters;
 
     let isTechnicalForfeit = false;
     let forfeitHomeScore = 0;
@@ -290,6 +318,8 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
 
     const homeLineup = homePlayers.map(mapToMatchPlayer);
     const awayLineup = awayPlayers.map(mapToMatchPlayer);
+    const homeBench = homeSquad.bench.map(mapToMatchPlayer);
+    const awayBench = awaySquad.bench.map(mapToMatchPlayer);
 
     let result;
     if (isTechnicalForfeit) {
@@ -301,7 +331,7 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       };
     } else {
       console.log(`[resolveMatch] Running Core Match Engine...`);
-      result = runMatchEngine(homeLineup, awayLineup, homeGreen, awayGreen);
+      result = runMatchEngine(homeLineup, awayLineup, homeBench, awayBench, homeGreen, awayGreen);
     }
     console.log(`[resolveMatch] Core Engine output score: ${result.score.home}-${result.score.away}`);
 
@@ -339,152 +369,136 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
     await updateStamina(result.staminaDrain.away);
 
     // ШАГ Д: Обновление Standings
-    const updateStandings = async (teamId: string, gf: number, ga: number) => {
-      const { data: st, error: stError } = await supabaseAdmin.from('league_standings').select('*').eq('team_id', teamId).single();
+    // ── L3 FIX: Filter by BOTH team_id AND league_instance_id ───────────────
+    // Previously queried only by team_id with .single(), which would throw if
+    // a team appeared in multiple league_standings rows (e.g. historical seasons).
+    const updateStandings = async (teamId: string, instanceId: string, gf: number, ga: number) => {
+      const { data: st, error: stError } = await supabaseAdmin
+        .from('league_standings')
+        .select('*')
+        .eq('team_id', teamId)
+        .eq('league_instance_id', instanceId)  // L3 FIX: scope to correct instance
+        .maybeSingle();
+
       if (stError || !st) {
-        console.warn(`[resolveMatch] Could not find standings for team ${teamId}, skipping.`);
+        console.warn(`[resolveMatch] Could not find standings for team ${teamId} in instance ${instanceId}, skipping.`);
         return;
       }
-      
-      let wins = st.wins || 0;
-      let draws = st.draws || 0;
+
+      let wins   = st.wins   || 0;
+      let draws  = st.draws  || 0;
       let losses = st.losses || 0;
       let points = st.points || 0;
 
-      if (gf > ga) { wins++; points += 3; }
+      if (gf > ga)      { wins++;  points += 3; }
       else if (gf === ga) { draws++; points += 1; }
-      else { losses++; }
+      else              { losses++; }
 
-      const { error: updateStError } = await supabaseAdmin.from('league_standings').update({
-        matches_played: (st.matches_played || 0) + 1,
-        wins, draws, losses, points,
-        goals_for: (st.goals_for || 0) + gf,
-        goals_against: (st.goals_against || 0) + ga
-      }).eq('team_id', teamId);
-      
+      const { error: updateStError } = await supabaseAdmin
+        .from('league_standings')
+        .update({
+          matches_played: (st.matches_played || 0) + 1,
+          wins, draws, losses, points,
+          goals_for:     (st.goals_for     || 0) + gf,
+          goals_against: (st.goals_against || 0) + ga
+        })
+        .eq('team_id', teamId)
+        .eq('league_instance_id', instanceId);  // L3 FIX: scope update too
+
       if (updateStError) {
         console.error(`[resolveMatch] CRITICAL DB ERROR (league_standings):`, updateStError);
         throw new Error(`DB Write Failed for standings: ${updateStError.message}`);
       }
     };
 
-    await updateStandings(match.home_team_id, result.score.home, result.score.away);
-    await updateStandings(match.away_team_id, result.score.away, result.score.home);
+    await updateStandings(match.home_team_id, match.league_instance_id, result.score.home, result.score.away);
+    await updateStandings(match.away_team_id, match.league_instance_id, result.score.away, result.score.home);
 
-    // ── ШАГ Е.1: Salary Sink — прогрессивная зарплата по OVR и возрасту ──────
+    // ── ШАГ Е: FC Transaction (Salary + Match Reward) — атомарная операция ────
+    // ── R6 FIX: Replaced separate deductSquadSalary() + awardMatchFc() calls ─
+    // The old pattern was: read balance → compute salary → write; then read
+    // balance again → compute reward → write. A concurrent process could read
+    // the same balance value between those two writes, causing one update to
+    // silently overwrite the other (classic read-modify-write race condition).
     //
-    // Формула: FLOOR( MAX(0, ovr - 40)^1.3 × 0.8 ) + MAX(0, age - 28)
+    // The new pattern calls a single atomic SQL function that computes
+    //   new_balance = GREATEST(0, balance - salary + reward)
+    // in one statement, making it race-condition-proof by design.
     //
-    // Ориентиры (FC за матч, на каждого игрока):
-    //   OVR 50, age 22 →  ~15 FC   | OVR 65, age 26 →  ~43 FC
-    //   OVR 80, age 28 →  ~82 FC   | OVR 90, age 30 → ~113 FC
-    //   OVR 99, age 28 → ~138 FC
-    //
-    // Смысл: команда из звёзд (OVR 90) при 24 матчах/день тратит ~29 800 FC/день.
-    // Это превышает доход от стадиона lvl 4 (~18 000 FC/день) → ОБЯЗАТЕЛЕН стадион lvl 8+.
-    // Создаёт органичную прогрессию: рост OVR = рост требований к инфраструктуре.
+    // Salary formula: FLOOR(MAX(0, ovr-40)^1.3 × 0.8) + MAX(0, age-28)
+    // Reward formula: (base + stadiumLevel × bonus) × prestige_multiplier
+    //   Win  = (500 + lvl×150) × mult  |  Draw = (250 + lvl×70) × mult
+    //   Loss = (100 + lvl×30)  × mult
+
     const calcPlayerSalary = (ovr: number, age: number): number => {
       const ovrPart = Math.floor(Math.pow(Math.max(0, ovr - 40), 1.3) * 0.8);
       const agePart = Math.max(0, (age ?? 25) - 28);
       return ovrPart + agePart;
     };
 
-    const deductSquadSalary = async (players: any[], teamId: string) => {
+    const applyFcTransaction = async (teamId: string, players: any[], gf: number, ga: number) => {
+      // Resolve user
       const { data: teamData } = await supabaseAdmin
-        .from('teams')
-        .select('user_id')
-        .eq('id', teamId)
-        .maybeSingle();
+        .from('teams').select('user_id').eq('id', teamId).maybeSingle();
       if (!teamData?.user_id) return;
-
       const userId = teamData.user_id;
-      const totalSalary = players.reduce((sum, p) => {
-        const ovr = Number(p.ovr ?? 55);
-        const age = Number(p.age ?? 25);
-        return sum + calcPlayerSalary(ovr, age);
-      }, 0);
 
-      const { data: userData } = await supabaseAdmin
-        .from('users')
-        .select('balance_fancoins')
-        .eq('id', userId)
-        .maybeSingle();
+      // Calculate salary
+      const totalSalary = players.reduce((sum, p) =>
+        sum + calcPlayerSalary(Number(p.ovr ?? 55), Number(p.age ?? 25)), 0);
 
-      const currentBalance = Number(userData?.balance_fancoins ?? 0);
-      const newBalance = currentBalance - totalSalary;
-
-      if (newBalance < 0) {
-        // Bankruptcy penalty: FC → 0, all players capped at 30 stamina
-        console.warn(`[resolveMatch] Team ${teamId} BANKRUPT (salary: ${totalSalary} FC, balance: ${currentBalance} FC). Stamina penalty applied.`);
-        await supabaseAdmin.from('users').update({ balance_fancoins: 0 }).eq('id', userId);
-        const penaltyPromises = players.map(p =>
-          supabaseAdmin.from('players').update({ stamina: Math.min(Number(p.stamina ?? 30), 30) }).eq('id', p.id)
-        );
-        await Promise.all(penaltyPromises);
-      } else {
-        await supabaseAdmin.from('users').update({ balance_fancoins: newBalance }).eq('id', userId);
-      }
-      console.log(`[resolveMatch] Salary deducted for team ${teamId}: ${totalSalary} FC (balance: ${currentBalance} → ${Math.max(0, newBalance)})`);
-    };
-
-    await deductSquadSalary(homePlayersData, match.home_team_id);
-    await deductSquadSalary(awayPlayersData, match.away_team_id);
-
-    // ── ШАГ Е.2: Award FanCoins (with prestige_multiplier scaling) ──────────
-    // Win  = (500 + stadium_level × 75)  × prestige_multiplier
-    // Draw = (250 + stadium_level × 35)  × prestige_multiplier
-    // Loss = (100 + stadium_level × 15)  × prestige_multiplier
-    const awardMatchFc = async (teamId: string, gf: number, ga: number) => {
+      // Calculate FC reward
       const matchResult = gf > ga ? 'win' : gf === ga ? 'draw' : 'loss';
       const { data: infra } = await supabaseAdmin
-        .from('infrastructure')
-        .select('stadium_level')
-        .eq('team_id', teamId)
-        .maybeSingle();
+        .from('infrastructure').select('stadium_level').eq('team_id', teamId).maybeSingle();
       const stadiumLevel = infra?.stadium_level ?? 1;
 
-      let baseReward = 0;
-      let levelBonus = 0;
-      if (matchResult === 'win')        { baseReward = 500; levelBonus = 150; } // 2× vs loss
-      else if (matchResult === 'draw') { baseReward = 250; levelBonus = 70;  }
-      else                             { baseReward = 100; levelBonus = 30;  }
-
-      const rawReward = baseReward + (stadiumLevel * levelBonus);
-
-      const { data: teamData } = await supabaseAdmin
-        .from('teams')
-        .select('user_id')
-        .eq('id', teamId)
-        .maybeSingle();
-
-      if (!teamData?.user_id) return;
+      const baseReward  = matchResult === 'win'  ? 500 : matchResult === 'draw' ? 250 : 100;
+      const levelBonus  = matchResult === 'win'  ? 150 : matchResult === 'draw' ? 70  : 30;
+      const rawReward   = baseReward + stadiumLevel * levelBonus;
 
       const { data: userData } = await supabaseAdmin
-        .from('users')
-        .select('balance_fancoins, prestige_multiplier')
-        .eq('id', teamData.user_id)
-        .maybeSingle();
+        .from('users').select('prestige_multiplier').eq('id', userId).maybeSingle();
+      const multiplier  = Number(userData?.prestige_multiplier ?? 1.0);
+      const totalReward = Math.floor(rawReward * multiplier);
 
-      if (userData) {
-        const multiplier   = Number(userData.prestige_multiplier ?? 1.0);
-        const totalReward  = Math.floor(rawReward * multiplier);
-        const newBalance   = (Number(userData.balance_fancoins) || 0) + totalReward;
+      // ── R6: Single atomic RPC — no race condition possible ─────────────────
+      const { error: rpcError } = await supabaseAdmin.rpc('update_fancoins_after_match', {
+        p_user_id: userId,
+        p_salary:  totalSalary,
+        p_reward:  totalReward
+      });
 
-        const { error: updateError } = await supabaseAdmin
-          .from('users')
-          .update({ balance_fancoins: newBalance })
-          .eq('id', teamData.user_id);
+      if (rpcError) {
+        console.error(`[resolveMatch] FC transaction RPC error for team ${teamId}:`, rpcError);
+        // Fallback: bankruptcy check via direct query if RPC unavailable
+        const { data: fallbackUser } = await supabaseAdmin
+          .from('users').select('balance_fancoins').eq('id', userId).maybeSingle();
+        const currentBalance = Number(fallbackUser?.balance_fancoins ?? 0);
+        const newBalance = Math.max(0, currentBalance - totalSalary + totalReward);
+        await supabaseAdmin.from('users').update({ balance_fancoins: newBalance }).eq('id', userId);
+      } else {
+        console.log(`[resolveMatch] FC tx for team ${teamId}: -${totalSalary} salary, +${totalReward} reward (${matchResult}).`);
+      }
 
-        if (updateError) {
-          console.error(`[resolveMatch] Failed to award FC for user ${teamData.user_id}:`, updateError);
-        } else {
-          console.log(`[resolveMatch] Awarded ${totalReward} FC (${rawReward} × ${multiplier}) to user ${teamData.user_id} (${matchResult})`);
-        }
+      // Apply bankruptcy stamina penalty if balance dropped to zero
+      // We check after the RPC since GREATEST(0,...) may have floored to 0
+      const { data: afterUpdate } = await supabaseAdmin
+        .from('users').select('balance_fancoins').eq('id', userId).maybeSingle();
+      if ((afterUpdate?.balance_fancoins ?? 1) === 0 && totalSalary > totalReward) {
+        console.warn(`[resolveMatch] Team ${teamId} went bankrupt (salary > reward + balance). Applying stamina penalty.`);
+        await Promise.all(
+          players.map(p =>
+            supabaseAdmin.from('players')
+              .update({ stamina: Math.min(Number(p.stamina ?? 30), 30) })
+              .eq('id', p.id)
+          )
+        );
       }
     };
 
-    await awardMatchFc(match.home_team_id, result.score.home, result.score.away);
-    await awardMatchFc(match.away_team_id, result.score.away, result.score.home);
+    await applyFcTransaction(match.home_team_id, homePlayersData, result.score.home, result.score.away);
+    await applyFcTransaction(match.away_team_id, awayPlayersData, result.score.away, result.score.home);
 
     console.log(`[resolveMatch] SUCCESS for matchId: ${matchId}`);
     return { success: true };
@@ -565,42 +579,24 @@ export async function simulateNextPendingMatch(userId: string) {
       console.error('[simulateNextPendingMatch] Error finding match:', matchError);
       return { success: false, error: matchError.message };
     }
-    
-    let roundNumber = userMatch ? userMatch.round_number : 999;
-    
+
+    // ── R4 FIX: Removed dummy match creation (round: 999 exploit) ────────────
+    // Previously, when no pending match existed the code would INSERT a fake
+    // match against a random team from any league. This allowed:
+    //   1. Unlimited free-FC farming via the UI (win reward with no cooldown)
+    //   2. Standings corruption of unrelated league instances
+    //   3. Orphan round-999 rows that blocked end-of-season from finalising
+    // Now we simply return a clear message and wait for the cron to advance
+    // the league to the next round.
     if (!userMatch) {
-      console.log('[simulateNextPendingMatch] No pending match found, inserting dummy match');
-      const { data: randomTeam } = await supabaseAdmin
-        .from('teams')
-        .select('id, league_id')
-        .neq('id', teamData.id)
-        .limit(1)
-        .single();
-        
-      if (randomTeam) {
-        const { data: newMatch, error: insertError } = await supabaseAdmin
-          .from('league_matches')
-          .insert({
-            home_team_id: teamData.id,
-            away_team_id: randomTeam.id,
-            league_id: randomTeam.league_id || null,
-            round_number: 999,
-            status: 'pending',
-            is_played: false
-          })
-          .select('round_number')
-          .single();
-          
-        if (!insertError && newMatch) {
-          roundNumber = newMatch.round_number;
-        } else {
-          return { success: false, error: 'Failed to create dummy match' };
-        }
-      } else {
-        return { success: false, error: 'No opponent teams available for dummy match' };
-      }
+      console.log('[simulateNextPendingMatch] No pending matches found for team — waiting for cron.');
+      return {
+        success: false,
+        error: 'No pending matches found for your team. The next round will be processed automatically by the league scheduler.'
+      };
     }
-    
+
+    const roundNumber = userMatch.round_number;
     console.log(`[simulateNextPendingMatch] Simulating entire round: ${roundNumber}`);
 
     // Fetch all pending matches for this round
@@ -616,11 +612,11 @@ export async function simulateNextPendingMatch(userId: string) {
 
     console.log(`[simulateNextPendingMatch] Found ${roundMatches.length} matches to simulate.`);
 
-    // Simulate each match sequentially (could use Promise.all, but sequential is safer for DB locks)
+    // Simulate each match sequentially (safer for DB consistency than Promise.all)
     for (const rm of roundMatches) {
       await resolveMatch(rm.id);
     }
-    
+
     revalidatePath('/', 'page');
     revalidatePath('/', 'layout');
     return { success: true };

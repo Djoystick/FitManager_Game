@@ -1,0 +1,2 @@
+ALTER TABLE public.league_instances
+ADD COLUMN IF NOT EXISTS start_time TIMESTAMPTZ DEFAULT NOW();

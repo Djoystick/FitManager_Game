@@ -37,11 +37,19 @@ export async function generateLeagueSchedule(instanceId?: string) {
         const home = teams[i];
         const away = teams[numTeams - 1 - i];
         
+        let matchHome = home;
+        let matchAway = away;
+
         if (round % 2 === 0 && i === 0) {
-          matchesToInsert.push({ league_instance_id: instanceId, round_number: round, home_team_id: away, away_team_id: home, is_played: false });
-        } else {
-          matchesToInsert.push({ league_instance_id: instanceId, round_number: round, home_team_id: home, away_team_id: away, is_played: false });
+          matchHome = away;
+          matchAway = home;
         }
+
+        // 1st leg
+        matchesToInsert.push({ league_instance_id: instanceId, round_number: round, home_team_id: matchHome, away_team_id: matchAway, is_played: false });
+        
+        // 2nd leg (reverse fixture, +13 rounds)
+        matchesToInsert.push({ league_instance_id: instanceId, round_number: round + 13, home_team_id: matchAway, away_team_id: matchHome, is_played: false });
       }
       
       const firstTeam = teams[0];
@@ -56,7 +64,7 @@ export async function generateLeagueSchedule(instanceId?: string) {
       throw error;
     }
 
-    return { success: true, message: `Successfully generated ${matchesToInsert.length} matches across ${numRounds} rounds for instance ${instanceId}.` };
+    return { success: true, message: `Successfully generated ${matchesToInsert.length} matches across 26 rounds for instance ${instanceId}.` };
   } catch (err: any) {
     return { success: false, error: err.message || 'Unknown error during schedule generation.' };
   }
@@ -115,7 +123,20 @@ export async function simulateNextRound(userId?: string) {
     }
 
     // Initialize stats
-    const { data: currentStandings } = await supabaseAdmin.from('league_standings').select('*');
+    // ── L1 FIX: Scope standings query to this league instance only ────────────
+    // Previously fetched ALL standings without a WHERE clause. This caused:
+    //   1. Full-table scan — OOM / timeout as the game scales to 1000+ leagues
+    //   2. Stats accumulation across different league instances for teams
+    //      that played in multiple historical seasons
+    //
+    // We resolve the league_instance_id from the first match in the batch.
+    const leagueInstanceId = matches[0]?.league_instance_id;
+
+    const { data: currentStandings } = await supabaseAdmin
+      .from('league_standings')
+      .select('*')
+      .eq('league_instance_id', leagueInstanceId);
+
     if (currentStandings) {
       currentStandings.forEach(s => {
         teamStats[s.team_id] = {
@@ -361,16 +382,22 @@ export async function simulateNextRound(userId?: string) {
     await Promise.all(playerUpdatePromises);
 
     // Batch update standings
-    const standingsUpdates = Object.entries(teamStats).map(([teamId, st]) => 
+    // ── L1/L3 FIX: Scope each UPDATE to the correct league_instance_id ────────
+    // leagueInstanceId was resolved from matches[0] above (see standings SELECT fix).
+    // Without this, a team promoted/relegated into multiple historical instances
+    // would have ALL its rows updated simultaneously — corrupting past season data.
+    const standingsUpdates = Object.entries(teamStats).map(([teamId, st]) =>
       supabaseAdmin.from('league_standings').update({
         matches_played: st.matches,
-        wins: st.wins,
-        draws: st.draws,
-        losses: st.losses,
-        goals_for: st.gf,
-        goals_against: st.ga,
-        points: st.pts
-      }).eq('team_id', teamId)
+        wins:           st.wins,
+        draws:          st.draws,
+        losses:         st.losses,
+        goals_for:      st.gf,
+        goals_against:  st.ga,
+        points:         st.pts
+      })
+        .eq('team_id', teamId)
+        .eq('league_instance_id', leagueInstanceId)  // L3 FIX: scope to active instance
     );
 
     await Promise.all(standingsUpdates);

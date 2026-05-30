@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { MatchEvent } from '@/app/utils/matchEngine';
 import { markMatchAsViewed } from '@/app/actions/matchActions';
-import { Activity, Shield, Target, AlertCircle } from 'lucide-react';
+import { Activity, Shield, Target, AlertCircle, RefreshCcw } from 'lucide-react';
 
 export interface MatchReport {
   id: string;
@@ -55,6 +55,7 @@ export function MatchReportModal({ report, userTeamId, onClose }: MatchReportMod
     if (type === 'yellow_card') return <AlertCircle className="w-4 h-4 text-yellow-500" />;
     if (type === 'red_card') return <AlertCircle className="w-4 h-4 text-red-500" />;
     if (type === 'injury') return <Activity className="w-4 h-4 text-red-500" />;
+    if (type === 'substitution') return <RefreshCcw className="w-4 h-4 text-blue-400" />;
     return <AlertCircle className="w-4 h-4 text-gray-500" />;
   };
 
@@ -107,6 +108,13 @@ export function MatchReportModal({ report, userTeamId, onClose }: MatchReportMod
                         <div className={`flex flex-col text-right p-2 rounded-lg border w-[95%] ${isUserTeam ? 'bg-neon-cyan/10 border-neon-cyan/30' : 'bg-gray-800/80 border-gray-700'}`}>
                            <div className="flex items-center justify-end gap-1 mb-1">
                               <span className={`text-xs font-bold truncate ${isUserTeam ? 'text-white' : 'text-gray-300'}`}>{ev.player_name}</span>
+                              {ev.player_id && ev.player_id !== 'sys' && (
+                                <img 
+                                  src={`https://api.dicebear.com/9.x/micah/svg?seed=${ev.player_id}&backgroundColor=transparent`} 
+                                  alt="avatar" 
+                                  className="w-4 h-4 rounded-full bg-black/50" 
+                                />
+                              )}
                               {getEventIcon(ev.type)}
                            </div>
                            <span className="text-[9px] text-gray-400 whitespace-normal line-clamp-2 leading-tight">{ev.details}</span>
@@ -123,6 +131,13 @@ export function MatchReportModal({ report, userTeamId, onClose }: MatchReportMod
                         <div className={`flex flex-col text-left p-2 rounded-lg border w-[95%] ${isUserTeam ? 'bg-neon-cyan/10 border-neon-cyan/30' : 'bg-gray-800/80 border-gray-700'}`}>
                            <div className="flex items-center justify-start gap-1 mb-1">
                               {getEventIcon(ev.type)}
+                              {ev.player_id && ev.player_id !== 'sys' && (
+                                <img 
+                                  src={`https://api.dicebear.com/9.x/micah/svg?seed=${ev.player_id}&backgroundColor=transparent`} 
+                                  alt="avatar" 
+                                  className="w-4 h-4 rounded-full bg-black/50" 
+                                />
+                              )}
                               <span className={`text-xs font-bold truncate ${isUserTeam ? 'text-white' : 'text-gray-300'}`}>{ev.player_name}</span>
                            </div>
                            <span className="text-[9px] text-gray-400 whitespace-normal line-clamp-2 leading-tight">{ev.details}</span>

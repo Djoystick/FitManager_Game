@@ -489,3 +489,78 @@ export async function retirePlayerToAcademy(playerId: string) {
     return { success: false, error: err.message || 'Unknown error' };
   }
 }
+
+// ==========================================
+// QUICK SELL (ECONOMY SINK)
+// ==========================================
+
+export async function quickSellPlayer(playerId: string) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    
+    if (!userId || !playerId) return { success: false, error: 'Missing data' };
+
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // 1. Get user and team
+    const { data: team } = await supabaseAdmin.from('teams').select('id').eq('user_id', userId).single();
+    if (!team) return { success: false, error: 'Team not found' };
+
+    // 2. Fetch the player
+    const { data: player, error: playerErr } = await supabaseAdmin
+      .from('players')
+      .select('id, ovr, lineup_status, is_retired')
+      .eq('id', playerId)
+      .eq('team_id', team.id)
+      .single();
+
+    if (playerErr || !player) return { success: false, error: 'Player not found or not owned by you.' };
+    
+    // Safety check - cannot sell starting 11
+    if (player.lineup_status === 'starting') {
+      return { success: false, error: 'Cannot quick sell a player from starting 11. Move to bench first.' };
+    }
+    if (player.is_retired) {
+      return { success: false, error: 'Retired players cannot be sold for FC.' };
+    }
+
+    // 3. Calculate FC payout
+    // Formula: (OVR - 40) * 100. Minimum payout is 100 FC.
+    let payout = (player.ovr - 40) * 100;
+    if (payout < 100) payout = 100;
+
+    // 4. Delete player (Burn)
+    const { error: deleteErr } = await supabaseAdmin
+      .from('players')
+      .delete()
+      .eq('id', playerId);
+
+    if (deleteErr) {
+      return { success: false, error: 'Failed to delete player' };
+    }
+
+    // 5. Add FanCoins to user
+    const { error: incrementError } = await supabaseAdmin.rpc('increment_fancoins', {
+      user_id: userId,
+      amount: payout
+    });
+
+    // Fallback if RPC fails
+    if (incrementError) {
+      const { data: user } = await supabaseAdmin.from('users').select('balance_fancoins').eq('id', userId).single();
+      if (user) {
+        await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins + payout }).eq('id', userId);
+      }
+    }
+
+    return { success: true, payout };
+  } catch (err: any) {
+    console.error('[quickSellPlayer] Error:', err);
+    return { success: false, error: err.message || 'Unknown error' };
+  }
+}
+

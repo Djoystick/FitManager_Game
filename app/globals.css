@@ -5,6 +5,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Base ──────────────────────────────────────────────────────────────────── */
 :root {
   color-scheme: dark;
 }
@@ -15,4 +16,177 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Prevent any rubber-band scroll on iOS (TMA fullscreen) */
+  overscroll-behavior: none;
+}
+
+/* ── Hide scrollbar utility ─────────────────────────────────────────────────
+   Use: className="scrollbar-none"
+   Hides scrollbar on all browsers while keeping scroll functionality.
+─────────────────────────────────────────────────────────────────────────── */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Snap scroll helpers ────────────────────────────────────────────────────
+   Horizontal card carousel with momentum snapping.
+   Use: className="snap-row"  on container
+        className="snap-card" on each item
+─────────────────────────────────────────────────────────────────────────── */
+.snap-row {
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 0.75rem;
+}
+.snap-row::-webkit-scrollbar { display: none; }
+
+.snap-card {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* ── Animated star field (used in Welcome onboarding screen) ────────────────
+   Pure CSS starfield — no JS, no canvas. Uses two layers scrolling at
+   different speeds for parallax effect.
+─────────────────────────────────────────────────────────────────────────── */
+@keyframes star-drift {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+
+.stars-layer {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.8) 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 60%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 50% 10%, rgba(255,255,255,0.9) 0%, transparent 100%),
+    radial-gradient(1px 1px at 70% 40%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 80%, rgba(255,255,255,0.7) 0%, transparent 100%),
+    radial-gradient(1px 1px at 20% 90%, rgba(0,240,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 80% 15%, rgba(0,240,255,0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 45% 55%, rgba(255,255,255,1) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 60% 85%, rgba(255,255,255,0.8) 0%, transparent 100%),
+    radial-gradient(1px 1px at 15% 45%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 35% 25%, rgba(0,240,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 75% 65%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 5% 70%, rgba(255,255,255,0.7) 0%, transparent 100%),
+    radial-gradient(2px 2px at 55% 35%, rgba(255,255,255,0.9) 0%, transparent 100%),
+    radial-gradient(1px 1px at 25% 75%, rgba(0,240,255,0.8) 0%, transparent 100%);
+  background-size: 100% 200%;
+  animation: star-drift 30s linear infinite;
+  pointer-events: none;
+}
+
+.stars-layer-fast {
+  background-size: 100% 200%;
+  animation-duration: 18s;
+  opacity: 0.5;
+}
+
+/* ── Shimmer button animation ───────────────────────────────────────────────
+   Apply to CTA buttons for a sweeping light effect.
+─────────────────────────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.btn-shimmer {
+  background: linear-gradient(
+    90deg,
+    #00f0ff 0%,
+    #00f0ff 40%,
+    #ffffff 50%,
+    #00f0ff 60%,
+    #00f0ff 100%
+  );
+  background-size: 200% auto;
+  animation: shimmer 2.5s linear infinite;
+}
+
+/* ── Card flip animation (Captain selection) ────────────────────────────────
+   3D flip on .card-inner when .card-container has .flipped class.
+─────────────────────────────────────────────────────────────────────────── */
+.card-container {
+  perspective: 900px;
+}
+
+.card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.card-container.flipped .card-inner {
+  transform: rotateY(180deg);
+}
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 1rem;
+}
+
+.card-back {
+  transform: rotateY(180deg);
+}
+
+/* ── Neon glow pulse ─────────────────────────────────────────────────────── */
+@keyframes neon-pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(0,240,255,0.4), 0 0 20px rgba(0,240,255,0.2); }
+  50%       { box-shadow: 0 0 20px rgba(0,240,255,0.8), 0 0 40px rgba(0,240,255,0.4), 0 0 60px rgba(0,240,255,0.2); }
+}
+
+.neon-glow-pulse {
+  animation: neon-pulse 2s ease-in-out infinite;
+}
+
+/* ── Typewriter cursor ───────────────────────────────────────────────────── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.typewriter-cursor::after {
+  content: '|';
+  animation: blink 1s step-end infinite;
+  color: #00f0ff;
+  margin-left: 2px;
+}
+
+/* ── Confetti particles (CSS-only, used post-team-creation) ─────────────── */
+@keyframes confetti-fall {
+  0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+.confetti-particle {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  animation: confetti-fall 2.5s ease-in forwards;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Spotlight overlay ───────────────────────────────────────────────────── */
+.spotlight-ring {
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.85);
+  border-radius: 12px;
+  outline: 2px solid rgba(0,240,255,0.9);
+  outline-offset: 4px;
 }

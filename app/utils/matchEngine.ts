@@ -36,7 +36,7 @@ export interface MatchPlayer {
 }
 
 export interface MatchEvent {
-  type: 'goal' | 'breakthrough_failed' | 'save' | 'yellow_card' | 'red_card' | 'injury' | 'info';
+  type: 'goal' | 'breakthrough_failed' | 'save' | 'yellow_card' | 'red_card' | 'injury' | 'info' | 'substitution';
   minute: number;
   player_id: string;
   player_name: string;
@@ -575,6 +575,8 @@ function buildTimeline(
 export function simulateMatch(
   homeTeam: MatchPlayer[],
   awayTeam: MatchPlayer[],
+  homeBench: MatchPlayer[],
+  awayBench: MatchPlayer[],
   homeGreenLinks: Record<string, boolean>,
   awayGreenLinks: Record<string, boolean>
 ): MatchResult {
@@ -669,15 +671,87 @@ export function simulateMatch(
     details: `⚽ Матч начался! Владение: Дом ${Math.round(homePoss * 100)}% — Гости ${Math.round(awayPoss * 100)}%.`,
   });
 
+  // ── Track Pitch and Bench states ───────────────────────────────────────────
+  let currentHomePitch = [...homeTeam];
+  let currentAwayPitch = [...awayTeam];
+  let currentHomeBench = [...(homeBench || [])];
+  let currentAwayBench = [...(awayBench || [])];
+  
+  let homeSubsLeft = 3;
+  let awaySubsLeft = 3;
+
+  const checkSubs = (pitch: MatchPlayer[], bench: MatchPlayer[], teamKey: 'home' | 'away', minute: number) => {
+    let subsMade = 0;
+    const subsAllowed = teamKey === 'home' ? homeSubsLeft : awaySubsLeft;
+    if (subsAllowed <= 0 || bench.length === 0) return;
+
+    // Sort pitch players by current stamina (lowest first), only consider < 35
+    const exhausted = pitch.filter(p => liveStaminaMap[p.id] < 35).sort((a, b) => liveStaminaMap[a.id] - liveStaminaMap[b.id]);
+    
+    for (const tired of exhausted) {
+      if (subsMade >= subsAllowed) break;
+      
+      const tiredIsDEF = isDEF(tired.position);
+      const tiredIsMID = isMID(tired.position);
+      const tiredIsFWD = isFWD(tired.position) || isWNG(tired.position);
+      const tiredIsGK = tired.position === 'GK';
+
+      const freshIdx = bench.findIndex(bp => {
+        if (bp.stamina < 70) return false;
+        if (tiredIsGK && bp.position === 'GK') return true;
+        if (tiredIsDEF && isDEF(bp.position)) return true;
+        if (tiredIsMID && isMID(bp.position)) return true;
+        if (tiredIsFWD && (isFWD(bp.position) || isWNG(bp.position))) return true;
+        return false;
+      });
+
+      if (freshIdx !== -1) {
+        const fresh = bench[freshIdx];
+        
+        // Swap
+        const pIdx = pitch.findIndex(p => p.id === tired.id);
+        pitch[pIdx] = fresh;
+        bench.splice(freshIdx, 1);
+        
+        // Fix Stamina Drain
+        const playedFraction = minute / 90;
+        const totalDrainTired = tired.stamina - (staminaDrain[teamKey][tired.id] ?? tired.stamina);
+        staminaDrain[teamKey][tired.id] = Math.max(0, tired.stamina - (totalDrainTired * playedFraction));
+        
+        const remainingFraction = (90 - minute) / 90;
+        const baseSubDrain = 18; // Flat drain for subs
+        staminaDrain[teamKey][fresh.id] = Math.max(0, fresh.stamina - (baseSubDrain * remainingFraction));
+        liveStaminaMap[fresh.id] = fresh.stamina - (baseSubDrain * remainingFraction * 0.5); 
+        
+        events.push({
+          type: 'substitution', minute,
+          player_id: fresh.id, player_name: fresh.name, team: teamKey,
+          details: `🔄 Замена: ${fresh.name} выходит вместо уставшего ${tired.name}.`
+        });
+        
+        subsMade++;
+      }
+    }
+    
+    if (teamKey === 'home') homeSubsLeft -= subsMade;
+    else awaySubsLeft -= subsMade;
+  };
+
   // ── Process timeline ───────────────────────────────────────────────────────
   const timeline = buildTimeline(homeAttacks, awayAttacks);
 
   for (const slot of timeline) {
+    // Attempt substitutions around key minutes
+    if (slot.minute === 45 || slot.minute === 60 || slot.minute === 75) {
+      checkSubs(currentHomePitch, currentHomeBench, 'home', slot.minute);
+      checkSubs(currentAwayPitch, currentAwayBench, 'away', slot.minute);
+    }
+
     const isHomeAtk = slot.team === 'home';
     const ctx: AttackContext = {
       minute: slot.minute,
-      attackingTeam: isHomeAtk ? homeTeam : awayTeam,
-      defendingTeam: isHomeAtk ? awayTeam : homeTeam,
+      attackingTeam: isHomeAtk ? currentHomePitch : currentAwayPitch,
+      defendingTeam: isHomeAtk ? currentAwayPitch : currentHomePitch,
       attackingTeamKey: isHomeAtk ? 'home' : 'away',
       atkLinks: isHomeAtk ? homeLinks : awayLinks,
       defLinks: isHomeAtk ? awayLinks : homeLinks,

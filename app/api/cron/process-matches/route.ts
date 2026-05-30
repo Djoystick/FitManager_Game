@@ -53,25 +53,46 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // ── Find next pending round ───────────────────────────────────────────────
+    // ── Find next pending round (only for active leagues that have started) ──
+    const now = new Date().toISOString();
     const { data: unplayedMatches } = await supabaseAdmin
       .from('league_matches')
-      .select('round_number')
+      .select('round_number, league_instances!inner(id, start_time, status)')
       .eq('status', 'pending')
+      .eq('league_instances.status', 'active')
+      .lte('league_instances.start_time', now)
       .order('round_number', { ascending: true })
       .limit(1);
 
     if (!unplayedMatches || unplayedMatches.length === 0) {
-      return NextResponse.json({ success: true, message: 'No unplayed rounds left.' });
+      console.log('[process-matches] No unplayed rounds left. Triggering end-of-season (fire-and-forget)...');
+      // ── R1 FIX: Fire-and-forget — do NOT await these fetches. ─────────────
+      // Awaiting them caused Vercel timeout (10s Hobby / 60s Pro) when many
+      // leagues finished simultaneously, creating a permanent soft-lock where
+      // every subsequent cron invocation would hit the same timeout.
+      // The downstream routes are idempotent (CAS guard in end-of-season),
+      // so it is safe to let them run independently in the background.
+      const baseUrl = req.nextUrl.origin;
+      const cronHeaders = { 'Authorization': `Bearer ${process.env.CRON_SECRET}` };
+
+      fetch(`${baseUrl}/api/cron/end-of-season`, { headers: cronHeaders })
+        .catch(e => console.error('[process-matches] end-of-season fire-and-forget error:', e));
+
+      fetch(`${baseUrl}/api/cron/league-autofill`, { headers: cronHeaders })
+        .catch(e => console.error('[process-matches] league-autofill fire-and-forget error:', e));
+
+      return NextResponse.json({ success: true, message: 'No unplayed rounds left. End-of-season and autofill triggered (async).' });
     }
 
     const targetRound = unplayedMatches[0].round_number;
 
     const { data: matches } = await supabaseAdmin
       .from('league_matches')
-      .select('id, home_team_id, away_team_id, home_team:teams!home_team_id(name), away_team:teams!away_team_id(name)')
+      .select('id, home_team_id, away_team_id, home_team:teams!home_team_id(name), away_team:teams!away_team_id(name), league_instances!inner(id, start_time, status)')
       .eq('round_number', targetRound)
-      .eq('status', 'pending');
+      .eq('status', 'pending')
+      .eq('league_instances.status', 'active')
+      .lte('league_instances.start_time', now);
 
     if (!matches || matches.length === 0) {
       return NextResponse.json({ success: true, message: 'No matches found for round.' });

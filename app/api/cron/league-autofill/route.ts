@@ -25,9 +25,11 @@ export async function GET(request: Request) {
   try {
     const authHeader = request.headers.get('authorization');
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      console.warn("Unauthorized cron attempt");
-      // For local testing without cron secret, you might allow it, but production should block
-      // return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      // ── R3 FIX: Return 401 — previously this line was commented out, allowing
+      // any unauthenticated caller to create unlimited bot users/teams/players,
+      // causing database bloat and performance degradation for all players.
+      console.warn('[AutoFill] Unauthorized cron attempt blocked.');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     console.log("[CRON AutoFill] Starting...");
@@ -149,13 +151,28 @@ export async function GET(request: Request) {
         await supabaseAdmin.from('league_standings').insert(standingsToInsert);
 
         // Activate and generate schedule
-        await supabaseAdmin.from('league_instances').update({ status: 'active' }).eq('id', instance.id);
-        await generateLeagueSchedule(instance.id);
-        
-        console.log(`[CRON AutoFill] Instance ${instance.id} activated and scheduled!`);
+        const startTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        await supabaseAdmin.from('league_instances').update({ status: 'active', start_time: startTime }).eq('id', instance.id);
+
+        // ── L2 FIX: Only generate schedule if none exists yet ────────────────
+        // Prevents duplicate match rows when autofill is called multiple times
+        // for the same instance (e.g. on retry after a partial failure).
+        const { count: existingMatches } = await supabaseAdmin
+          .from('league_matches')
+          .select('*', { count: 'exact', head: true })
+          .eq('league_instance_id', instance.id);
+
+        if (!existingMatches || existingMatches === 0) {
+          await generateLeagueSchedule(instance.id);
+        } else {
+          console.log(`[CRON AutoFill] Instance ${instance.id} already has ${existingMatches} matches — skipping schedule generation.`);
+        }
+
+        console.log(`[CRON AutoFill] Instance ${instance.id} activated and scheduled! Starts at ${startTime}`);
       } else if (currentCount >= targetCount) {
         // Just in case it's full but status didn't update
-        await supabaseAdmin.from('league_instances').update({ status: 'active' }).eq('id', instance.id);
+        const startTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        await supabaseAdmin.from('league_instances').update({ status: 'active', start_time: startTime }).eq('id', instance.id);
         await generateLeagueSchedule(instance.id);
       }
     }

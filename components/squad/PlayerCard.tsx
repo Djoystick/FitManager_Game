@@ -43,12 +43,17 @@ export function PlayerCard({ player, onSell }: PlayerCardProps) {
             {player.name}
           </span>
         </div>
-        
         <div className="flex flex-col items-end">
-          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-900 border border-gray-700 shadow-inner">
-            <span className="text-sm font-orbitron font-black text-white">{player.ovr}</span>
+          <div className="relative w-10 h-10 rounded-lg bg-gray-900 border border-gray-700 shadow-inner overflow-hidden flex items-center justify-center">
+            <img 
+              src={`https://api.dicebear.com/9.x/micah/svg?seed=${player.id}&backgroundColor=transparent`}
+              alt="Avatar"
+              className="w-full h-full object-cover mix-blend-screen opacity-90"
+            />
+            <div className="absolute bottom-0 right-0 bg-black/80 px-1 border-t border-l border-gray-700 rounded-tl">
+              <span className="text-[9px] font-orbitron font-black text-white leading-none">{player.ovr}</span>
+            </div>
           </div>
-          <span className="text-[8px] text-gray-500 font-bold tracking-widest mt-1">OVR</span>
         </div>
       </div>
 

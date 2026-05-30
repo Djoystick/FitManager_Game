@@ -88,12 +88,17 @@ export default async function LeagueDashboard() {
         </div>
         <div className="flex justify-between items-center">
           <p className="text-sm font-bold text-neon-purple tracking-widest uppercase">{groupName}</p>
-          {isFilling && (
+          {isFilling ? (
             <span className="flex items-center gap-2 text-xs font-bold text-orange-400 bg-orange-900/30 px-3 py-1 rounded-full border border-orange-500/50">
               <Loader2 className="animate-spin" size={14} />
               WAITING FOR TEAMS ({standings.length}/14)
             </span>
-          )}
+          ) : instanceData?.start_time && new Date(instanceData.start_time) > new Date() ? (
+            <span className="flex items-center gap-2 text-xs font-bold text-neon-pink bg-neon-pink/10 px-3 py-1 rounded-full border border-neon-pink/50 uppercase">
+              <Loader2 className="animate-spin" size={14} />
+              Transfer Window
+            </span>
+          ) : null}
         </div>
       </header>
 

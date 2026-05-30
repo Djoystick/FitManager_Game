@@ -5,7 +5,7 @@ import { X, Activity, Zap, User, Crosshair, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { bulkTrainPlayer } from '@/app/actions/playerActions';
 import { healPlayer } from '@/app/actions/baseActions';
-import { renamePlayerAction, retirePlayerToAcademy } from '@/app/actions/teamActions';
+import { renamePlayerAction, retirePlayerToAcademy, quickSellPlayer } from '@/app/actions/teamActions';
 import { InfoPopover } from '@/components/ui/InfoPopover';
 import Link from 'next/link';
 import { listPlayerAction } from '@/app/actions/marketActions';
@@ -81,6 +81,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
   const [isPendingRename, startTransitionRename] = React.useTransition();
 
   const [isPendingRetire, startTransitionRetire] = React.useTransition();
+  const [isPendingQuickSell, startTransitionQuickSell] = React.useTransition();
 
   // ── Load balances + medical level ─────────────────────────────────────────
 
@@ -211,6 +212,21 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
     });
   };
 
+  // ── Quick Sell handler ───────────────────────────────────────────────────
+  const handleQuickSell = () => {
+    if (confirm(`Вы уверены, что хотите продать ${player.name} системе? Это действие нельзя отменить.`)) {
+      startTransitionQuickSell(async () => {
+        const res = await quickSellPlayer(player.id);
+        if (res.success) {
+          toast.success(`Игрок успешно продан системе за ${res.payout} FC!`);
+          onClose();
+        } else {
+          toast.error(res.error || 'Ошибка при продаже игрока');
+        }
+      });
+    }
+  };
+
   // ── Stat display config ───────────────────────────────────────────────────
 
   const statLabels: Record<keyof PlayerStats, string> = {
@@ -244,9 +260,16 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="p-5 border-b border-gray-800 flex justify-between items-start bg-gradient-to-b from-neon-cyan/10 to-transparent flex-shrink-0">
           <div className="flex gap-4 items-center">
-            <div className="w-16 h-16 rounded-xl bg-black/60 border border-neon-cyan/40 shadow-[inset_0_0_15px_rgba(0,255,255,0.2)] flex flex-col items-center justify-center">
-              <span className="text-2xl font-black text-white">{player.ovr}</span>
-              <span className="text-[10px] font-bold text-neon-cyan uppercase">{player.position}</span>
+            <div className="relative w-16 h-16 rounded-xl bg-black/60 border border-neon-cyan/40 shadow-[inset_0_0_15px_rgba(0,255,255,0.2)] flex items-center justify-center overflow-hidden">
+              <img 
+                src={`https://api.dicebear.com/9.x/micah/svg?seed=${player.id}&backgroundColor=transparent`}
+                alt="Avatar"
+                className="w-full h-full object-cover opacity-90 mix-blend-screen"
+              />
+              <div className="absolute bottom-0 left-0 right-0 bg-black/70 flex justify-center items-center py-0.5 border-t border-neon-cyan/30">
+                <span className="text-[10px] font-black text-white">{player.ovr}</span>
+                <span className="text-[8px] font-bold text-neon-cyan ml-1">{player.position}</span>
+              </div>
             </div>
             <div>
               <h2 className="text-lg font-black text-white uppercase tracking-wider flex items-center gap-2">
@@ -555,17 +578,27 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                 </button>
               </div>
             ) : (
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => setSellMode(true)}
-                  className="flex-1 py-3 rounded-xl bg-blue-900/30 border border-blue-500/50 text-blue-400 font-black text-xs uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-[0_0_10px_rgba(59,130,246,0.1)]"
-                >
-                  Продать (TON)
-                </button>
+              <div className="flex flex-col gap-3">
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => setSellMode(true)}
+                    className="flex-1 py-3 rounded-xl bg-blue-900/30 border border-blue-500/50 text-blue-400 font-black text-xs uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-[0_0_10px_rgba(59,130,246,0.1)]"
+                  >
+                    На рынок (TON)
+                  </button>
+                  <button 
+                    onClick={handleQuickSell}
+                    disabled={isPendingQuickSell || player.lineup_status === 'starting'}
+                    className="flex-1 py-3 rounded-xl bg-orange-900/30 border border-orange-500/50 text-orange-400 font-black text-xs uppercase tracking-widest hover:bg-orange-600 hover:text-white transition-all shadow-[0_0_10px_rgba(249,115,22,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={player.lineup_status === 'starting' ? 'Сначала переведите игрока в запас' : ''}
+                  >
+                    {isPendingQuickSell ? 'Продажа...' : `Системе (${Math.max(100, (player.ovr - 40) * 100)} FC)`}
+                  </button>
+                </div>
                 <Link
                   href={`/base?playerId=${player.id}`}
                   onClick={onClose}
-                  className="flex-1 py-3 rounded-xl bg-neon-cyan/20 border border-neon-cyan/50 text-neon-cyan font-black text-xs uppercase tracking-widest hover:bg-neon-cyan hover:text-black flex items-center justify-center transition-all shadow-[0_0_10px_rgba(0,255,255,0.2)]"
+                  className="w-full py-3 rounded-xl bg-neon-cyan/20 border border-neon-cyan/50 text-neon-cyan font-black text-xs uppercase tracking-widest hover:bg-neon-cyan hover:text-black flex items-center justify-center transition-all shadow-[0_0_10px_rgba(0,255,255,0.2)]"
                 >
                   Тренировать
                 </Link>

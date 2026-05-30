@@ -44,6 +44,8 @@ export const metadata: Metadata = {
 import { TelegramAuthProvider } from "@/components/providers/TelegramAuthProvider";
 import { TonProvider } from "@/components/TonProvider";
 import { LanguageProvider } from "@/components/LanguageContext";
+import { TutorialProvider } from "@/components/providers/TutorialContext";
+import { PaddingProvider } from "@/components/providers/PaddingContext";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import { Toaster } from "react-hot-toast";
@@ -58,25 +60,64 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${orbitron.variable} ${russoOne.variable} h-full antialiased`}
+      className={`${inter.variable} ${orbitron.variable} ${russoOne.variable} antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">
+      {/*
+        ── LAYOUT STRATEGY ──────────────────────────────────────────────────
+        h-dvh: fills the dynamic viewport (accounts for mobile browser chrome).
+        overflow-hidden on <body> and <main>: prevents any page-level scroll.
+        Each page/screen is responsible for its own internal scroll behaviour:
+          - Use overflow-y-auto on the page's scrollable inner section
+          - Use overflow-x-auto + snap-row on horizontal card carousels
+          - Market and League pages are exempt and may scroll vertically
+        ─────────────────────────────────────────────────────────────────── */}
+      <body className="h-dvh overflow-hidden flex flex-col font-sans">
         <LanguageProvider>
           <TelegramAuthProvider>
             <TonProvider>
-              <main 
-                role="main"
-                aria-label="Main Application Content"
-                className="max-w-[480px] w-full mx-auto min-h-screen bg-space-dark text-white relative shadow-2xl overflow-hidden border-x border-gray-900/30 flex flex-col"
-              >
-                <GlobalHeader />
-                <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar relative pb-24">
-                  {children}
-                </div>
-                <BottomTabBar />
-              </main>
-              <TooltipTour />
-              <Toaster position="top-center" toastOptions={{ className: 'font-sans font-bold shadow-[0_0_15px_rgba(255,0,60,0.4)] bg-black text-white border border-red-500/50' }} />
+              {/* ── State providers (order matters: Tutorial depends on Auth) */}
+              <PaddingProvider>
+                <TutorialProvider>
+                  <main
+                    role="main"
+                    aria-label="Main Application Content"
+                    className={`
+                      max-w-[480px] w-full mx-auto
+                      h-dvh overflow-hidden
+                      bg-space-dark text-white relative
+                      shadow-2xl border-x border-gray-900/30
+                      flex flex-col
+                    `}
+                  >
+                    {/* GlobalHeader is always visible at the top */}
+                    <GlobalHeader />
+
+                    {/*
+                      ── CONTENT AREA ─────────────────────────────────────
+                      min-h-0 is CRITICAL: without it, flex children ignore
+                      parent's height constraint and overflow-hidden fails.
+                      Each child page must set its own height/overflow.
+                      ──────────────────────────────────────────────────── */}
+                    <div className="flex-1 min-h-0 relative">
+                      {children}
+                    </div>
+
+                    {/* BottomTabBar is fixed, not in flow */}
+                    <BottomTabBar />
+                  </main>
+
+                  {/* Tutorial tooltip overlay — rendered outside main for z-index */}
+                  <TooltipTour />
+
+                  <Toaster
+                    position="top-center"
+                    toastOptions={{
+                      className: 'font-sans font-bold shadow-[0_0_15px_rgba(255,0,60,0.4)] bg-black text-white border border-red-500/50',
+                      style: { marginTop: '70px' }, // avoid Telegram header overlap
+                    }}
+                  />
+                </TutorialProvider>
+              </PaddingProvider>
             </TonProvider>
           </TelegramAuthProvider>
         </LanguageProvider>
