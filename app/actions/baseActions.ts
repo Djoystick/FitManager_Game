@@ -124,7 +124,7 @@ export async function getStadiumData(userId: string) {
     if (teamError || !team) return { success: false, error: 'Team not found' };
 
     // 3. Get or Upsert infrastructure
-    let { data: infra, error: infraError } = await supabaseAdmin
+    const { data: infra, error: infraError } = await supabaseAdmin
       .from('infrastructure')
       .select('stadium_level, medical_center_level, training_camp_level')
       .eq('team_id', team.id)

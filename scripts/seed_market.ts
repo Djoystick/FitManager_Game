@@ -18,7 +18,7 @@ const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', '
 const AVAILABLE_TRAITS = ['Sniper', 'Playmaker', 'Wall', 'Speedster', 'Anchor', 'Poacher', 'Engine'];
 
 function generatePlayer(teamId: string, position: string, status: string, isFreeAgent = false) {
-  let stats = {
+  const stats = {
     pace: Math.max(30, getRandomInt(45, isFreeAgent ? 85 : 55)),
     shooting: Math.max(30, getRandomInt(45, isFreeAgent ? 85 : 55)),
     passing: Math.max(30, getRandomInt(45, isFreeAgent ? 85 : 55)),

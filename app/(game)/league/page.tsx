@@ -62,7 +62,7 @@ export default async function LeagueDashboard() {
     .eq('league_instance_id', instanceId)
     .order('points', { ascending: false });
 
-  let standings = standingsData || [];
+  const standings = standingsData || [];
   
   // Custom sorting: Points DESC, then Goal Difference (GF - GA) DESC
   standings.sort((a, b) => {

@@ -129,14 +129,18 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (isAuthenticated && userId) {
-      fetchUserData(userId);
-      setTutorialUserId(userId);
-      setPaddingUserId(userId);
+      setTimeout(() => {
+        fetchUserData(userId);
+        setTutorialUserId(userId);
+        setPaddingUserId(userId);
+      }, 0);
     } else if (!isAuthLoading && !isAuthenticated) {
-      setIsDataLoading(false);
-      setHasTeam(true);
+      setTimeout(() => {
+        setIsDataLoading(false);
+        setHasTeam(true);
+      }, 0);
     }
-  }, [isAuthenticated, userId, isAuthLoading]);
+  }, [isAuthenticated, userId, isAuthLoading, fetchUserData, setTutorialUserId, setPaddingUserId]);
 
   // Lobby countdown
   useEffect(() => {
@@ -154,13 +158,19 @@ export default function DashboardPage() {
     return () => clearInterval(timer);
   }, [lobbyTimeLeft]);
 
+  useEffect(() => {
+    if (hasTeam === false && userId) {
+      if (typeof window !== 'undefined') window.location.href = '/onboarding';
+    }
+  }, [hasTeam, userId]);
+
   // ── Guards ──────────────────────────────────────────────────────────────
   if (isAuthLoading || isDataLoading || hasTeam === null) {
     return <CyberLoader fullScreen text={t.loading} />;
   }
 
+
   if (hasTeam === false && userId) {
-    if (typeof window !== 'undefined') window.location.href = '/onboarding';
     return <CyberLoader fullScreen text={t.loading} />;
   }
 

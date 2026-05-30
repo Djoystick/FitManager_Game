@@ -30,7 +30,7 @@ export async function generateLeagueSchedule(instanceId?: string) {
     const numRounds = 13;
     const halfSize = numTeams / 2;
     
-    let teams = [...teamIds];
+    const teams = [...teamIds];
 
     for (let round = 1; round <= numRounds; round++) {
       for (let i = 0; i < halfSize; i++) {
@@ -246,11 +246,11 @@ export async function simulateNextRound(userId?: string) {
       // Score Generation based on OVR difference
       const ovrDiff = homeOvr - awayOvr;
       const baseGoals = 1.5;
-      let homeExpected = baseGoals + (ovrDiff * 0.1);
-      let awayExpected = baseGoals - (ovrDiff * 0.1);
+      const homeExpected = baseGoals + (ovrDiff * 0.1);
+      const awayExpected = baseGoals - (ovrDiff * 0.1);
       
-      let homeScore = Math.max(0, Math.floor(homeExpected + (Math.random() * 3 - 1.5)));
-      let awayScore = Math.max(0, Math.floor(awayExpected + (Math.random() * 3 - 1.5)));
+      const homeScore = Math.max(0, Math.floor(homeExpected + (Math.random() * 3 - 1.5)));
+      const awayScore = Math.max(0, Math.floor(awayExpected + (Math.random() * 3 - 1.5)));
 
       // Goals Generation
       const generateGoals = (score: number, teamId: string) => {

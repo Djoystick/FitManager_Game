@@ -33,14 +33,17 @@ function useTypewriter(text: string, speed = 45) {
   const [displayed, setDisplayed] = useState('');
   const [done, setDone] = useState(false);
   useEffect(() => {
-    setDisplayed('');
-    setDone(false);
-    let i = 0;
-    const id = setInterval(() => {
-      i++;
-      setDisplayed(text.slice(0, i));
-      if (i >= text.length) { clearInterval(id); setDone(true); }
-    }, speed);
+    let id: ReturnType<typeof setInterval>;
+    setTimeout(() => {
+      setDisplayed('');
+      setDone(false);
+      let i = 0;
+      id = setInterval(() => {
+        i++;
+        setDisplayed(text.slice(0, i));
+        if (i >= text.length) { clearInterval(id); setDone(true); }
+      }, speed);
+    }, 0);
     return () => clearInterval(id);
   }, [text, speed]);
   return { displayed, done };
@@ -49,14 +52,14 @@ function useTypewriter(text: string, speed = 45) {
 // ─── Confetti burst ──────────────────────────────────────────────────────────
 const COLORS = ['#00f0ff','#ff003c','#f59e0b','#a855f7','#22c55e','#ffffff'];
 function Confetti() {
-  const particles = Array.from({ length: 28 }, (_, i) => ({
+  const [particles] = useState(() => Array.from({ length: 28 }, (_, i) => ({
     id: i,
     color: COLORS[i % COLORS.length],
     left: `${Math.random() * 100}%`,
     delay: `${Math.random() * 0.8}s`,
     size: Math.random() > 0.5 ? 8 : 5,
     rotate: Math.random() * 360,
-  }));
+  })));
   return (
     <>
       {particles.map(p => (

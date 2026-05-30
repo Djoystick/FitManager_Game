@@ -56,10 +56,12 @@ export function PaddingProvider({ children }: { children: ReactNode }) {
   // ── Fast hydration from localStorage ─────────────────────────────────────
   useEffect(() => {
     const cached = localStorage.getItem(STORAGE_KEY);
-    if (cached !== null) {
-      setPaddingEnabled(cached === 'true');
-    }
-    setHydrated(true);
+    setTimeout(() => {
+      if (cached !== null) {
+        setPaddingEnabled(cached === 'true');
+      }
+      setHydrated(true);
+    }, 0);
   }, []);
 
   // ── DB sync when userId becomes available ─────────────────────────────────

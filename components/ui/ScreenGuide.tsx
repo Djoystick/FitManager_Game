@@ -20,14 +20,15 @@ export function ScreenGuide({ screenName, title, content }: ScreenGuideProps) {
   const t = dict[language as keyof typeof dict];
 
   useEffect(() => {
-    setHasMounted(true);
-    setIsVisible(false); // Reset visibility on key/screen change
-    const hasSeen = localStorage.getItem(storageKey);
-    if (!hasSeen) {
-      // Slight delay so the user sees the page first
-      const timer = setTimeout(() => setIsVisible(true), 1000);
-      return () => clearTimeout(timer);
-    }
+    setTimeout(() => {
+      setHasMounted(true);
+      setIsVisible(false); // Reset visibility on key/screen change
+      const hasSeen = localStorage.getItem(storageKey);
+      if (!hasSeen) {
+        // Slight delay so the user sees the page first
+        setTimeout(() => setIsVisible(true), 1000);
+      }
+    }, 0);
   }, [storageKey]);
 
   const handleClose = () => {

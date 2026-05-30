@@ -272,7 +272,7 @@ function parseLlmJson<T>(text: string): T {
   // Fix single-quoted strings to double-quoted (simple heuristic for keys/values)
   fixed = fixed.replaceAll(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, '"$1"');
   // Remove control characters except \n \r \t
-  // eslint-disable-next-line no-control-regex
+   
   fixed = fixed.replaceAll(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
 
   try { return JSON.parse(fixed) as T; } catch { /* fall through */ }

@@ -12,7 +12,7 @@ export function SquadTabs({ initialPlayers, teamId, userId }: { initialPlayers: 
 
   useEffect(() => {
     if (activeTab === 'scout' && !report) {
-      setIsLoadingScout(true);
+      setTimeout(() => setIsLoadingScout(true), 0);
       getUpcomingOpponentScoutReport(userId).then(res => {
         if (res.success && res.data) {
           setReport(res.data);

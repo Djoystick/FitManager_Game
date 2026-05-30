@@ -31,7 +31,7 @@ function generatePlayer(
   isCaptain: boolean = false
 ) {
   // Stat floor of 30 applied
-  let stats: PlayerStats = {
+  const stats: PlayerStats = {
     pace: Math.max(30, getRandomInt(45, 55)),
     shooting: Math.max(30, getRandomInt(45, 55)),
     passing: Math.max(30, getRandomInt(45, 55)),
@@ -40,7 +40,7 @@ function generatePlayer(
     physical: Math.max(30, getRandomInt(45, 55)),
   };
 
-  let traits: string[] = [];
+  const traits: string[] = [];
 
   if (isCaptain) {
     stats.pace = getRandomInt(75, 85);

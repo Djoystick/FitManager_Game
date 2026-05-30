@@ -28,7 +28,9 @@ export function TelegramAuthProvider({ children }: { children: ReactNode }) {
   const { setLanguage } = useContext(LanguageContext);
 
   useEffect(() => {
-    setIsMounted(true);
+    setTimeout(() => {
+      setIsMounted(true);
+    }, 0);
 
     const authenticate = async () => {
       try {

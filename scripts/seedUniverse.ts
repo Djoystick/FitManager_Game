@@ -24,7 +24,7 @@ const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', '
 const AVAILABLE_TRAITS = ['Sniper', 'Playmaker', 'Wall', 'Speedster', 'Anchor', 'Poacher', 'Engine'];
 
 function generatePlayer(teamId: string, position: string, status: string, isFreeAgent = false) {
-  let stats = {
+  const stats = {
     pace: Math.max(30, getRandomInt(45, isFreeAgent ? 85 : 55)),
     shooting: Math.max(30, getRandomInt(45, isFreeAgent ? 85 : 55)),
     passing: Math.max(30, getRandomInt(45, isFreeAgent ? 85 : 55)),
@@ -57,7 +57,7 @@ async function generateSchedule(instanceId: string, teamIds: string[]) {
   const numTeams = teamIds.length;
   const numRounds = numTeams - 1;
   const halfSize = numTeams / 2;
-  let teams = [...teamIds];
+  const teams = [...teamIds];
 
   for (let round = 1; round <= numRounds; round++) {
     for (let i = 0; i < halfSize; i++) {

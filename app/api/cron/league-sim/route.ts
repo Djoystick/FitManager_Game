@@ -49,7 +49,7 @@ export async function GET(req: Request) {
         let attack = 0;
         let defense = 0;
         players.forEach(p => {
-          let modifier = p.stamina < 50 ? 0.8 : 1.0; // 20% penalty if stamina < 50
+          const modifier = p.stamina < 50 ? 0.8 : 1.0; // 20% penalty if stamina < 50
           if (p.position === 'FWD') {
             attack += ((p.stats?.shooting || 0) + (p.stats?.pace || 0)) * modifier;
           } else if (p.position === 'MID') {

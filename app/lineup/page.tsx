@@ -96,9 +96,9 @@ export default function LineupPage() {
 
   useEffect(() => {
     if (isAuthenticated && userId) {
-      fetchTeamData();
+      setTimeout(() => fetchTeamData(), 0);
     } else if (!isAuthLoading && !isAuthenticated) {
-      setIsLoading(false);
+      setTimeout(() => setIsLoading(false), 0);
     }
   }, [isAuthenticated, userId, isAuthLoading]);
 

@@ -262,7 +262,9 @@ export default function BaseDashboard() {
   };
 
   useEffect(() => {
-    if (isAuthenticated && userId) fetchAll();
+    if (isAuthenticated && userId) {
+      setTimeout(() => fetchAll(), 0);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, userId]);
 
@@ -569,7 +571,9 @@ function TrainingTab({
 
   // Reset pending upgrades when player changes
   useEffect(() => {
-    setPendingUpgrades({ pac: 0, sta: 0, agi: 0, def: 0, dri: 0, pas: 0, phy: 0, sho: 0 });
+    setTimeout(() => {
+      setPendingUpgrades({ pac: 0, sta: 0, agi: 0, def: 0, dri: 0, pas: 0, phy: 0, sho: 0 });
+    }, 0);
   }, [selectedPlayer?.id, campData]);
 
   if (!campData || campData.players.length === 0) {

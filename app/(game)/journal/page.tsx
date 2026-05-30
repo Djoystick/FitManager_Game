@@ -38,6 +38,7 @@ export default async function MatchCenterDashboard() {
   if (standings.length > 1) {
     const possibleOpponents = standings.filter((s: any) => s.teams?.id !== currentUserTeam?.id);
     if (possibleOpponents.length > 0) {
+      // eslint-disable-next-line react-hooks/purity
       const randIdx = Math.floor(Math.random() * possibleOpponents.length);
       nextOpponent = possibleOpponents[randIdx]?.teams;
 

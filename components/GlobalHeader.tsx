@@ -51,8 +51,10 @@ export function GlobalHeader() {
   };
 
   useEffect(() => {
-    if (isAuthenticated && userId) fetchBalances();
-    const handleBalanceUpdate = () => fetchBalances();
+    if (isAuthenticated && userId) {
+      setTimeout(() => fetchBalances(), 0);
+    }
+    const handleBalanceUpdate = () => setTimeout(() => fetchBalances(), 0);
     window.addEventListener('balanceUpdated', handleBalanceUpdate);
     return () => window.removeEventListener('balanceUpdated', handleBalanceUpdate);
     // eslint-disable-next-line react-hooks/exhaustive-deps

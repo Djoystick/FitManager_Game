@@ -50,7 +50,7 @@ export default function TransferMarketPage() {
         position: positionFilter !== 'ALL' ? positionFilter : undefined 
       });
       if (res.success && res.data) {
-        let sorted = [...res.data] as any[];
+        const sorted = [...res.data] as any[];
         if (sortOrder === 'price_asc') sorted.sort((a, b) => a.price_ton - b.price_ton);
         if (sortOrder === 'price_desc') sorted.sort((a, b) => b.price_ton - a.price_ton);
         if (sortOrder === 'ovr_desc') sorted.sort((a, b) => (b.player?.ovr || 0) - (a.player?.ovr || 0));
@@ -99,12 +99,14 @@ export default function TransferMarketPage() {
 
   useEffect(() => {
     if (userId) {
-      if (activeTab === 'free_agents') {
-        if (freeAgents.length === 0) fetchFreeAgents();
-      } else {
-        fetchMarket();
-      }
-      fetchBalance();
+      setTimeout(() => {
+        if (activeTab === 'free_agents') {
+          if (freeAgents.length === 0) fetchFreeAgents();
+        } else {
+          fetchMarket();
+        }
+        fetchBalance();
+      }, 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [positionFilter, sortOrder, userId, activeTab]);

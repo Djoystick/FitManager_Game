@@ -60,11 +60,13 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   // ── Hydrate from localStorage on mount (fast, avoids DB latency flash) ──
   useEffect(() => {
     const cached = localStorage.getItem(STORAGE_KEY);
-    if (cached !== null) {
-      const parsed = parseInt(cached, 10) as TutorialStep;
-      setStep(isNaN(parsed) ? 0 : parsed);
-    }
-    setHydrated(true);
+    setTimeout(() => {
+      if (cached !== null) {
+        const parsed = parseInt(cached, 10) as TutorialStep;
+        setStep(isNaN(parsed) ? 0 : parsed);
+      }
+      setHydrated(true);
+    }, 0);
   }, []);
 
   // ── When userId becomes available, sync from DB (source of truth) ────────

@@ -24,8 +24,8 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
         if (saved === 'ru' || saved === 'en') {
           setLanguageState(saved);
         } else {
-          const module = await import('@twa-dev/sdk');
-          const WebApp = module.default;
+          const sdkModule = await import('@twa-dev/sdk');
+          const WebApp = sdkModule.default;
           const twaLang = WebApp.initDataUnsafe?.user?.language_code;
           if (twaLang === 'ru') {
             setLanguageState('ru');

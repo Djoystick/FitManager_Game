@@ -672,10 +672,10 @@ export function simulateMatch(
   });
 
   // ── Track Pitch and Bench states ───────────────────────────────────────────
-  let currentHomePitch = [...homeTeam];
-  let currentAwayPitch = [...awayTeam];
-  let currentHomeBench = [...(homeBench || [])];
-  let currentAwayBench = [...(awayBench || [])];
+  const currentHomePitch = [...homeTeam];
+  const currentAwayPitch = [...awayTeam];
+  const currentHomeBench = [...(homeBench || [])];
+  const currentAwayBench = [...(awayBench || [])];
   
   let homeSubsLeft = 3;
   let awaySubsLeft = 3;
