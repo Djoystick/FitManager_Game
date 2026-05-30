@@ -85,24 +85,32 @@ const AVAILABLE_PERKS = [
 function generateRandomPlayer(
   teamId: string,
   academyLevel: number = 1,
-  scoutLevel: number   = 1
+  scoutLevel: number   = 1,
+  academyPerks: any[]  = []
 ): Omit<Player, 'id'> & { perk_granted: boolean } {
   const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
   const lastName  = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
   const position  = POSITIONS[Math.floor(Math.random() * POSITIONS.length)];
   const age       = Math.floor(Math.random() * 4) + 16; // 16–19
 
-  // ────────────────────────────────────────────────────────────────────
-  // ECONOMY HARD CAP: Максимальный OVR бота, доступного через Академию/FC-рынок = 62.
-  // Всё выше 62 OVR — только через Sweat Coins (W2E) или P2P TON-рынок.
-  // Стеклянный потолок для FC: стат ≥ 70 можно прокачать только за W2E-монеты.
-  // ────────────────────────────────────────────────────────────────────
-  const FC_MARKET_OVR_CAP = 62;
+  // Apply academy perks
+  let extraBonus = 0;
+  let extraPerkChance = 0;
+  
+  if (Array.isArray(academyPerks)) {
+    for (const perk of academyPerks) {
+      if (perk.type === 'generic_boost') {
+        extraBonus += 1;
+        extraPerkChance += perk.bonus_chance || 0;
+      } else if (perk.type === `scout_${position.toLowerCase()}_boost`) {
+        extraBonus += 2;
+        extraPerkChance += (perk.bonus_chance || 0) * 1.5;
+      }
+    }
+  }
 
-  // Academy OVR bonus: +2 per level, but the generated OVR is ALWAYS capped at FC_MARKET_OVR_CAP.
-  // Academy levels instead IMPROVE the ovr floor (better average starting quality),
-  // but cannot push a bot above the hard cap.
-  const academyBonus = Math.min((academyLevel - 1) * 2, 18);
+  const FC_MARKET_OVR_CAP = 62;
+  const academyBonus = Math.min((academyLevel - 1) * 2 + extraBonus, 18);
   const ovrFloor     = Math.min(48 + academyBonus, 58); // floor: 48 (lvl1) → 58 (lvl6+)
   const rawOvr       = Math.floor(Math.random() * 15) + ovrFloor; // floor+0 to floor+14
   const ovr          = Math.min(rawOvr, FC_MARKET_OVR_CAP);       // HARD CAP at 62
@@ -112,14 +120,8 @@ function generateRandomPlayer(
   const genStat = () => Math.min(99, Math.max(1, Math.round(ovr + (Math.random() * 20 - 10))));
 
   const stats: PlayerStats = {
-    pac: genStat(),
-    sho: genStat(),
-    pas: genStat(),
-    dri: genStat(),
-    def: genStat(),
-    phy: genStat(),
-    sta: genStat(),
-    agi: genStat(),
+    pac: genStat(), sho: genStat(), pas: genStat(), dri: genStat(),
+    def: genStat(), phy: genStat(), sta: genStat(), agi: genStat(),
   };
 
   // Position-based stat adjustments
@@ -137,8 +139,8 @@ function generateRandomPlayer(
     stats.phy = Math.min(99, stats.phy + 5);
   }
 
-  // Scout perk drop: 10% base + 5% per scout level
-  const perkChance = Math.min(0.10 + (scoutLevel * 0.05), 0.75); // max 75%
+  // Scout perk drop: 10% base + 5% per scout level + retired player bonuses
+  const perkChance = Math.min(0.10 + (scoutLevel * 0.05) + extraPerkChance, 0.75); // max 75%
   const perk_granted = Math.random() < perkChance;
   const traits: string[] = perk_granted
     ? [AVAILABLE_PERKS[Math.floor(Math.random() * AVAILABLE_PERKS.length)]]
@@ -154,17 +156,11 @@ function generateRandomPlayer(
     stats,
     stamina:       100,
     lineup_status: 'bench',
-    is_nft_coach:  false,
+    is_nft_coach:  false, // Kept for legacy, now we also use is_retired in DB
     traits,
     perk_granted,
   };
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ACTION: scoutYouthPlayer
-//
-// Reads academy_level + scout_level from infrastructure before generating.
-// ─────────────────────────────────────────────────────────────────────────────
 
 export async function scoutYouthPlayer(): Promise<ScoutResult> {
   try {
@@ -188,18 +184,19 @@ export async function scoutYouthPlayer(): Promise<ScoutResult> {
 
     const teamId = teamData.id;
 
-    // 2. Read infrastructure levels (academy + scout)
+    // 2. Read infrastructure levels (academy + scout + perks)
     const { data: infra } = await supabaseAdmin
       .from('infrastructure')
-      .select('academy_level, scout_level')
+      .select('academy_level, scout_level, academy_perks')
       .eq('team_id', teamId)
       .maybeSingle();
 
     const academyLevel = infra?.academy_level ?? 1;
     const scoutLevel   = infra?.scout_level   ?? 1;
+    const academyPerks = infra?.academy_perks ?? [];
 
     // 3. Generate player with infrastructure bonuses
-    const { perk_granted, ...newPlayerData } = generateRandomPlayer(teamId, academyLevel, scoutLevel);
+    const { perk_granted, ...newPlayerData } = generateRandomPlayer(teamId, academyLevel, scoutLevel, academyPerks);
 
     // 4. Insert into database
     const { data: insertedPlayer, error: insertError } = await supabaseAdmin

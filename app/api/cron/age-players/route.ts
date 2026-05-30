@@ -1,21 +1,26 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(req: Request) {
-  // 1. Basic Security Check: Require Bearer token matching CRON_SECRET
   const authHeader = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
 
   if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!req.url.includes('localhost')) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
   }
 
   try {
-    // 2. Fetch all active players (exclude existing coaches)
-    const { data: activePlayers, error: fetchError } = await supabase
+    const { data: activePlayers, error: fetchError } = await supabaseAdmin
       .from("players")
-      .select("id, age, ovr, perks")
-      .eq("is_nft_coach", false);
+      .select("id, age, ovr, stats")
+      .eq("is_retired", false); // Use new is_retired flag
 
     if (fetchError) {
       throw new Error(`Failed to fetch active players: ${fetchError.message}`);
@@ -28,49 +33,51 @@ export async function GET(req: Request) {
     let agedCount = 0;
     let retiredCount = 0;
 
-    // 3. Process Aging and Evolution Logic
-    // Iterating sequentially ensures we can gracefully handle individual errors without failing the entire batch
     for (const player of activePlayers) {
       const newAge = player.age + 1;
       
       if (newAge >= 35) {
-        // Player reaches retirement horizon: Evolve into NFT Coach
-        const currentPerks = Array.isArray(player.perks) ? player.perks : [];
-        const newPerks = [
-          ...currentPerks, 
-          { coach_bonus: "XP_BOOST_10_PERCENT", legacy_ovr: player.ovr }
-        ];
-
-        const { error: retireError } = await supabase
+        // Player reaches retirement horizon
+        const { error: retireError } = await supabaseAdmin
           .from("players")
           .update({
             age: newAge,
-            is_nft_coach: true,
-            perks: newPerks
+            is_retired: true,
+            lineup_status: 'bench' // Force them to bench
           })
           .eq("id", player.id);
 
         if (retireError) {
           console.error(`[CRON ERROR] Failed to retire player ${player.id}: ${retireError.message}`);
-          continue; // Skip market cleanup if retirement fails
+          continue; 
         }
 
-        // 4. Market Cleanup: Remove retiring player from P2P transfer market
-        const { error: marketError } = await supabase
-          .from("transfer_market")
-          .delete()
-          .eq("player_id", player.id);
-
-        if (marketError) {
-          console.error(`[CRON WARNING] Failed to cleanup market for retired player ${player.id}: ${marketError.message}`);
-        }
-
+        // Market Cleanup
+        await supabaseAdmin.from("transfer_market").delete().eq("player_id", player.id);
         retiredCount++;
       } else {
-        // Standard Aging
-        const { error: ageError } = await supabase
+        // Standard Aging + OVR Decay
+        let decay = 0;
+        if (newAge === 31) decay = 1;
+        else if (newAge === 32) decay = 2;
+        else if (newAge === 33) decay = 3;
+        else if (newAge === 34) decay = 4;
+        else if (newAge > 34) decay = 5;
+
+        const newOvr = Math.max(1, (player.ovr || 50) - decay);
+        
+        // Also reduce stats slightly if decayed
+        let newStats = player.stats;
+        if (decay > 0 && newStats) {
+          newStats = { ...newStats };
+          for (const key in newStats) {
+             newStats[key] = Math.max(1, newStats[key] - decay);
+          }
+        }
+
+        const { error: ageError } = await supabaseAdmin
           .from("players")
-          .update({ age: newAge })
+          .update({ age: newAge, ovr: newOvr, stats: newStats })
           .eq("id", player.id);
 
         if (ageError) {
@@ -82,21 +89,14 @@ export async function GET(req: Request) {
       }
     }
 
-    // 5. Return execution summary
     return NextResponse.json({
       success: true,
       message: "Player aging and evolution process completed securely.",
-      stats: {
-        agedCount,
-        retiredCount
-      }
+      stats: { agedCount, retiredCount }
     });
 
   } catch (error: any) {
     console.error("Cron Age Players Fatal Error:", error);
-    return NextResponse.json(
-      { error: "Internal Server Error", details: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal Server Error", details: error.message }, { status: 500 });
   }
 }

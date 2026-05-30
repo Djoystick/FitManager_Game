@@ -5,7 +5,7 @@ import { X, Activity, Zap, User, Crosshair, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { bulkTrainPlayer } from '@/app/actions/playerActions';
 import { healPlayer } from '@/app/actions/baseActions';
-import { renamePlayerAction } from '@/app/actions/teamActions';
+import { renamePlayerAction, retirePlayerToAcademy } from '@/app/actions/teamActions';
 import { InfoPopover } from '@/components/ui/InfoPopover';
 import Link from 'next/link';
 import { listPlayerAction } from '@/app/actions/marketActions';
@@ -79,6 +79,8 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
   const [renameMode,      setRenameMode]      = useState(false);
   const [newName,         setNewName]         = useState(player.name);
   const [isPendingRename, startTransitionRename] = React.useTransition();
+
+  const [isPendingRetire, startTransitionRetire] = React.useTransition();
 
   // ── Load balances + medical level ─────────────────────────────────────────
 
@@ -196,6 +198,19 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
     });
   };
 
+  // ── Retire handler ───────────────────────────────────────────────────────
+  const handleRetire = () => {
+    startTransitionRetire(async () => {
+      const res = await retirePlayerToAcademy(player.id);
+      if (res.success) {
+        toast.success(`Перк тренера успешно применен к Академии!`);
+        onClose(); // Close modal on success (player is burnt)
+      } else {
+        toast.error(res.error || 'Ошибка при применении перка');
+      }
+    });
+  };
+
   // ── Stat display config ───────────────────────────────────────────────────
 
   const statLabels: Record<keyof PlayerStats, string> = {
@@ -248,7 +263,15 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                 )}
               </h2>
               <div className="flex flex-col gap-1 mt-1">
-                <div className="flex items-center gap-1 text-xs text-gray-400">
+                <div className="flex items-center gap-2 text-xs font-bold font-orbitron">
+                  <span className={`px-1.5 py-0.5 rounded ${player.age >= 35 ? 'bg-purple-900/50 text-purple-400 border border-purple-500/50' : player.age >= 31 ? 'bg-red-900/40 text-red-400 border border-red-500/50' : 'bg-gray-800 text-gray-400 border border-gray-700'}`}>
+                    {player.age} YO
+                  </span>
+                  {player.age >= 31 && !player.is_retired && (
+                    <span className="text-[9px] text-red-500 uppercase tracking-widest bg-red-900/20 px-1 rounded">Decay</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 text-xs text-gray-400 mt-1">
                   <Activity size={12} className={player.stamina > 50 ? 'text-neon-green' : 'text-red-500'} />
                   <span>Stamina: {player.stamina}%</span>
                 </div>
@@ -516,8 +539,20 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                 Игрок выставлен на рынок
               </div>
             ) : player.is_retired ? (
-              <div className="w-full py-3 bg-purple-900/20 border border-purple-500/50 rounded-xl text-center text-xs font-bold text-purple-400 uppercase tracking-widest">
-                Игрок на пенсии (Зал Славы)
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setSellMode(true)}
+                  className="flex-1 py-3 rounded-xl bg-blue-900/30 border border-blue-500/50 text-blue-400 font-black text-xs uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-[0_0_10px_rgba(59,130,246,0.1)]"
+                >
+                  Продать на рынке (TON)
+                </button>
+                <button 
+                  onClick={handleRetire}
+                  disabled={isPendingRetire}
+                  className="flex-1 py-3 rounded-xl bg-purple-900/30 border border-purple-500/50 text-purple-400 font-black text-xs uppercase tracking-widest hover:bg-purple-600 hover:text-white transition-all shadow-[0_0_10px_rgba(168,85,247,0.1)]"
+                >
+                  {isPendingRetire ? 'Применение...' : 'Превратить в Тренера'}
+                </button>
               </div>
             ) : (
               <div className="flex gap-3">

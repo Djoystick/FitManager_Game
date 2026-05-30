@@ -410,3 +410,82 @@ export async function changeLogoAction(logoUrl: string) {
     return { success: false, error: e.message };
   }
 }
+
+// ==========================================
+// MENTORSHIP / RETIREMENT (Phase 2)
+// ==========================================
+
+export async function retirePlayerToAcademy(playerId: string) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    
+    if (!userId || !playerId) return { success: false, error: 'Missing data' };
+
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // 1. Get user's team
+    const { data: team } = await supabaseAdmin.from('teams').select('id').eq('user_id', userId).single();
+    if (!team) return { success: false, error: 'Team not found' };
+
+    // 2. Fetch the player
+    const { data: player, error: playerErr } = await supabaseAdmin
+      .from('players')
+      .select('id, ovr, position, is_retired')
+      .eq('id', playerId)
+      .eq('team_id', team.id)
+      .single();
+
+    if (playerErr || !player) return { success: false, error: 'Player not found or not owned by you.' };
+    if (!player.is_retired) return { success: false, error: 'Player is not retired yet (Must be 35+ years old).' };
+
+    // 3. Calculate Academy Perk based on OVR & Position
+    let perkBonus = 0.05; // Base 5% chance
+    if (player.ovr >= 75) perkBonus = 0.15;
+    else if (player.ovr >= 65) perkBonus = 0.10;
+
+    let perkType = 'generic_boost';
+    if (player.position === 'FWD') perkType = 'scout_fwd_boost';
+    else if (player.position === 'MID') perkType = 'scout_mid_boost';
+    else if (player.position === 'DEF') perkType = 'scout_def_boost';
+    else if (player.position === 'GK') perkType = 'scout_gk_boost';
+
+    const newPerk = { type: perkType, bonus_chance: perkBonus, from_ovr: player.ovr };
+
+    // 4. Update infrastructure.academy_perks
+    const { data: infra } = await supabaseAdmin
+      .from('infrastructure')
+      .select('academy_perks')
+      .eq('team_id', team.id)
+      .maybeSingle();
+
+    const existingPerks = infra?.academy_perks ? (Array.isArray(infra.academy_perks) ? infra.academy_perks : []) : [];
+    const updatedPerks = [...existingPerks, newPerk];
+
+    const { error: infraErr } = await supabaseAdmin
+      .from('infrastructure')
+      .update({ academy_perks: updatedPerks })
+      .eq('team_id', team.id);
+
+    if (infraErr) throw new Error('Failed to update academy perks');
+
+    // 5. Delete player (Burn)
+    const { error: deleteErr } = await supabaseAdmin
+      .from('players')
+      .delete()
+      .eq('id', playerId);
+
+    if (deleteErr) {
+      console.error("Failed to delete player after granting perk:", deleteErr);
+      return { success: false, error: 'Failed to burn player' };
+    }
+
+    return { success: true, granted_perk: newPerk };
+  } catch (err: any) {
+    console.error('[retirePlayerToAcademy] Error:', err);
+    return { success: false, error: err.message || 'Unknown error' };
+  }
+}
