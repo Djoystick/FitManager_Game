@@ -53,37 +53,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // ── Idempotency Gate: Cooldown Check ─────────────────────────────────────
-    // Find the most recently completed match across the entire system.
-    const { data: lastCompleted } = await supabaseAdmin
-      .from('league_matches')
-      .select('updated_at, round_number')
-      .eq('status', 'completed')
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (lastCompleted?.updated_at) {
-      const lastTime    = new Date(lastCompleted.updated_at).getTime();
-      const now         = Date.now();
-      const elapsedMin  = (now - lastTime) / 1000 / 60;
-
-      if (elapsedMin < COOLDOWN_MINUTES) {
-        const remainingMin = Math.ceil(COOLDOWN_MINUTES - elapsedMin);
-        console.log(
-          `[process-matches] Cooldown active. Last round=${lastCompleted.round_number}, ` +
-          `elapsed=${elapsedMin.toFixed(1)}min, next allowed in ${remainingMin}min.`
-        );
-        return NextResponse.json({
-          success: true,
-          cooldown: true,
-          message: `Cooldown active. Next round in ~${remainingMin} min.`,
-          elapsed_minutes: Math.floor(elapsedMin),
-          cooldown_minutes: COOLDOWN_MINUTES,
-        });
-      }
-    }
-
     // ── Find next pending round ───────────────────────────────────────────────
     const { data: unplayedMatches } = await supabaseAdmin
       .from('league_matches')

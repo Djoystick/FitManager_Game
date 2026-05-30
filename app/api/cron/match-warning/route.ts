@@ -45,39 +45,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // ── Idempotency Gate: Time-window check ───────────────────────────────────
-    const { data: lastCompleted } = await supabaseAdmin
-      .from('league_matches')
-      .select('updated_at, round_number')
-      .eq('status', 'completed')
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (lastCompleted?.updated_at) {
-      const lastTime   = new Date(lastCompleted.updated_at).getTime();
-      const elapsedMin = (Date.now() - lastTime) / 1000 / 60;
-
-      if (elapsedMin < WARN_WINDOW_MIN) {
-        console.log(`[match-warning] Too early to warn (${elapsedMin.toFixed(1)}min elapsed, need >${WARN_WINDOW_MIN}min).`);
-        return NextResponse.json({
-          success: true,
-          skipped: true,
-          message: `Warning window not reached yet. Elapsed: ${Math.floor(elapsedMin)}min.`,
-        });
-      }
-
-      if (elapsedMin > WARN_WINDOW_MAX) {
-        console.log(`[match-warning] Warning window passed (${elapsedMin.toFixed(1)}min elapsed, max=${WARN_WINDOW_MAX}min).`);
-        return NextResponse.json({
-          success: true,
-          skipped: true,
-          message: `Warning window expired. Next match likely already playing.`,
-        });
-      }
-    }
-    // If no completed match exists at all, we're in the very first round — allow the warning.
-
     // ── Find next pending round ───────────────────────────────────────────────
     const { data: unplayedMatches } = await supabaseAdmin
       .from('league_matches')
