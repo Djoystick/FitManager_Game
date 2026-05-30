@@ -6,6 +6,7 @@ import { generateLeagueSchedule } from '@/app/actions/calendarActions';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { containsProfanity } from '@/app/utils/censor';
+import { isNameBlacklisted } from '@/app/utils/blacklist';
 
 export interface PlayerStats {
   pace: number;
@@ -228,6 +229,106 @@ export async function createStarterFranchise(teamName: string) {
     return { success: false, error: error.message || 'Internal Server Error' };
   }
 }
+
+// ==========================================
+// NAMING ECONOMY (Phase 1)
+// ==========================================
+
+export async function renamePlayerAction(playerId: string, newName: string) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+
+    const cleanName = newName.trim();
+    if (!cleanName || cleanName.length < 3 || cleanName.length > 25) {
+      return { success: false, error: 'Name must be between 3 and 25 characters.' };
+    }
+
+    if (containsProfanity(cleanName)) {
+      return { success: false, error: 'Name contains restricted words.' };
+    }
+
+    if (isNameBlacklisted(cleanName)) {
+      return { success: false, error: 'This name is protected by FIFPro and cannot be used.' };
+    }
+
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // 1. Verify ownership and get user balance
+    const { data: team, error: teamErr } = await supabaseAdmin
+      .from('teams')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    if (teamErr || !team) return { success: false, error: 'Team not found' };
+
+    const { data: player, error: playerErr } = await supabaseAdmin
+      .from('players')
+      .select('id')
+      .eq('id', playerId)
+      .eq('team_id', team.id)
+      .single();
+
+    if (playerErr || !player) return { success: false, error: 'Player not found or not owned by you.' };
+
+    const { data: user, error: userErr } = await supabaseAdmin
+      .from('users')
+      .select('balance_fancoins')
+      .eq('id', userId)
+      .single();
+
+    if (userErr || !user) return { success: false, error: 'User not found' };
+
+    const RENAME_COST = 1000;
+    if ((user.balance_fancoins || 0) < RENAME_COST) {
+      return { success: false, error: `Insufficient FanCoins. Need ${RENAME_COST} FC.` };
+    }
+
+    // 2. Check for unique name globally
+    const { data: existingName } = await supabaseAdmin
+      .from('players')
+      .select('id')
+      .eq('name', cleanName)
+      .maybeSingle();
+
+    if (existingName) {
+      return { success: false, error: 'This name is already taken by another player globally.' };
+    }
+
+    // 3. Deduct FC
+    const newBalance = (user.balance_fancoins || 0) - RENAME_COST;
+    const { error: deductErr } = await supabaseAdmin
+      .from('users')
+      .update({ balance_fancoins: newBalance })
+      .eq('id', userId);
+
+    if (deductErr) return { success: false, error: 'Failed to deduct FanCoins' };
+
+    // 4. Update Name
+    const { error: updateErr } = await supabaseAdmin
+      .from('players')
+      .update({ name: cleanName })
+      .eq('id', playerId);
+
+    if (updateErr) {
+      // Refund
+      await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins }).eq('id', userId);
+      return { success: false, error: 'Failed to rename player' };
+    }
+
+    return { success: true };
+
+  } catch (err: any) {
+    console.error('[TeamActions] renamePlayerAction error:', err);
+    return { success: false, error: err.message || 'Unknown error' };
+  }
+}
+
 
 export async function renameTeamAction(newName: string) {
   try {

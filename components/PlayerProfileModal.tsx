@@ -5,10 +5,12 @@ import { X, Activity, Zap, User, Crosshair, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { bulkTrainPlayer } from '@/app/actions/playerActions';
 import { healPlayer } from '@/app/actions/baseActions';
+import { renamePlayerAction } from '@/app/actions/teamActions';
 import { InfoPopover } from '@/components/ui/InfoPopover';
 import Link from 'next/link';
 import { listPlayerAction } from '@/app/actions/marketActions';
 import toast from 'react-hot-toast';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, PolarRadiusAxis } from 'recharts';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -73,6 +75,10 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
   const [sellMode,      setSellMode]      = useState(false);
   const [sellPrice,     setSellPrice]     = useState('');
   const [isPendingSell, startTransition]  = React.useTransition();
+
+  const [renameMode,      setRenameMode]      = useState(false);
+  const [newName,         setNewName]         = useState(player.name);
+  const [isPendingRename, startTransitionRename] = React.useTransition();
 
   // ── Load balances + medical level ─────────────────────────────────────────
 
@@ -164,6 +170,32 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
     });
   };
 
+  // ── Rename handler ───────────────────────────────────────────────────────
+  const handleRename = () => {
+    const trimmed = newName.trim();
+    if (!trimmed || trimmed.length < 3) {
+      toast.error('Имя должно содержать минимум 3 символа');
+      return;
+    }
+    if (fancoins < 1000) {
+      toast.error('Недостаточно FanCoins для переименования (Нужно: 1000 FC)');
+      return;
+    }
+
+    startTransitionRename(async () => {
+      const res = await renamePlayerAction(player.id, trimmed);
+      if (res.success) {
+        toast.success(`Игрок успешно переименован в ${trimmed}!`);
+        window.dispatchEvent(new Event('balanceUpdated'));
+        setFancoins(prev => prev - 1000);
+        player.name = trimmed; // optimistic update
+        setRenameMode(false);
+      } else {
+        toast.error(res.error || 'Ошибка при переименовании');
+      }
+    });
+  };
+
   // ── Stat display config ───────────────────────────────────────────────────
 
   const statLabels: Record<keyof PlayerStats, string> = {
@@ -204,6 +236,11 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
             <div>
               <h2 className="text-lg font-black text-white uppercase tracking-wider flex items-center gap-2">
                 {player.name}
+                {!player.is_retired && !player.is_for_sale && (
+                  <button onClick={() => setRenameMode(true)} className="p-1 hover:bg-gray-800 rounded-md transition-colors text-gray-500 hover:text-neon-cyan" title="Rename Player (1000 FC)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                  </button>
+                )}
                 {player.is_injured && (
                   <span className="text-[10px] bg-red-900/40 text-red-400 px-1 py-0.5 rounded border border-red-500/50 animate-pulse">
                     🚑 {player.injury_matches_left}M
@@ -278,6 +315,52 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                 </button>
               </div>
             </div>
+          ) : renameMode ? (
+            <div className="flex flex-col gap-4 animate-in fade-in duration-300">
+              <h3 className="text-sm font-black text-white uppercase tracking-widest text-center">Изменить Имя</h3>
+              <p className="text-xs text-gray-400 text-center -mt-2">Каждое имя уникально во всей игре</p>
+              
+              <div className="bg-black/50 p-4 rounded-xl border border-gray-800">
+                <label className="text-xs text-gray-400 font-bold uppercase tracking-widest">Новое Имя</label>
+                <div className="flex items-center gap-2 mt-2">
+                  <input 
+                    type="text" 
+                    maxLength={25}
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Например: Cyber Striker"
+                    className="flex-1 w-0 bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-orbitron focus:border-neon-pink outline-none transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-yellow-900/20 border border-yellow-500/30 p-4 rounded-xl flex flex-col gap-2">
+                <div className="flex justify-between text-xs text-yellow-400 font-bold uppercase tracking-widest">
+                  <span>Стоимость услуги:</span>
+                  <span>1000 FC</span>
+                </div>
+                <p className="text-[10px] text-yellow-500/70">
+                  Новое имя должно быть уникальным и не содержать нецензурную лексику. Реальные имена мировых звезд (Messi, Ronaldo) защищены лицензией FIFPro и запрещены.
+                </p>
+              </div>
+
+              <div className="flex gap-3 mt-2">
+                <button 
+                  onClick={() => { setRenameMode(false); setNewName(player.name); }}
+                  disabled={isPendingRename}
+                  className="flex-1 py-3 rounded-lg font-bold uppercase tracking-widest text-xs bg-gray-800 text-white hover:bg-gray-700 disabled:opacity-50 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button 
+                  onClick={handleRename}
+                  disabled={isPendingRename || !newName || newName === player.name}
+                  className="flex-1 py-3 rounded-lg font-black uppercase tracking-widest text-xs bg-yellow-600 text-black hover:bg-yellow-500 disabled:opacity-50 transition-colors shadow-[0_0_15px_rgba(202,138,4,0.4)]"
+                >
+                  {isPendingRename ? 'Загрузка...' : 'Подтвердить'}
+                </button>
+              </div>
+            </div>
           ) : (
             <div className="flex flex-col gap-5">
               {/* Error banner */}
@@ -289,7 +372,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
 
           {/* ── Stats ────────────────────────────────────────────────────── */}
           <div>
-            <h3 className="text-[10px] uppercase tracking-widest text-gray-500 mb-3 flex items-center gap-2">
+            <h3 className="text-[10px] uppercase tracking-widest text-gray-500 mb-3 flex items-center gap-2 z-10 relative">
               <Zap size={12} className="text-neon-pink" /> Detailed Stats
               <InfoPopover
                 title="Характеристики"
@@ -304,7 +387,40 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                 }
               />
             </h3>
-            <div className="flex flex-col gap-3">
+            
+            <div className="relative -mt-10 mb-[-20px] h-[220px] w-full flex justify-center items-center pointer-events-none">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart 
+                  cx="50%" 
+                  cy="50%" 
+                  outerRadius="65%" 
+                  data={[
+                    { subject: 'PAC', A: stats.pace, fullMark: 100 },
+                    { subject: 'SHO', A: stats.shooting, fullMark: 100 },
+                    { subject: 'PAS', A: stats.passing, fullMark: 100 },
+                    { subject: 'PHY', A: stats.physical, fullMark: 100 },
+                    { subject: 'DEF', A: stats.defending, fullMark: 100 },
+                  ]}
+                >
+                  <PolarGrid stroke="#334155" opacity={0.5} />
+                  <PolarAngleAxis 
+                    dataKey="subject" 
+                    tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} 
+                  />
+                  <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
+                  <Radar
+                    name="Player Stats"
+                    dataKey="A"
+                    stroke="#00f0ff"
+                    strokeWidth={2}
+                    fill="#00f0ff"
+                    fillOpacity={0.4}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+            
+            <div className="flex flex-col gap-3 relative z-10">
               {(Object.keys(statLabels) as Array<keyof PlayerStats>).map(key => (
                 <div key={key} className="flex items-center gap-3">
                   <span className="text-xs font-bold text-gray-300 w-12 uppercase tracking-wider">{statLabels[key]}</span>

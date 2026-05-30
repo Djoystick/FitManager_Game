@@ -2,6 +2,14 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import jwt from 'jsonwebtoken';
+import { getRandomName } from '@/app/utils/nameGenerator';
+
+function getRandomInt(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+const AVAILABLE_TRAITS = ['Sniper', 'Playmaker', 'Wall', 'Speedster', 'Anchor', 'Poacher', 'Engine'];
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -152,3 +160,174 @@ export async function debugAddTonAction(amount: number) {
     return { success: false, error: err.message || 'Unknown error' };
   }
 }
+
+// ==========================================
+// FREE AGENTS MARKET LOGIC (Phase 1)
+// ==========================================
+
+/**
+ * Generates 5 procedural bots and signs their payload.
+ */
+export async function getFreeAgentsAction() {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+
+    const jwtSecret = process.env.CRON_SECRET || 'fallback_secret_for_jwt';
+
+    const freeAgents = [];
+    for (let i = 0; i < 5; i++) {
+      // 1. Generate Stats
+      const pace = getRandomInt(40, 65);
+      const shooting = getRandomInt(40, 65);
+      const passing = getRandomInt(40, 65);
+      const defending = getRandomInt(40, 65);
+      const physical = getRandomInt(40, 65);
+      
+      const ovr = Math.floor((pace + shooting + passing + defending + physical) / 5);
+      // Hard cap at 62 OVR
+      const finalOvr = Math.min(62, ovr);
+      const age = getRandomInt(18, 25);
+      const name = getRandomName();
+
+      const positions = ['GK', 'DEF', 'MID', 'FWD'];
+      const position = positions[getRandomInt(0, 3)];
+
+      // 2. Generate Traits
+      const traitsRoll = Math.random();
+      let numTraits = 0;
+      if (traitsRoll >= 0.90) numTraits = 2;
+      else if (traitsRoll >= 0.40) numTraits = 1;
+
+      const traits: string[] = [];
+      const available = [...AVAILABLE_TRAITS];
+      for (let j = 0; j < numTraits; j++) {
+        const idx = getRandomInt(0, available.length - 1);
+        traits.push(available.splice(idx, 1)[0]);
+      }
+
+      // 3. Calculate FC Price: 50 * (1.10 ^ OVR)
+      const priceFc = Math.floor(50 * Math.pow(1.10, finalOvr));
+
+      const botPayload = {
+        id: `bot_${Date.now()}_${i}`,
+        name,
+        age,
+        ovr: finalOvr,
+        position,
+        traits,
+        stats: { pace, shooting, passing, defending, physical },
+        priceFc
+      };
+
+      // Sign the payload so client can't tamper with price/stats
+      const token = jwt.sign(botPayload, jwtSecret, { expiresIn: '1h' });
+
+      freeAgents.push({ ...botPayload, token });
+    }
+
+    return { success: true, data: freeAgents };
+
+  } catch (err: any) {
+    console.error('[MarketActions] getFreeAgentsAction error:', err);
+    return { success: false, error: err.message || 'Unknown error' };
+  }
+}
+
+/**
+ * Buys a procedurally generated Free Agent
+ */
+export async function buyFreeAgentAction(token: string) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+
+    const jwtSecret = process.env.CRON_SECRET || 'fallback_secret_for_jwt';
+
+    // 1. Verify token
+    let decodedBot;
+    try {
+      decodedBot = jwt.verify(token, jwtSecret) as any;
+    } catch (e) {
+      return { success: false, error: 'Invalid or expired Free Agent contract.' };
+    }
+
+    // 2. Fetch User & Team
+    const { data: user, error: userErr } = await supabaseAdmin
+      .from('users')
+      .select('balance_fancoins')
+      .eq('id', userId)
+      .single();
+      
+    if (userErr || !user) return { success: false, error: 'User not found' };
+
+    if ((user.balance_fancoins || 0) < decodedBot.priceFc) {
+      return { success: false, error: `Insufficient FanCoins. Need ${decodedBot.priceFc} FC.` };
+    }
+
+    const { data: team, error: teamErr } = await supabaseAdmin
+      .from('teams')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    if (teamErr || !team) return { success: false, error: 'Team not found' };
+
+    // 3. Check for unique name in DB
+    const { data: existingName } = await supabaseAdmin
+      .from('players')
+      .select('id')
+      .eq('name', decodedBot.name)
+      .maybeSingle();
+
+    if (existingName) {
+      // If name is taken, append initials
+      decodedBot.name = `${decodedBot.name} ${String.fromCharCode(65 + getRandomInt(0, 25))}.`;
+    }
+
+    // 4. Deduct FC
+    const newBalance = (user.balance_fancoins || 0) - decodedBot.priceFc;
+    const { error: deductErr } = await supabaseAdmin
+      .from('users')
+      .update({ balance_fancoins: newBalance })
+      .eq('id', userId);
+
+    if (deductErr) return { success: false, error: 'Failed to process payment' };
+
+    // 5. Create Player
+    const playerToInsert = {
+      team_id: team.id,
+      name: decodedBot.name,
+      age: decodedBot.age,
+      ovr: decodedBot.ovr,
+      position: decodedBot.position,
+      traits: decodedBot.traits,
+      stats: decodedBot.stats,
+      stamina: 100,
+      potential_limit: getRandomInt(decodedBot.ovr + 5, 90),
+      is_nft_coach: false,
+      lineup_status: 'bench' // Bought players go to bench
+    };
+
+    const { data: newPlayer, error: insertErr } = await supabaseAdmin
+      .from('players')
+      .insert(playerToInsert)
+      .select()
+      .single();
+
+    if (insertErr) {
+      // Refund FC if insertion fails
+      await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins }).eq('id', userId);
+      return { success: false, error: 'Failed to recruit player' };
+    }
+
+    return { success: true, player: newPlayer };
+
+  } catch (err: any) {
+    console.error('[MarketActions] buyFreeAgentAction error:', err);
+    return { success: false, error: err.message || 'Unknown error' };
+  }
+}
+

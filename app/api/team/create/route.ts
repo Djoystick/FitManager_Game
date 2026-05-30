@@ -18,6 +18,8 @@ function getRandomInt(min: number, max: number) {
 
 const AVAILABLE_TRAITS = ['Sniper', 'Playmaker', 'Wall', 'Speedster', 'Anchor', 'Poacher', 'Engine'];
 
+import { getRandomName } from '@/app/utils/nameGenerator';
+
 function generatePlayer(teamId: string, position: string, lineup_status: string = 'starting', lineup_slot: string | null = null) {
   const stats: PlayerStats = {
     pace: getRandomInt(45, 65),
@@ -30,9 +32,7 @@ function generatePlayer(teamId: string, position: string, lineup_status: string 
   const ovr = Math.floor((stats.pace + stats.shooting + stats.passing + stats.defending + stats.physical) / 5);
   const age = getRandomInt(18, 25);
   
-  const firstNames = ['Liam', 'Noah', 'Oliver', 'Elijah', 'James', 'William', 'Benjamin', 'Lucas', 'Henry', 'Alexander', 'Mateo', 'Sebastian', 'Jack', 'Owen', 'Theodore'];
-  const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson'];
-  const name = `${firstNames[getRandomInt(0, firstNames.length - 1)]} ${lastNames[getRandomInt(0, lastNames.length - 1)]}`;
+  const name = getRandomName();
   
   const traitsRoll = Math.random();
   let numTraits = 0;

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition, useContext } from 'react';
 import { CyberLoader } from '@/components/ui/CyberLoader';
-import { getMarketListingsAction, buyPlayerAction, cancelListingAction } from '@/app/actions/marketActions';
+import { getMarketListingsAction, buyPlayerAction, cancelListingAction, getFreeAgentsAction, buyFreeAgentAction } from '@/app/actions/marketActions';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
@@ -32,8 +32,9 @@ export default function TransferMarketPage() {
   const { language } = useContext(LanguageContext);
   const t = dict[language as keyof typeof dict];
 
-  const [activeTab, setActiveTab] = useState<'market' | 'my_lots'>('market');
+  const [activeTab, setActiveTab] = useState<'market' | 'my_lots' | 'free_agents'>('market');
   const [listings, setListings] = useState<MarketListing[]>([]);
+  const [freeAgents, setFreeAgents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [tonBalance, setTonBalance] = useState<number>(0);
@@ -65,6 +66,22 @@ export default function TransferMarketPage() {
     }
   };
 
+  const fetchFreeAgents = async () => {
+    setIsLoading(true);
+    try {
+      const res = await getFreeAgentsAction();
+      if (res.success && res.data) {
+        setFreeAgents(res.data);
+      } else {
+        toast.error(res.error || 'Failed to fetch free agents');
+      }
+    } catch (e) {
+      console.error("Free agents fetch error", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const fetchBalance = async () => {
     if (!userId) return;
     try {
@@ -82,11 +99,15 @@ export default function TransferMarketPage() {
 
   useEffect(() => {
     if (userId) {
-      fetchMarket();
+      if (activeTab === 'free_agents') {
+        if (freeAgents.length === 0) fetchFreeAgents();
+      } else {
+        fetchMarket();
+      }
       fetchBalance();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [positionFilter, sortOrder, userId]);
+  }, [positionFilter, sortOrder, userId, activeTab]);
 
   useEffect(() => {
     const handleBalanceUpdate = () => fetchBalance();
@@ -113,6 +134,24 @@ export default function TransferMarketPage() {
         fetchMarket();
       } else {
         toast.error(res.error || t.buy_error);
+      }
+    });
+  };
+
+  const handleBuyFreeAgent = (agent: any) => {
+    const msg = `Sign ${agent.name} for ${agent.priceFc} FC?`;
+    if (!confirm(msg)) return;
+    
+    startTransition(async () => {
+      const res = await buyFreeAgentAction(agent.token);
+      if (res.success) {
+        toast.success(`Signed ${agent.name}!`);
+        fetchBalance();
+        window.dispatchEvent(new Event('balanceUpdated'));
+        // Remove bought agent from the list
+        setFreeAgents(prev => prev.filter(a => a.token !== agent.token));
+      } else {
+        toast.error(res.error || 'Failed to sign free agent');
       }
     });
   };
@@ -150,7 +189,7 @@ export default function TransferMarketPage() {
             Web3 <span className="text-neon-cyan">Market</span>
           </h1>
           <button 
-            onClick={fetchMarket}
+            onClick={activeTab === 'free_agents' ? fetchFreeAgents : fetchMarket}
             disabled={isLoading || isPending}
             className="w-8 h-8 rounded-full bg-gray-900 border border-gray-700 flex items-center justify-center text-gray-400 hover:text-neon-cyan hover:border-neon-cyan transition-all"
           >
@@ -159,7 +198,7 @@ export default function TransferMarketPage() {
         </div>
 
         <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-widest font-bold">
-          {t.p2p_transfers}
+          {activeTab === 'free_agents' ? 'Procedural Scouting Pool' : t.p2p_transfers}
         </p>
       </header>
 
@@ -175,13 +214,19 @@ export default function TransferMarketPage() {
       <div className="flex bg-black/40 border border-gray-800 p-1 rounded-lg">
         <button 
           onClick={() => setActiveTab('market')}
-          className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-md transition-all duration-300 ${activeTab === 'market' ? 'bg-neon-cyan text-black shadow-[0_0_15px_rgba(0,240,255,0.4)]' : 'text-gray-400 hover:text-white'}`}
+          className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all duration-300 ${activeTab === 'market' ? 'bg-neon-cyan text-black shadow-[0_0_15px_rgba(0,240,255,0.4)]' : 'text-gray-400 hover:text-white'}`}
         >
           {t.tab_market}
         </button>
         <button 
+          onClick={() => setActiveTab('free_agents')}
+          className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all duration-300 ${activeTab === 'free_agents' ? 'bg-yellow-500 text-black shadow-[0_0_15px_rgba(234,179,8,0.5)]' : 'text-gray-400 hover:text-white'}`}
+        >
+          Free Agents
+        </button>
+        <button 
           onClick={() => setActiveTab('my_lots')}
-          className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-md transition-all duration-300 ${activeTab === 'my_lots' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)]' : 'text-gray-400 hover:text-white'}`}
+          className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all duration-300 ${activeTab === 'my_lots' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)]' : 'text-gray-400 hover:text-white'}`}
         >
           {t.tab_my_lots}
         </button>
@@ -229,6 +274,67 @@ export default function TransferMarketPage() {
       {/* LISTINGS FEED */}
       {isLoading ? (
         <CyberLoader fullScreen={false} />
+      ) : activeTab === 'free_agents' ? (
+        freeAgents.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-800 rounded-xl p-8 mt-4">
+            <ShieldAlert className="w-12 h-12 text-gray-600 mb-4" />
+            <span className="text-sm font-black text-gray-500 uppercase tracking-widest text-center">No Free Agents</span>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 pb-10 mt-2">
+            {freeAgents.map((agent) => (
+              <div key={agent.token} className="bg-black/80 border border-yellow-500/30 p-3 rounded-xl flex flex-col gap-2 shadow-lg relative overflow-hidden">
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                
+                <div className="flex justify-between items-start z-10">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black uppercase text-gray-800 bg-yellow-500 px-1.5 rounded">{agent.position}</span>
+                      <h3 className="text-base font-bold text-yellow-500 uppercase tracking-wider">{agent.name}</h3>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1.5 text-[10px] text-gray-400 uppercase tracking-widest font-bold">
+                      <span>{t.age_label}: {agent.age}</span>
+                    </div>
+                    
+                    {agent.traits && agent.traits.length > 0 && (
+                      <div className="flex gap-1 mt-2">
+                        {agent.traits.map((tr: string) => (
+                          <span key={tr} className="text-[8px] bg-purple-900/30 text-purple-400 border border-purple-500/30 px-1.5 py-0.5 rounded-sm uppercase font-bold tracking-widest">
+                            {tr}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex flex-col items-end z-10">
+                    <span className="text-[9px] text-yellow-500/70 uppercase font-bold tracking-widest">OVR</span>
+                    <span className="text-2xl font-black text-yellow-500 drop-shadow-[0_0_8px_rgba(234,179,8,0.6)] leading-none">{agent.ovr}</span>
+                  </div>
+                </div>
+                
+                <div className="flex justify-between items-center mt-2 border-t border-gray-800/60 pt-3 z-10">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-gray-500 uppercase tracking-widest font-bold">Sign-on Bonus</span>
+                    <span className="text-base font-black text-white flex items-center gap-1.5 mt-0.5">
+                      <span className="text-yellow-400 text-sm">🟡</span> 
+                      <span className="font-orbitron tracking-wider">{agent.priceFc.toLocaleString()}</span>
+                      <span className="text-xs text-yellow-500">FC</span>
+                    </span>
+                  </div>
+                  
+                  <button 
+                    onClick={() => handleBuyFreeAgent(agent)}
+                    disabled={isPending}
+                    className="px-5 py-2.5 rounded border border-yellow-500/50 font-black uppercase text-[10px] tracking-widest transition-all bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500 hover:text-black shadow-[0_0_10px_rgba(234,179,8,0.1)] disabled:opacity-50"
+                  >
+                    SIGN AGENT
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
       ) : displayListings.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-800 rounded-xl p-8 mt-4">
           <ShieldAlert className="w-12 h-12 text-gray-600 mb-4" />
