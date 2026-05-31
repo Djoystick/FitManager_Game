@@ -177,7 +177,7 @@ export default function TransferMarketPage() {
     : listings.filter(l => l.seller.id === userId);
 
   return (
-    <div className="flex flex-col flex-1 p-4 gap-4 min-h-screen bg-space-dark text-white pb-24">
+    <div className="flex flex-col h-full overflow-y-auto p-4 gap-4 bg-space-dark text-white pb-24 custom-scrollbar">
       <ScreenGuide 
         key="market"
         screenName="market"

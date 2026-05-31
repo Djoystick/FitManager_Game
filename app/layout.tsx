@@ -98,7 +98,7 @@ export default function RootLayout({
                       parent's height constraint and overflow-hidden fails.
                       Each child page must set its own height/overflow.
                       ──────────────────────────────────────────────────── */}
-                    <div className="flex-1 min-h-0 relative">
+                    <div className="flex flex-col flex-1 min-h-0 relative">
                       {children}
                     </div>
 
