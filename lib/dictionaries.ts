@@ -187,6 +187,7 @@ export const dict = {
     match_journal_title: "Match Journal",
     no_matches_yet: "No matches played yet",
     simulating_in: "Simulating in",
+    upcoming_matches: "Upcoming Matches",
   },
   ru: {
     welcome: "Добро пожаловать",
@@ -376,5 +377,6 @@ export const dict = {
     match_journal_title: "Журнал Матчей",
     no_matches_yet: "Нет сыгранных матчей",
     simulating_in: "Симуляция через",
+    upcoming_matches: "Предстоящие матчи",
   }
 };
