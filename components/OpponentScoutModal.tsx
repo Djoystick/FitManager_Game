@@ -61,7 +61,7 @@ export function OpponentScoutModal({ userTeamId, opponentTeamId, opponentTeamNam
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
           {isLoading ? (
             <div className="py-12 flex flex-col items-center justify-center">
-              <CyberLoader size="sm" />
+              <CyberLoader />
               <p className="text-neon-cyan mt-4 text-xs font-bold uppercase tracking-widest animate-pulse">Gathering Intel...</p>
             </div>
           ) : error || !report ? (
