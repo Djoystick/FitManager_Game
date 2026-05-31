@@ -14,6 +14,8 @@ import { NextMatchCountdown } from '@/components/dashboard/NextMatchCountdown';
 import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { MatchReport, MatchReportModal } from '@/components/MatchReportModal';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Dashboard — Single Screen Layout (100dvh, no page-level vertical scroll)
 //
@@ -29,7 +31,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Compact match history card for horizontal scroll
-function MatchCard({ match, teamName }: { match: any; teamName: string | null }) {
+function MatchCard({ match, teamName, onClick }: { match: any; teamName: string | null; onClick: () => void }) {
   const isHome  = match.home_team?.name === teamName || match.home_team_name === teamName;
   const myScore = isHome ? match.home_score : match.away_score;
   const theirScore = isHome ? match.away_score : match.home_score;
@@ -38,8 +40,10 @@ function MatchCard({ match, teamName }: { match: any; teamName: string | null })
   const colors   = { W: 'text-green-400 border-green-500/40 bg-green-500/10', L: 'text-red-400 border-red-500/40 bg-red-500/10', D: 'text-gray-400 border-gray-500/40 bg-gray-500/10' };
 
   return (
-    <div className={`snap-card w-36 flex-shrink-0 rounded-2xl border p-3 flex flex-col gap-1
-                     bg-black/40 backdrop-blur-md ${colors[result]}`}>
+    <div 
+      onClick={onClick}
+      className={`snap-card w-36 flex-shrink-0 rounded-2xl border p-3 flex flex-col gap-1
+                     bg-black/40 backdrop-blur-md cursor-pointer hover:border-neon-cyan/50 transition-colors ${colors[result]}`}>
       <div className={`text-xs font-black font-orbitron self-start px-2 py-0.5 rounded-full border ${colors[result]}`}>
         {result}
       </div>
@@ -75,6 +79,7 @@ export default function DashboardPage() {
   const [leagueTier,    setLeagueTier]    = useState<number | null>(null);
   const [lobbyTimeLeft, setLobbyTimeLeft] = useState<number | null>(null);
   const [lobbyTeamCount,setLobbyTeamCount]= useState<number>(1);
+  const [selectedMatch, setSelectedMatch] = useState<MatchReport | null>(null);
 
   const fetchUserData = useCallback(async (id: string) => {
     try {
@@ -400,7 +405,24 @@ export default function DashboardPage() {
           /* Horizontal carousel — no vertical scroll, swipe left/right */
           <div className="snap-row px-4 pb-3 flex-shrink-0">
             {recentMatches.map((m, i) => (
-              <MatchCard key={m.id || i} match={m} teamName={teamName} />
+              <MatchCard 
+                key={m.id || i} 
+                match={m} 
+                teamName={teamName} 
+                onClick={() => {
+                  setSelectedMatch({
+                    id: m.id,
+                    home_team_id: m.home_team?.id || '',
+                    away_team_id: m.away_team?.id || '',
+                    home_team_name: m.home_team?.name || m.home_team_name || 'Unknown',
+                    away_team_name: m.away_team?.name || m.away_team_name || 'Unknown',
+                    home_score: m.home_score || 0,
+                    away_score: m.away_score || 0,
+                    events: m.events || [],
+                    round_number: m.round_number
+                  });
+                }}
+              />
             ))}
           </div>
         ) : (
@@ -418,6 +440,15 @@ export default function DashboardPage() {
 
       {/* Bottom tab bar spacer */}
       <div className="h-16 flex-shrink-0" />
+
+      {/* ── Match Report Modal ─────────────────────────────────────────── */}
+      {selectedMatch && teamId && (
+        <MatchReportModal 
+          report={selectedMatch} 
+          userTeamId={teamId} 
+          onClose={() => setSelectedMatch(null)} 
+        />
+      )}
     </div>
   );
 }
