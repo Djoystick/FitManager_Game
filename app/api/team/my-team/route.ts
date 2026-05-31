@@ -32,14 +32,26 @@ export async function GET(req: Request) {
     let instanceCreatedAt = null;
     let teamCount = 1;
     
-    const { data: standings } = await supabaseAdmin.from('league_standings').select('league_instance_id').eq('team_id', team.id);
+    const { data: standings } = await supabaseAdmin
+      .from('league_standings')
+      .select('league_instance_id, league_instances!inner(status, created_at)')
+      .eq('team_id', team.id);
+
     if (standings && standings.length > 0) {
-      const instanceId = standings[0].league_instance_id;
-      const { data: instance } = await supabaseAdmin.from('league_instances').select('status, created_at').eq('id', instanceId).single();
-      if (instance) {
-        instanceStatus = instance.status;
-        instanceCreatedAt = instance.created_at;
-      }
+      // Find the most recent instance by sorting manually or finding the non-finished one
+      // Prefer 'active' or 'filling' over 'finished'
+      const sorted = standings.sort((a: any, b: any) => {
+        const timeA = new Date(a.league_instances.created_at).getTime();
+        const timeB = new Date(b.league_instances.created_at).getTime();
+        return timeB - timeA;
+      });
+
+      const current = sorted[0];
+      const instanceId = current.league_instance_id;
+      
+      instanceStatus = current.league_instances.status;
+      instanceCreatedAt = current.league_instances.created_at;
+
       const { count } = await supabaseAdmin.from('league_standings').select('*', { count: 'exact', head: true }).eq('league_instance_id', instanceId);
       teamCount = count || 1;
     }
