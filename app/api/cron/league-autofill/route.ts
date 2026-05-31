@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     // 1. Find instances in 'filling' status
     const { data: fillingInstances } = await supabaseAdmin
       .from('league_instances')
-      .select('id, created_at')
+      .select('id, created_at, tier_level')
       .eq('status', 'filling');
 
     if (!fillingInstances || fillingInstances.length === 0) {
@@ -54,12 +54,15 @@ export async function GET(request: Request) {
       const currentCount = count || 0;
       const targetCount = 14;
       
-      // If it's been filling for over 12 hours OR if we just want to force fill it now for simplicity
-      // In a real app, we check created_at. For now, we auto-fill if it's over 1 hour old, 
-      // or if it's just triggered manually.
       const ageHours = (new Date().getTime() - new Date(instance.created_at).getTime()) / (1000 * 60 * 60);
       
-      if (currentCount < targetCount && ageHours >= 0) {
+      // Force 24-hour offseason. Do not start or autofill until 24 hours have passed.
+      if (ageHours < 24) {
+        console.log(`[CRON AutoFill] Instance ${instance.id} is in offseason (${ageHours.toFixed(2)}h / 24h). Waiting.`);
+        continue;
+      }
+      
+      if (currentCount < targetCount) {
         console.log(`[CRON AutoFill] Instance ${instance.id} has ${currentCount} teams. Filling with ${targetCount - currentCount} bots.`);
         
         const botsNeeded = targetCount - currentCount;
@@ -95,7 +98,10 @@ export async function GET(request: Request) {
         const pLast = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez'];
 
         insertedTeams.forEach((team: any) => {
-          const teamBaseOvr = Math.floor(Math.random() * 16) + 30; // 30-45 OVR
+          // Scale bot difficulty based on tier (Tier 10 = ~30-40 OVR, Tier 1 = ~84-94 OVR)
+          const tier = instance.tier_level || 10;
+          const minOvr = 30 + ((10 - tier) * 6);
+          const teamBaseOvr = Math.floor(Math.random() * 10) + minOvr;
           
           for (let i = 0; i < 16; i++) {
             const ovr = Math.max(30, Math.min(99, teamBaseOvr + Math.floor(Math.random() * 10 - 5)));

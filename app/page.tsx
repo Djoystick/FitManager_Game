@@ -11,6 +11,7 @@ import { CyberLoader } from '@/components/ui/CyberLoader';
 import { Users, Activity, ShoppingCart, Trophy, ChevronRight, Zap, Lock } from 'lucide-react';
 import { UnseenMatchesModal } from '@/components/UnseenMatchesModal';
 import { NextMatchCountdown } from '@/components/dashboard/NextMatchCountdown';
+import { OffseasonCard } from '@/components/dashboard/OffseasonCard';
 import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -103,6 +104,9 @@ export default function DashboardPage() {
   const [leagueTier,    setLeagueTier]    = useState<number | null>(null);
   const [lobbyTimeLeft, setLobbyTimeLeft] = useState<number | null>(null);
   const [lobbyTeamCount,setLobbyTeamCount]= useState<number>(1);
+  const [instanceStatus, setInstanceStatus] = useState<string | null>(null);
+  const [instanceCreatedAt, setInstanceCreatedAt] = useState<string | null>(null);
+  const [lastSeasonResult, setLastSeasonResult] = useState<any>(null);
   const [selectedMatch, setSelectedMatch] = useState<MatchReport | null>(null);
   const [selectedOpponentId, setSelectedOpponentId] = useState<string | null>(null);
   const [selectedOpponentName, setSelectedOpponentName] = useState<string | null>(null);
@@ -126,9 +130,23 @@ export default function DashboardPage() {
           setPlayers(teamJson.players || []);
 
           if (teamJson.instanceStatus === 'filling' && teamJson.instanceCreatedAt) {
+            setInstanceStatus(teamJson.instanceStatus);
+            setInstanceCreatedAt(teamJson.instanceCreatedAt);
+            
+            import('@/app/actions/seasonActions').then(mod => {
+              mod.getLastSeasonResult(teamJson.team.id).then(res => {
+                if (res.success && res.data) {
+                  setLastSeasonResult(res.data);
+                }
+              });
+            });
+
+            // Keep the lobby countdown for short delays (fallback)
             setLobbyTeamCount(teamJson.teamCount || 1);
             const diff = 60000 - (Date.now() - new Date(teamJson.instanceCreatedAt).getTime());
             setLobbyTimeLeft(diff > 0 ? Math.floor(diff / 1000) : 0);
+          } else {
+            setInstanceStatus(teamJson.instanceStatus || 'active');
           }
 
           import('@/app/actions/matchActions').then(mod => {
@@ -386,10 +404,18 @@ export default function DashboardPage() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════
-          SECTION 2 — NEXT MATCH COUNTDOWN
+          SECTION 2 — NEXT MATCH COUNTDOWN OR OFFSEASON
       ══════════════════════════════════════════════════════════════════ */}
       <div className="px-4 mt-3 flex-shrink-0">
-        <NextMatchCountdown language={language} />
+        {instanceStatus === 'filling' && instanceCreatedAt && (new Date(instanceCreatedAt).getTime() + 24 * 60 * 60 * 1000) > Date.now() ? (
+          <OffseasonCard 
+            lastSeasonResult={lastSeasonResult} 
+            instanceCreatedAt={instanceCreatedAt} 
+            language={language} 
+          />
+        ) : (
+          <NextMatchCountdown language={language} />
+        )}
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════

@@ -128,7 +128,32 @@ export async function GET(request: Request) {
         if (i < 3) nextTier = Math.max(1, instance.tier_level - 1);          // Top 3 → promoted
         else if (i >= finalStandings.length - 3) nextTier = Math.min(10, instance.tier_level + 1); // Bottom 3 → relegated
 
-        newAssignments.push({ team_id: finalStandings[i].team_id, new_tier: nextTier });
+        const { data: teamData } = await supabaseAdmin
+          .from('teams')
+          .select('user_id, name')
+          .eq('id', finalStandings[i].team_id)
+          .single();
+
+        let isRealUser = false;
+        let userData: any = null;
+
+        if (teamData?.user_id) {
+          const { data: ud } = await supabaseAdmin
+            .from('users')
+            .select('telegram_id, balance_ton, balance_fancoins')
+            .eq('id', teamData.user_id)
+            .single();
+          userData = ud;
+
+          if (userData && !userData.telegram_id.startsWith('bot_')) {
+            isRealUser = true;
+          }
+        }
+
+        // Only migrate REAL users to the next season. Bots stay in the finished instance and "retire".
+        if (isRealUser) {
+          newAssignments.push({ team_id: finalStandings[i].team_id, new_tier: nextTier });
+        }
 
         // ── R5 FIX: Skip if prizes already paid (idempotency guard) ──────────
         if (finalStandings[i].season_reward_paid) {
@@ -136,19 +161,7 @@ export async function GET(request: Request) {
           continue;
         }
 
-        const { data: teamData } = await supabaseAdmin
-          .from('teams')
-          .select('user_id, name')
-          .eq('id', finalStandings[i].team_id)
-          .single();
-
-        if (teamData?.user_id) {
-          const { data: userData } = await supabaseAdmin
-            .from('users')
-            .select('telegram_id, balance_ton, balance_fancoins')
-            .eq('id', teamData.user_id)
-            .single();
-
+        if (isRealUser && userData) {
           let tonWon = 0;
           let fcWon = 0;
 
