@@ -161,7 +161,7 @@ export async function GET(request: Request) {
           continue;
         }
 
-        if (isRealUser && userData) {
+        if (isRealUser && userData && teamData) {
           let tonWon = 0;
           let fcWon = 0;
 
