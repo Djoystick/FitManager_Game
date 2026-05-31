@@ -46,7 +46,7 @@ export async function GET(req: Request) {
         return timeB - timeA;
       });
 
-      const current = sorted[0];
+      const current = sorted[0] as any;
       const instanceId = current.league_instance_id;
       
       instanceStatus = current.league_instances.status;
