@@ -15,6 +15,7 @@ import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { MatchReport, MatchReportModal } from '@/components/MatchReportModal';
+import { OpponentScoutModal } from '@/components/OpponentScoutModal';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dashboard — Single Screen Layout (100dvh, no page-level vertical scroll)
@@ -60,6 +61,28 @@ function MatchCard({ match, teamName, onClick }: { match: any; teamName: string 
   );
 }
 
+function UpcomingMatchCard({ match, teamName, onClick }: { match: any; teamName: string | null; onClick: () => void }) {
+  const isHome  = match.home_team?.name === teamName || match.home_team_name === teamName;
+  const opponentName = isHome ? (match.away_team?.name || match.away_team_name) : (match.home_team?.name || match.home_team_name);
+  
+  return (
+    <div 
+      onClick={onClick}
+      className="snap-card w-36 flex-shrink-0 rounded-2xl border border-gray-700/50 p-3 flex flex-col gap-1
+                 bg-gray-900/40 backdrop-blur-md cursor-pointer hover:border-cyan-500/50 hover:bg-gray-800/60 transition-all">
+      <div className="text-[10px] font-black font-orbitron text-cyan-500 uppercase self-start px-2 py-0.5 rounded-full border border-cyan-500/30 bg-cyan-900/20">
+        R{match.round_number}
+      </div>
+      <div className="flex-1 flex flex-col justify-center mt-2">
+        <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">vs Opponent</div>
+        <div className="text-sm font-black font-orbitron text-gray-200 line-clamp-2 leading-tight">
+          {opponentName || 'Unknown'}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { userId, isAuthenticated, isLoading: isAuthLoading } = useContext(TelegramAuthContext);
@@ -76,10 +99,13 @@ export default function DashboardPage() {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [unseenMatches, setUnseenMatches] = useState<any[]>([]);
   const [recentMatches, setRecentMatches] = useState<any[]>([]);
+  const [upcomingMatches, setUpcomingMatches] = useState<any[]>([]);
   const [leagueTier,    setLeagueTier]    = useState<number | null>(null);
   const [lobbyTimeLeft, setLobbyTimeLeft] = useState<number | null>(null);
   const [lobbyTeamCount,setLobbyTeamCount]= useState<number>(1);
   const [selectedMatch, setSelectedMatch] = useState<MatchReport | null>(null);
+  const [selectedOpponentId, setSelectedOpponentId] = useState<string | null>(null);
+  const [selectedOpponentName, setSelectedOpponentName] = useState<string | null>(null);
 
   const fetchUserData = useCallback(async (id: string) => {
     try {
@@ -115,6 +141,12 @@ export default function DashboardPage() {
           fetch(`/api/matches/recent?teamId=${teamJson.team.id}&limit=10`)
             .then(r => r.ok ? r.json() : { matches: [] })
             .then(d => setRecentMatches(d.matches || []))
+            .catch(() => {});
+
+          // Fetch upcoming matches for horizontal scroll
+          fetch(`/api/matches/upcoming?teamId=${teamJson.team.id}&limit=10`)
+            .then(r => r.ok ? r.json() : { matches: [] })
+            .then(d => setUpcomingMatches(d.matches || []))
             .catch(() => {});
         }
       } else {
@@ -438,6 +470,38 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {/* ══════════════════════════════════════════════════════════════════
+          SECTION 5 — UPCOMING MATCHES (horizontal snap-scroll)
+      ══════════════════════════════════════════════════════════════════ */}
+      {upcomingMatches.length > 0 && (
+        <div className="mt-3 flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="px-4 flex items-center justify-between mb-2 flex-shrink-0">
+            <p className="text-[10px] font-bold text-gray-600 uppercase tracking-[0.2em]">
+              {t.upcoming_matches || 'Предстоящие матчи'}
+            </p>
+          </div>
+
+          <div className="snap-row px-4 pb-3 flex-shrink-0">
+            {upcomingMatches.map((m, i) => (
+              <UpcomingMatchCard 
+                key={m.id || i} 
+                match={m} 
+                teamName={teamName} 
+                onClick={() => {
+                  const isHome = m.home_team_id === teamId || m.home_team?.name === teamName;
+                  const opponentId = isHome ? m.away_team?.id : m.home_team?.id;
+                  const opponentName = isHome ? (m.away_team?.name || m.away_team_name) : (m.home_team?.name || m.home_team_name);
+                  if (opponentId) {
+                    setSelectedOpponentId(opponentId);
+                    setSelectedOpponentName(opponentName);
+                  }
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Bottom tab bar spacer */}
       <div className="h-16 flex-shrink-0" />
 
@@ -447,6 +511,19 @@ export default function DashboardPage() {
           report={selectedMatch} 
           userTeamId={teamId} 
           onClose={() => setSelectedMatch(null)} 
+        />
+      )}
+
+      {/* ── Opponent Scout Modal ───────────────────────────────────────── */}
+      {selectedOpponentId && teamId && (
+        <OpponentScoutModal
+          userTeamId={teamId}
+          opponentTeamId={selectedOpponentId}
+          opponentTeamName={selectedOpponentName || 'Unknown Opponent'}
+          onClose={() => {
+            setSelectedOpponentId(null);
+            setSelectedOpponentName(null);
+          }}
         />
       )}
     </div>

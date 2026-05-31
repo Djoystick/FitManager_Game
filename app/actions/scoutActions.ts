@@ -132,3 +132,51 @@ export async function getUpcomingOpponentScoutReport(userId: string): Promise<{ 
     return { success: false, error: err.message || 'Unknown server error' };
   }
 }
+
+export async function getOpponentScoutReportByTeamId(userTeamId: string, opponentTeamId: string): Promise<{ success: boolean; data?: ScoutReport; error?: string }> {
+  try {
+    const { data: teamData } = await supabaseAdmin.from('teams').select('scouting_facility_level').eq('id', userTeamId).single();
+    const scoutLevel = teamData?.scouting_facility_level || 1;
+
+    const { data: opponentTeam } = await supabaseAdmin.from('teams').select('name').eq('id', opponentTeamId).single();
+    
+    const { data: players } = await supabaseAdmin.from('players').select('*').eq('team_id', opponentTeamId).order('ovr', { ascending: false }).limit(15);
+    
+    if (!players) return { success: false, error: 'No players found' };
+
+    let fogLevel: 'hidden' | 'partial' | 'full' = 'hidden';
+    if (scoutLevel >= 5) fogLevel = 'full';
+    else if (scoutLevel >= 3) fogLevel = 'partial';
+
+    let maskedPlayers: ScoutedPlayer[] = [];
+    if (fogLevel !== 'hidden') {
+      maskedPlayers = players.map(p => ({
+        id: p.id,
+        name: p.name,
+        position: p.position,
+        age: p.age,
+        traits: fogLevel === 'partial' ? [] : (p.traits || []),
+        ovr_estimated: fogLevel === 'full' ? (p.ovr || 50) : Math.round((p.ovr || 50) / 5) * 5
+      }));
+    }
+
+    const healthy = players.filter(p => !p.is_injured).sort((a, b) => (b.ovr || 0) - (a.ovr || 0));
+    const starters = healthy.slice(0, 11);
+    const avgOvr = starters.length > 0 ? Math.round(starters.reduce((acc, p) => acc + (p.ovr || 50), 0) / starters.length) : 0;
+
+    return {
+      success: true,
+      data: {
+        opponent_team_id: opponentTeamId,
+        opponent_team_name: opponentTeam?.name || 'Unknown Team',
+        match_id: 'any',
+        round_number: 0,
+        players: maskedPlayers,
+        fog_level: fogLevel,
+        team_ovr_estimated: avgOvr
+      }
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
