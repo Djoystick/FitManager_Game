@@ -15,12 +15,15 @@ export default async function LeagueDashboard() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // 1. Fetch user's active league instance
-  const { data: userStanding } = await supabaseAdmin
+  // 1. Fetch user's active/filling league instance
+  const { data: userStandings } = await supabaseAdmin
     .from('league_standings')
-    .select('league_instance_id')
+    .select('league_instance_id, league_instances!inner(status)')
     .eq('team_id', team.id)
-    .maybeSingle();
+    .in('league_instances.status', ['active', 'filling'])
+    .limit(1);
+
+  const userStanding = userStandings?.[0];
 
   if (!userStanding?.league_instance_id) {
     return (

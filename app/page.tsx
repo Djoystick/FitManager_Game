@@ -141,10 +141,16 @@ export default function DashboardPage() {
               });
             });
 
-            // Keep the lobby countdown for short delays (fallback)
+            // Trigger autofill if 24 hours have passed
             setLobbyTeamCount(teamJson.teamCount || 1);
-            const diff = 60000 - (Date.now() - new Date(teamJson.instanceCreatedAt).getTime());
-            setLobbyTimeLeft(diff > 0 ? Math.floor(diff / 1000) : 0);
+            const msSinceCreation = Date.now() - new Date(teamJson.instanceCreatedAt).getTime();
+            const msIn24Hours = 24 * 60 * 60 * 1000;
+            
+            if (msSinceCreation >= msIn24Hours) {
+              setLobbyTimeLeft(3); // Show starting modal for 3s then trigger
+            } else {
+              setLobbyTimeLeft(0);
+            }
           } else {
             setInstanceStatus(teamJson.instanceStatus || 'active');
           }

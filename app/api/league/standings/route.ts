@@ -19,10 +19,12 @@ export async function GET(req: Request) {
        const { data: teamData } = await supabaseAdmin.from('teams').select('id').eq('user_id', userId).single();
        if (teamData) {
          userTeamId = teamData.id;
-         const { data: userStanding } = await supabaseAdmin.from('league_standings')
-           .select('league_instance_id')
-           .eq('team_id', userTeamId)
-           .single();
+         const { data: userStandings } = await supabaseAdmin.from('league_standings')
+            .select('league_instance_id, league_instances!inner(status)')
+            .eq('team_id', userTeamId)
+            .in('league_instances.status', ['active', 'filling'])
+            .limit(1);
+         const userStanding = userStandings?.[0];
          if (userStanding) {
            targetLeagueId = userStanding.league_instance_id;
          }

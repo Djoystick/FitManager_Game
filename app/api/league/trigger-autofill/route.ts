@@ -26,12 +26,14 @@ export async function POST(request: Request) {
     if (!team) return NextResponse.json({ error: 'No team found' }, { status: 400 });
 
     // 2. Check if the user's team is in a filling league
-    const { data: standing } = await supabaseAdmin
+    const { data: standings } = await supabaseAdmin
       .from('league_standings')
       .select('league_instance_id, league_instances!inner(status)')
       .eq('team_id', team.id)
       .eq('league_instances.status', 'filling')
-      .single();
+      .limit(1);
+
+    const standing = standings?.[0];
 
     if (!standing) {
       return NextResponse.json({ message: 'User not in a filling league' });
