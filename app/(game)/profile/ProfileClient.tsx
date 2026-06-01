@@ -254,7 +254,7 @@ export default function ProfileClient({ isAdmin, initialTeamName, initialLogoUrl
 
         {/* ADMIN LINK (Conditional) */}
         {isAdmin && (
-          <Link href="/admin" className="mt-2 flex items-center justify-center gap-2 w-full py-2 bg-red-900/20 border border-red-500/30 text-red-400 rounded-xl uppercase tracking-widest text-[10px] font-bold hover:bg-red-900/40 transition-all">
+          <Link href="/admin/logs" className="mt-2 flex items-center justify-center gap-2 w-full py-2 bg-red-900/20 border border-red-500/30 text-red-400 rounded-xl uppercase tracking-widest text-[10px] font-bold hover:bg-red-900/40 transition-all">
             ⚙️ Developer Console
           </Link>
         )}
