@@ -145,6 +145,13 @@ export async function POST(req: Request) {
       console.warn("Failed to generate schedule:", calRes.error);
     }
 
+    // 11. Unlock WELCOME achievement
+    await supabaseAdmin.from('user_achievements').upsert({
+      user_id: userId,
+      achievement_code: 'WELCOME',
+      reward_claimed: false
+    }, { onConflict: 'user_id, achievement_code', ignoreDuplicates: true });
+
     return NextResponse.json({
       success: true,
       team: newTeam,
