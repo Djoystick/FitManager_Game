@@ -265,9 +265,13 @@ export async function GET(request: Request) {
       console.log(`[CRON EndOfSeason] Instance ${instance.id} fully processed and marked 'finished'.`);
     }
 
-    return NextResponse.json({ message: 'EndOfSeason processed', processed: processedCount });
+    return NextResponse.json({ message: `Successfully processed ${processedCount} instances.` });
   } catch (error: any) {
-    console.error('[end-of-season] Unhandled error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[CRON EndOfSeason] CRITICAL ERROR:', error);
+    try {
+      const { Logger } = await import('@/lib/logger');
+      Logger.critical('cron:end-of-season', error.message, { stack: error.stack });
+    } catch(e) {}
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

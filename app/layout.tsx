@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Orbitron, Russo_One } from "next/font/google";
+import BugReportButton from "@/components/BugReportButton";
+import ClientErrorCatcher from "@/components/ClientErrorCatcher";
 import "./globals.css";
 
 const inter = Inter({
@@ -116,6 +118,8 @@ export default function RootLayout({
                       style: { marginTop: '70px' }, // avoid Telegram header overlap
                     }}
                   />
+                  <ClientErrorCatcher />
+                  <BugReportButton />
                 </TutorialProvider>
               </PaddingProvider>
             </TonProvider>
