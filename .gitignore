@@ -51,3 +51,6 @@ walkthrough.md
 project_anchor.md
 .vercel
 logo_original.png
+
+# Папка для всех неиспользуемых в билде файлов, защищенная от коммитов
+_dev_assets/
