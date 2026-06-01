@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { ShieldAlert, Bug, Terminal, Home } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
@@ -11,9 +12,21 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect('/');
   }
 
+  // Fetch real telegram ID from DB
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data: user } = await supabaseAdmin.from('users').select('telegram_id').eq('id', userId).single();
+
+  if (!user || !user.telegram_id) {
+    redirect('/');
+  }
+
   // Check if userId is an admin
   const adminIds = process.env.ADMIN_TG_IDS?.split(',') || [];
-  if (!adminIds.includes(userId)) {
+  if (!adminIds.includes(user.telegram_id)) {
     redirect('/');
   }
 
