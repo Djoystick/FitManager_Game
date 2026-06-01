@@ -50,7 +50,7 @@ async function publishDevlog() {
     .replace(/__(.*?)__/g, '<u>$1</u>')     // underline
     .replace(/`(.*?)`/g, '<code>$1</code>') // code
     .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>') // links
-    .replace(/\n/g, '\n'); // newlines remain
+    .replace(/\\n/g, '\n'); // parse literal \n passed from command line into actual newlines
 
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
 
