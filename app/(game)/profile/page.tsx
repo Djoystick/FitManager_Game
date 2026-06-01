@@ -48,9 +48,9 @@ export default async function ProfilePage() {
       team = teamRes;
     }
     
-    if (achRes.success) {
-      achievements = achRes.achievements;
-      stats = achRes.stats;
+    if (achRes.success && 'achievements' in achRes) {
+      achievements = achRes.achievements || [];
+      stats = achRes.stats || [];
     }
   }
 
