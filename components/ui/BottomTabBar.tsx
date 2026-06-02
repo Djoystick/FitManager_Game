@@ -11,25 +11,23 @@ import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BottomTabBar — 6-tab navigation with progressive tutorial locking.
+// BottomTabBar — Midnight Command Center neon dock.
 //
-// Lock rules:
+// Lock rules (unchanged):
 //   tutorial step 0  → all tabs locked except Home
 //   tutorial step 1  → lineup unlocked (user must visit squad)
 //   tutorial step 2+ → lineup + base unlocked
 //   tutorial DONE    → all tabs unlocked
-//
-// Locked tabs show a 🔒 badge and show a toast on click.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const LOCKED_TOAST_MSG = '🎓 Сначала пройди обучение!';
 
 function isTabLocked(href: string, step: number): boolean {
   if (step === TUTORIAL_DONE) return false;
-  if (href === '/' || href === '') return false;      // Home always open
-  if (href === '/lineup' && step >= 1) return false;  // Unlocked at step 1
-  if (href === '/base'   && step >= 2) return false;  // Unlocked at step 2
-  return true; // everything else locked during tutorial
+  if (href === '/' || href === '') return false;
+  if (href === '/lineup' && step >= 1) return false;
+  if (href === '/base'   && step >= 2) return false;
+  return true;
 }
 
 export function BottomTabBar() {
@@ -51,15 +49,13 @@ export function BottomTabBar() {
   if (pathname === '/onboarding') return null;
 
   return (
-    <div className="fixed bottom-0 w-full max-w-[480px] z-50
-                    bg-gray-950/90 backdrop-blur-xl border-t border-white/5
-                    shadow-[0_-4px_30px_rgba(0,0,0,0.5)] pb-safe">
+    <div className="fixed bottom-0 w-full max-w-[480px] z-50 pb-safe"
+         style={{ background: 'rgba(5,6,15,0.97)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
 
-      {/* Active tab glow line */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r
-                      from-transparent via-cyan-500/30 to-transparent" />
+      {/* Top violet glow line */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
 
-      <div className="flex overflow-x-auto scrollbar-none gap-0 px-1 py-2">
+      <div className="flex overflow-x-auto scrollbar-none gap-0 px-1 py-1.5">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const locked   = isTabLocked(item.href, step);
@@ -72,19 +68,19 @@ export function BottomTabBar() {
                 id={item.id}
                 aria-label={`${item.name} (locked)`}
                 className="flex-shrink-0 flex flex-col items-center justify-center
-                           w-[16.666%] min-w-[56px] gap-0.5 relative
+                           w-[16.666%] min-w-[56px] gap-0.5 relative py-1
                            text-gray-700 active:text-gray-600 transition-colors duration-200"
                 onClick={() =>
                   toast(LOCKED_TOAST_MSG, {
                     icon: '🔒',
                     duration: 2000,
-                    style: { background: '#111', color: '#fff', border: '1px solid rgba(255,0,60,0.4)' },
+                    style: { background: '#05060f', color: '#fff', border: '1px solid rgba(147,51,234,0.4)' },
                   })
                 }
               >
                 {/* Lock badge */}
                 <div className="relative">
-                  <Icon size={22} strokeWidth={1.5} className="opacity-30" />
+                  <Icon size={22} strokeWidth={1.5} className="opacity-25" />
                   <motion.span
                     className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full
                                bg-red-500/80 flex items-center justify-center
@@ -95,7 +91,7 @@ export function BottomTabBar() {
                     <Lock size={7} className="text-white" />
                   </motion.span>
                 </div>
-                <span className="text-[9px] uppercase font-bold tracking-wider opacity-30">
+                <span className="text-[8px] uppercase font-bold tracking-wider opacity-25">
                   {item.name}
                 </span>
               </button>
@@ -110,27 +106,33 @@ export function BottomTabBar() {
               aria-label={item.name}
               className={`
                 flex-shrink-0 flex flex-col items-center justify-center
-                w-[16.666%] min-w-[56px] gap-0.5 transition-all duration-200
-                active:scale-90
-                ${isActive
-                  ? 'text-cyan-400 drop-shadow-[0_0_8px_rgba(0,240,255,0.5)]'
-                  : 'text-gray-500 hover:text-gray-300'
-                }
+                w-[16.666%] min-w-[56px] gap-0.5 py-1 relative
+                transition-all duration-200 active:scale-90
               `}
             >
-              <div className="relative">
-                <Icon size={22} strokeWidth={isActive ? 2.5 : 1.8} />
-                {isActive && (
-                  <motion.span
-                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1
-                               rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(0,240,255,0.8)]"
-                    layoutId="active-dot"
-                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                  />
-                )}
+              {/* Active indicator pill above icon */}
+              {isActive && (
+                <motion.div
+                  layoutId="tab-active-pill"
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full
+                             bg-gradient-to-r from-violet-500 to-cyan-400
+                             shadow-[0_0_8px_rgba(147,51,234,0.8)]"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                />
+              )}
+
+              <div className="relative mt-1">
+                <Icon
+                  size={22}
+                  strokeWidth={isActive ? 2.5 : 1.8}
+                  className={isActive
+                    ? 'text-violet-400 drop-shadow-[0_0_10px_rgba(147,51,234,0.8)]'
+                    : 'text-gray-500'}
+                />
               </div>
-              <span className={`text-[9px] uppercase font-bold tracking-wider
-                ${isActive ? 'text-cyan-400' : 'text-gray-500'}`}>
+              <span className={`text-[8px] uppercase font-bold tracking-wider transition-colors duration-200 ${
+                isActive ? 'text-violet-400' : 'text-gray-600'
+              }`}>
                 {item.name}
               </span>
             </Link>

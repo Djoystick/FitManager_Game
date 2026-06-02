@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Orbitron, Russo_One } from "next/font/google";
+import { Inter, Orbitron, Russo_One, Space_Grotesk } from "next/font/google";
 import BugReportButton from "@/components/BugReportButton";
 import ClientErrorCatcher from "@/components/ClientErrorCatcher";
 import "./globals.css";
@@ -23,13 +23,19 @@ const russoOne = Russo_One({
   display: "swap",
 });
 
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-grotesk",
+  subsets: ["latin"],
+  display: "swap",
+});
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#0B0F19",
+  themeColor: "#05060f",
   colorScheme: "dark",
 };
 
@@ -53,7 +59,7 @@ import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import { Toaster } from "react-hot-toast";
 import { TooltipTour } from "@/components/onboarding/TooltipTour";
 import { AchievementToastProvider } from "@/components/AchievementToastProvider";
-import Script from "next/script";
+import { PageTransitionWrapper } from "@/components/providers/PageTransitionWrapper";
 
 export default function RootLayout({
   children,
@@ -63,7 +69,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${orbitron.variable} ${russoOne.variable} antialiased`}
+      className={`${inter.variable} ${orbitron.variable} ${russoOne.variable} ${spaceGrotesk.variable} antialiased`}
     >
       {/*
         ── LAYOUT STRATEGY ──────────────────────────────────────────────────
@@ -74,7 +80,7 @@ export default function RootLayout({
           - Use overflow-x-auto + snap-row on horizontal card carousels
           - Market and League pages are exempt and may scroll vertically
         ─────────────────────────────────────────────────────────────────── */}
-      <body className="h-dvh overflow-hidden flex flex-col font-sans">
+      <body className="h-dvh overflow-hidden flex flex-col font-sans bg-midnight-abyss">
         <LanguageProvider>
           <TelegramAuthProvider>
             <TonProvider>
@@ -87,11 +93,14 @@ export default function RootLayout({
                     className={`
                       max-w-[480px] w-full mx-auto
                       h-dvh overflow-hidden
-                      bg-space-dark text-white relative
-                      shadow-2xl border-x border-gray-900/30
+                      bg-midnight-abyss text-white relative
+                      shadow-2xl border-x border-white/5
                       flex flex-col
                     `}
                   >
+                    {/* Decorative scan line */}
+                    <div className="scan-line" />
+
                     {/* GlobalHeader is always visible at the top */}
                     <GlobalHeader />
 
@@ -99,11 +108,11 @@ export default function RootLayout({
                       ── CONTENT AREA ─────────────────────────────────────
                       min-h-0 is CRITICAL: without it, flex children ignore
                       parent's height constraint and overflow-hidden fails.
-                      Each child page must set its own height/overflow.
+                      PageTransitionWrapper handles AnimatePresence routing.
                       ──────────────────────────────────────────────────── */}
-                    <div className="flex flex-col flex-1 min-h-0 relative">
+                    <PageTransitionWrapper>
                       {children}
-                    </div>
+                    </PageTransitionWrapper>
 
                     {/* BottomTabBar is fixed, not in flow */}
                     <BottomTabBar />
@@ -111,14 +120,14 @@ export default function RootLayout({
 
                   {/* Tutorial tooltip overlay — rendered outside main for z-index */}
                   <TooltipTour />
-                  
+
                   <AchievementToastProvider />
 
                   <Toaster
                     position="top-center"
                     toastOptions={{
-                      className: 'font-sans font-bold shadow-[0_0_15px_rgba(255,0,60,0.4)] bg-black text-white border border-red-500/50',
-                      style: { marginTop: '70px' }, // avoid Telegram header overlap
+                      className: 'font-sans font-bold shadow-[0_0_15px_rgba(147,51,234,0.4)] bg-[#05060f] text-white border border-violet-500/50',
+                      style: { marginTop: '70px' },
                     }}
                   />
                   <ClientErrorCatcher />

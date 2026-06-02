@@ -7,9 +7,10 @@ import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
 import toast from 'react-hot-toast';
-import { RefreshCw, Filter, ShieldAlert } from 'lucide-react';
+import { RefreshCw, Filter, ShieldAlert, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { ScreenGuide } from '@/components/ui/ScreenGuide';
 import { MarketWallet } from '@/components/market/MarketWallet';
+import { motion } from 'framer-motion';
 
 interface MarketListing {
   id: string;
@@ -27,34 +28,73 @@ interface MarketListing {
   };
 }
 
+// Decorative ticker items
+const TICKER_ITEMS = [
+  { sym: 'FWD', change: +2.4 }, { sym: 'MID', change: -0.8 }, { sym: 'GK', change: +1.1 },
+  { sym: 'DEF', change: +0.3 }, { sym: 'CAM', change: -1.5 }, { sym: 'LWF', change: +3.2 },
+  { sym: 'CDM', change: -0.4 }, { sym: 'CB',  change: +0.9 }, { sym: 'ST',  change: +2.1 },
+  { sym: 'RB',  change: -0.2 }, { sym: 'LB',  change: +0.7 }, { sym: 'CF',  change: +1.8 },
+];
+
+function TickerStrip() {
+  const items = [...TICKER_ITEMS, ...TICKER_ITEMS]; // doubled for seamless loop
+  return (
+    <div className="overflow-hidden border-y border-white/5 bg-black/30 py-1">
+      <div className="ticker-track">
+        {items.map((item, i) => (
+          <div key={i} className="flex items-center gap-1.5 px-4 flex-shrink-0">
+            <span className="text-[9px] font-black font-orbitron text-gray-400 uppercase">{item.sym}</span>
+            <div className={`flex items-center gap-0.5 ${item.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {item.change >= 0
+                ? <TrendingUp size={8} />
+                : <TrendingDown size={8} />
+              }
+              <span className="text-[8px] font-bold">{item.change > 0 ? '+' : ''}{item.change}%</span>
+            </div>
+            <div className="w-px h-3 bg-white/5" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OVRBadge({ ovr }: { ovr: number }) {
+  const color = ovr >= 80 ? 'text-violet-300 border-violet-500/50 bg-violet-500/10 shadow-[0_0_8px_rgba(147,51,234,0.3)]'
+              : ovr >= 70 ? 'text-cyan-300 border-cyan-500/50 bg-cyan-500/10 shadow-[0_0_8px_rgba(0,240,255,0.2)]'
+              : ovr >= 60 ? 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10'
+              : 'text-gray-400 border-gray-600/40 bg-gray-500/10';
+  return (
+    <div className={`flex flex-col items-center border rounded-xl px-2.5 py-1.5 ${color}`}>
+      <span className="text-[8px] uppercase tracking-widest font-bold">OVR</span>
+      <span className="text-xl font-black font-orbitron leading-none">{ovr}</span>
+    </div>
+  );
+}
+
 export default function TransferMarketPage() {
   const { userId } = useContext(TelegramAuthContext);
   const { language } = useContext(LanguageContext);
   const t = dict[language as keyof typeof dict];
 
-  const [activeTab, setActiveTab] = useState<'market' | 'my_lots' | 'free_agents'>('market');
-  const [listings, setListings] = useState<MarketListing[]>([]);
-  const [freeAgents, setFreeAgents] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isPending, startTransition] = useTransition();
-  const [tonBalance, setTonBalance] = useState<number>(0);
-
-  // Filters
-  const [positionFilter, setPositionFilter] = useState<string>('ALL');
-  const [sortOrder, setSortOrder] = useState<'price_asc' | 'price_desc' | 'ovr_desc'>('price_asc');
+  const [activeTab,       setActiveTab]      = useState<'market' | 'my_lots' | 'free_agents'>('market');
+  const [listings,        setListings]       = useState<MarketListing[]>([]);
+  const [freeAgents,      setFreeAgents]     = useState<any[]>([]);
+  const [isLoading,       setIsLoading]      = useState(true);
+  const [isPending,       startTransition]   = useTransition();
+  const [tonBalance,      setTonBalance]     = useState<number>(0);
+  const [positionFilter,  setPositionFilter] = useState<string>('ALL');
+  const [sortOrder,       setSortOrder]      = useState<'price_asc' | 'price_desc' | 'ovr_desc'>('price_asc');
 
   const fetchMarket = async () => {
     setIsLoading(true);
     try {
-      const res = await getMarketListingsAction({ 
-        position: positionFilter !== 'ALL' ? positionFilter : undefined 
-      });
+      const res = await getMarketListingsAction({ position: positionFilter !== 'ALL' ? positionFilter : undefined });
       if (res.success && res.data) {
         const sorted = [...res.data] as any[];
-        if (sortOrder === 'price_asc') sorted.sort((a, b) => a.price_ton - b.price_ton);
+        if (sortOrder === 'price_asc')  sorted.sort((a, b) => a.price_ton - b.price_ton);
         if (sortOrder === 'price_desc') sorted.sort((a, b) => b.price_ton - a.price_ton);
-        if (sortOrder === 'ovr_desc') sorted.sort((a, b) => (b.player?.ovr || 0) - (a.player?.ovr || 0));
-        
+        if (sortOrder === 'ovr_desc')   sorted.sort((a, b) => (b.player?.ovr || 0) - (a.player?.ovr || 0));
         setListings(sorted as MarketListing[]);
       } else {
         toast.error(res.error || 'Failed to fetch market');
@@ -70,16 +110,10 @@ export default function TransferMarketPage() {
     setIsLoading(true);
     try {
       const res = await getFreeAgentsAction();
-      if (res.success && res.data) {
-        setFreeAgents(res.data);
-      } else {
-        toast.error(res.error || 'Failed to fetch free agents');
-      }
-    } catch (e) {
-      console.error("Free agents fetch error", e);
-    } finally {
-      setIsLoading(false);
-    }
+      if (res.success && res.data) setFreeAgents(res.data);
+      else toast.error(res.error || 'Failed to fetch free agents');
+    } catch (e) { console.error(e); }
+    finally { setIsLoading(false); }
   };
 
   const fetchBalance = async () => {
@@ -88,13 +122,9 @@ export default function TransferMarketPage() {
       const res = await fetch(`/api/user/me?userId=${userId}`);
       if (res.ok) {
         const json = await res.json();
-        if (json.success && json.user) {
-          setTonBalance(json.user.balance_ton || 0);
-        }
+        if (json.success && json.user) setTonBalance(json.user.balance_ton || 0);
       }
-    } catch (e) {
-      console.error('Failed to fetch balance', e);
-    }
+    } catch (e) { console.error('Failed to fetch balance', e); }
   };
 
   useEffect(() => {
@@ -118,301 +148,291 @@ export default function TransferMarketPage() {
   }, []);
 
   const handleBuy = (listing: MarketListing) => {
-    if (tonBalance < listing.price_ton) {
-      toast.error('Insufficient TON');
-      return;
-    }
-
+    if (tonBalance < listing.price_ton) { toast.error('Insufficient TON'); return; }
     const msg = t.buy_confirm.replace('{name}', listing.player.name).replace('{price}', listing.price_ton.toString());
     if (!confirm(msg)) return;
-    
     startTransition(async () => {
       const res = await buyPlayerAction(listing.id);
       if (res.success) {
         toast.success(t.buy_success.replace('{name}', listing.player.name));
-        // Trigger balance update for global header
         fetchBalance();
         window.dispatchEvent(new Event('balanceUpdated'));
         fetchMarket();
-      } else {
-        toast.error(res.error || t.buy_error);
-      }
+      } else { toast.error(res.error || t.buy_error); }
     });
   };
 
   const handleBuyFreeAgent = (agent: any) => {
     const msg = `Sign ${agent.name} for ${agent.priceFc} FC?`;
     if (!confirm(msg)) return;
-    
     startTransition(async () => {
       const res = await buyFreeAgentAction(agent.token);
       if (res.success) {
         toast.success(`Signed ${agent.name}!`);
         fetchBalance();
         window.dispatchEvent(new Event('balanceUpdated'));
-        // Remove bought agent from the list
         setFreeAgents(prev => prev.filter(a => a.token !== agent.token));
-      } else {
-        toast.error(res.error || 'Failed to sign free agent');
-      }
+      } else { toast.error(res.error || 'Failed to sign free agent'); }
     });
   };
 
   const handleCancel = (listingId: string) => {
     if (!confirm(t.cancel_confirm)) return;
-    
     startTransition(async () => {
       const res = await cancelListingAction(listingId);
-      if (res.success) {
-        toast.success(t.cancel_success);
-        fetchMarket();
-      } else {
-        toast.error(res.error || t.cancel_error);
-      }
+      if (res.success) { toast.success(t.cancel_success); fetchMarket(); }
+      else toast.error(res.error || t.cancel_error);
     });
   };
 
-  const displayListings = activeTab === 'market' 
-    ? listings.filter(l => l.seller.id !== userId) 
+  const displayListings = activeTab === 'market'
+    ? listings.filter(l => l.seller.id !== userId)
     : listings.filter(l => l.seller.id === userId);
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto p-4 gap-4 bg-space-dark text-white pb-24 custom-scrollbar">
-      <ScreenGuide 
-        key="market"
-        screenName="market"
-        title={t.market_title}
-        content={t.market_desc}
-      />
-      {/* HEADER */}
-      <header className="border-b border-gray-800 pb-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-black uppercase tracking-tighter mt-1">
-            Web3 <span className="text-neon-cyan">Market</span>
-          </h1>
-          <button 
+    <div className="flex flex-col h-full overflow-y-auto custom-scrollbar pb-24" style={{ background: '#05060f' }}>
+      <ScreenGuide key="market" screenName="market" title={t.market_title} content={t.market_desc} />
+
+      {/* Background */}
+      <div className="fixed inset-0 pointer-events-none bg-grid-cyan opacity-60" />
+      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_30%_at_50%_0%,rgba(0,240,255,0.07)_0%,transparent_100%)]" />
+
+      {/* ── HEADER ─────────────────────────────────────────────────── */}
+      <header className="relative z-10 px-4 pt-4 pb-0">
+        <div className="flex items-center justify-between mb-1">
+          <div>
+            <h1 className="text-2xl font-black font-orbitron uppercase tracking-tight">
+              WEB3 <span className="text-cyan-300 neon-text-cyan">MARKET</span>
+            </h1>
+            <p className="text-[9px] text-gray-500 uppercase tracking-widest font-bold">
+              {activeTab === 'free_agents' ? 'Procedural Scouting Pool' : t.p2p_transfers}
+            </p>
+          </div>
+          <button
             onClick={activeTab === 'free_agents' ? fetchFreeAgents : fetchMarket}
             disabled={isLoading || isPending}
-            className="w-8 h-8 rounded-full bg-gray-900 border border-gray-700 flex items-center justify-center text-gray-400 hover:text-neon-cyan hover:border-neon-cyan transition-all"
+            className="w-9 h-9 rounded-full glass-card flex items-center justify-center text-gray-400
+                       hover:text-cyan-300 hover:border-cyan-500/40 transition-all"
           >
             <RefreshCw className={`w-4 h-4 ${(isLoading || isPending) ? 'animate-spin' : ''}`} />
           </button>
         </div>
-
-        <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-widest font-bold">
-          {activeTab === 'free_agents' ? 'Procedural Scouting Pool' : t.p2p_transfers}
-        </p>
       </header>
 
-      {/* WALLET */}
-      <MarketWallet 
-        balance={tonBalance} 
-        userId={userId || ''} 
-        language={language}
-        onBalanceUpdate={fetchBalance}
-      />
-
-      {/* TABS */}
-      <div className="flex bg-black/40 border border-gray-800 p-1 rounded-lg">
-        <button 
-          onClick={() => setActiveTab('market')}
-          className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all duration-300 ${activeTab === 'market' ? 'bg-neon-cyan text-black shadow-[0_0_15px_rgba(0,240,255,0.4)]' : 'text-gray-400 hover:text-white'}`}
-        >
-          {t.tab_market}
-        </button>
-        <button 
-          onClick={() => setActiveTab('free_agents')}
-          className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all duration-300 ${activeTab === 'free_agents' ? 'bg-yellow-500 text-black shadow-[0_0_15px_rgba(234,179,8,0.5)]' : 'text-gray-400 hover:text-white'}`}
-        >
-          Free Agents
-        </button>
-        <button 
-          onClick={() => setActiveTab('my_lots')}
-          className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all duration-300 ${activeTab === 'my_lots' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)]' : 'text-gray-400 hover:text-white'}`}
-        >
-          {t.tab_my_lots}
-        </button>
+      {/* ── TICKER STRIP ───────────────────────────────────────────── */}
+      <div className="relative z-10 my-2">
+        <TickerStrip />
       </div>
 
-      {/* FILTERS (Only visible on Market tab) */}
-      {activeTab === 'market' && (
-        <div className="flex flex-col gap-2 p-3 bg-gray-900/50 rounded-xl border border-gray-800">
-          <div className="flex items-center gap-2 text-xs text-gray-400 uppercase tracking-widest font-bold mb-1">
-            <Filter className="w-3 h-3" /> {t.filters}
-          </div>
-          <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
-            {['ALL', 'FWD', 'MID', 'DEF', 'GK'].map(pos => (
-              <button 
-                key={pos}
-                onClick={() => setPositionFilter(pos)}
-                className={`px-3 py-1 text-[10px] rounded-full font-black uppercase tracking-widest shrink-0 transition-all ${
-                  positionFilter === pos ? 'bg-white text-black' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                }`}
-              >
-                {pos}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1 mt-1">
-            {[
-              { id: 'price_asc', label: t.price_asc },
-              { id: 'price_desc', label: t.price_desc },
-              { id: 'ovr_desc', label: t.ovr_desc }
-            ].map(sort => (
-              <button 
-                key={sort.id}
-                onClick={() => setSortOrder(sort.id as any)}
-                className={`px-3 py-1 text-[10px] rounded border font-bold uppercase tracking-widest shrink-0 transition-all ${
-                  sortOrder === sort.id ? 'border-neon-cyan text-neon-cyan bg-neon-cyan/10' : 'border-gray-700 text-gray-500 hover:text-gray-300'
-                }`}
-              >
-                {sort.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="relative z-10 px-4 flex flex-col gap-3">
+        {/* ── WALLET ─────────────────────────────────────────────── */}
+        <MarketWallet balance={tonBalance} userId={userId || ''} language={language} onBalanceUpdate={fetchBalance} />
 
-      {/* LISTINGS FEED */}
-      {isLoading ? (
-        <CyberLoader fullScreen={false} />
-      ) : activeTab === 'free_agents' ? (
-        freeAgents.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-800 rounded-xl p-8 mt-4">
-            <ShieldAlert className="w-12 h-12 text-gray-600 mb-4" />
-            <span className="text-sm font-black text-gray-500 uppercase tracking-widest text-center">No Free Agents</span>
+        {/* ── TABS ───────────────────────────────────────────────── */}
+        <div className="glass-card flex p-1 gap-0.5">
+          {[
+            { id: 'market',      label: t.tab_market,   active: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
+            { id: 'free_agents', label: 'Free Agents',  active: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' },
+            { id: 'my_lots',     label: t.tab_my_lots,  active: 'bg-violet-500/20 text-violet-300 border-violet-500/40' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex-1 py-2 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all duration-200 border ${
+                activeTab === tab.id
+                  ? `${tab.active} shadow-sm`
+                  : 'text-gray-500 border-transparent hover:text-gray-300'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── FILTERS ────────────────────────────────────────────── */}
+        {activeTab === 'market' && (
+          <div className="glass-card p-3 flex flex-col gap-2">
+            <div className="flex items-center gap-1.5 text-[9px] text-gray-600 uppercase tracking-widest font-bold">
+              <Filter className="w-3 h-3" /> {t.filters}
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+              {['ALL', 'FWD', 'MID', 'DEF', 'GK'].map(pos => (
+                <button
+                  key={pos}
+                  onClick={() => setPositionFilter(pos)}
+                  className={`px-3 py-1 text-[9px] rounded-full font-black uppercase tracking-wider flex-shrink-0 transition-all border ${
+                    positionFilter === pos
+                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-[0_0_8px_rgba(0,240,255,0.2)]'
+                      : 'bg-white/5 text-gray-500 border-white/10 hover:text-gray-300'
+                  }`}
+                >
+                  {pos}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+              {[
+                { id: 'price_asc',  label: t.price_asc  },
+                { id: 'price_desc', label: t.price_desc },
+                { id: 'ovr_desc',   label: t.ovr_desc   }
+              ].map(sort => (
+                <button
+                  key={sort.id}
+                  onClick={() => setSortOrder(sort.id as any)}
+                  className={`px-3 py-1 text-[9px] rounded-lg border font-bold uppercase tracking-wider flex-shrink-0 transition-all ${
+                    sortOrder === sort.id
+                      ? 'border-violet-500/50 text-violet-300 bg-violet-500/10'
+                      : 'border-white/10 text-gray-600 hover:text-gray-300'
+                  }`}
+                >
+                  {sort.label}
+                </button>
+              ))}
+            </div>
           </div>
+        )}
+
+        {/* ── LISTINGS ───────────────────────────────────────────── */}
+        {isLoading ? (
+          <CyberLoader fullScreen={false} />
+        ) : activeTab === 'free_agents' ? (
+          freeAgents.length === 0 ? (
+            <EmptyState icon={<ShieldAlert className="w-10 h-10 text-gray-700" />} text="No Free Agents" />
+          ) : (
+            <div className="flex flex-col gap-2">
+              {freeAgents.map((agent, i) => (
+                <motion.div
+                  key={agent.token}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  className="glass-card relative overflow-hidden p-3"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-yellow-500/40 to-transparent" />
+                  <div className="absolute -top-8 -right-8 w-24 h-24 bg-yellow-500/8 rounded-full blur-2xl pointer-events-none" />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[9px] font-black text-black bg-yellow-500 px-1.5 py-0.5 rounded-md uppercase">
+                          {agent.position}
+                        </span>
+                        <h3 className="text-sm font-black text-yellow-300 uppercase truncate">{agent.name}</h3>
+                      </div>
+                      <div className="text-[9px] text-gray-500 uppercase tracking-widest font-bold mb-2">
+                        Age {agent.age}
+                      </div>
+                      {agent.traits?.length > 0 && (
+                        <div className="flex gap-1 flex-wrap">
+                          {agent.traits.map((tr: string) => (
+                            <span key={tr} className="text-[7px] bg-violet-900/30 text-violet-400 border border-violet-500/30
+                                                       px-1.5 py-0.5 rounded-sm uppercase font-bold">{tr}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <OVRBadge ovr={agent.ovr} />
+                  </div>
+                  <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-white/5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-yellow-400 text-sm">🟡</span>
+                      <span className="text-sm font-black text-white font-orbitron">{agent.priceFc.toLocaleString()}</span>
+                      <span className="text-[9px] text-yellow-500 font-bold">FC</span>
+                    </div>
+                    <button
+                      onClick={() => handleBuyFreeAgent(agent)}
+                      disabled={isPending}
+                      className="px-4 py-2 rounded-lg border border-yellow-500/50 font-black uppercase text-[9px] tracking-widest
+                                 bg-yellow-500/10 text-yellow-300 hover:bg-yellow-500 hover:text-black transition-all disabled:opacity-50"
+                    >
+                      SIGN
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )
+        ) : displayListings.length === 0 ? (
+          <EmptyState
+            icon={<ShieldAlert className="w-10 h-10 text-gray-700" />}
+            text={t.no_lots}
+            sub={activeTab === 'market' ? t.no_lots_desc_market : t.no_lots_desc_my}
+          />
         ) : (
-          <div className="flex flex-col gap-3 pb-10 mt-2">
-            {freeAgents.map((agent) => (
-              <div key={agent.token} className="bg-black/80 border border-yellow-500/30 p-3 rounded-xl flex flex-col gap-2 shadow-lg relative overflow-hidden">
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-2xl pointer-events-none"></div>
-                
-                <div className="flex justify-between items-start z-10">
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black uppercase text-gray-800 bg-yellow-500 px-1.5 rounded">{agent.position}</span>
-                      <h3 className="text-base font-bold text-yellow-500 uppercase tracking-wider">{agent.name}</h3>
+          <div className="flex flex-col gap-2">
+            {displayListings.map((listing, i) => (
+              <motion.div
+                key={listing.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.03 }}
+                className="glass-card relative overflow-hidden p-3"
+              >
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent" />
+                <div className="absolute -top-8 -right-8 w-24 h-24 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none" />
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[9px] font-black text-gray-500 bg-white/10 px-1.5 py-0.5 rounded-md uppercase">
+                        {listing.player.position}
+                      </span>
+                      <h3 className="text-sm font-black text-white uppercase truncate">{listing.player.name}</h3>
                     </div>
-                    <div className="flex items-center gap-3 mt-1.5 text-[10px] text-gray-400 uppercase tracking-widest font-bold">
-                      <span>{t.age_label}: {agent.age}</span>
+                    <div className="text-[9px] text-gray-500 uppercase tracking-widest font-bold mb-2 flex gap-3">
+                      <span>Age {listing.player.age}</span>
+                      <span>S{listing.player.seasons_played}</span>
                     </div>
-                    
-                    {agent.traits && agent.traits.length > 0 && (
-                      <div className="flex gap-1 mt-2">
-                        {agent.traits.map((tr: string) => (
-                          <span key={tr} className="text-[8px] bg-purple-900/30 text-purple-400 border border-purple-500/30 px-1.5 py-0.5 rounded-sm uppercase font-bold tracking-widest">
-                            {tr}
-                          </span>
+                    {listing.player.traits?.length > 0 && (
+                      <div className="flex gap-1 flex-wrap">
+                        {listing.player.traits.map(tr => (
+                          <span key={tr} className="text-[7px] bg-violet-900/30 text-violet-400 border border-violet-500/30
+                                                     px-1.5 py-0.5 rounded-sm uppercase font-bold">{tr}</span>
                         ))}
                       </div>
                     )}
                   </div>
-                  
-                  <div className="flex flex-col items-end z-10">
-                    <span className="text-[9px] text-yellow-500/70 uppercase font-bold tracking-widest">OVR</span>
-                    <span className="text-2xl font-black text-yellow-500 drop-shadow-[0_0_8px_rgba(234,179,8,0.6)] leading-none">{agent.ovr}</span>
-                  </div>
+                  <OVRBadge ovr={listing.player.ovr} />
                 </div>
-                
-                <div className="flex justify-between items-center mt-2 border-t border-gray-800/60 pt-3 z-10">
-                  <div className="flex flex-col">
-                    <span className="text-[9px] text-gray-500 uppercase tracking-widest font-bold">Sign-on Bonus</span>
-                    <span className="text-base font-black text-white flex items-center gap-1.5 mt-0.5">
-                      <span className="text-yellow-400 text-sm">🟡</span> 
-                      <span className="font-orbitron tracking-wider">{agent.priceFc.toLocaleString()}</span>
-                      <span className="text-xs text-yellow-500">FC</span>
-                    </span>
+                <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-white/5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-blue-400 text-sm">💎</span>
+                    <span className="text-sm font-black text-white font-orbitron">{listing.price_ton}</span>
+                    <span className="text-[9px] text-blue-400 font-bold">TON</span>
                   </div>
-                  
-                  <button 
-                    onClick={() => handleBuyFreeAgent(agent)}
-                    disabled={isPending}
-                    className="px-5 py-2.5 rounded border border-yellow-500/50 font-black uppercase text-[10px] tracking-widest transition-all bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500 hover:text-black shadow-[0_0_10px_rgba(234,179,8,0.1)] disabled:opacity-50"
-                  >
-                    SIGN AGENT
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )
-      ) : displayListings.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-800 rounded-xl p-8 mt-4">
-          <ShieldAlert className="w-12 h-12 text-gray-600 mb-4" />
-          <span className="text-sm font-black text-gray-500 uppercase tracking-widest text-center">{t.no_lots}</span>
-          <p className="text-gray-600 text-[10px] uppercase tracking-widest mt-2 text-center">
-            {activeTab === 'market' ? t.no_lots_desc_market : t.no_lots_desc_my}
-          </p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3 pb-10 mt-2">
-          {displayListings.map((listing) => (
-            <div key={listing.id} className="bg-black/80 border border-gray-800 p-3 rounded-xl flex flex-col gap-2 shadow-lg relative overflow-hidden">
-              
-              {/* OVR BADGE BACKGROUND GLOW */}
-              <div className="absolute -top-10 -right-10 w-32 h-32 bg-neon-cyan/5 rounded-full blur-2xl pointer-events-none"></div>
-
-              <div className="flex justify-between items-start z-10">
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black uppercase text-gray-500 bg-gray-900 px-1.5 rounded">{listing.player.position}</span>
-                    <h3 className="text-base font-bold text-white uppercase tracking-wider">{listing.player.name}</h3>
-                  </div>
-                  <div className="flex items-center gap-3 mt-1.5 text-[10px] text-gray-400 uppercase tracking-widest font-bold">
-                    <span>{t.age_label}: {listing.player.age}</span>
-                    <span>{t.seasons_played}: {listing.player.seasons_played}</span>
-                  </div>
-                  
-                  {listing.player.traits && listing.player.traits.length > 0 && (
-                    <div className="flex gap-1 mt-2">
-                      {listing.player.traits.map(t => (
-                        <span key={t} className="text-[8px] bg-purple-900/30 text-purple-400 border border-purple-500/30 px-1.5 py-0.5 rounded-sm uppercase font-bold tracking-widest">
-                          {t}
-                        </span>
-                      ))}
-                    </div>
+                  {activeTab === 'market' ? (
+                    <button
+                      onClick={() => handleBuy(listing)}
+                      disabled={isPending}
+                      className="px-4 py-2 rounded-lg border border-cyan-500/50 font-black uppercase text-[9px] tracking-widest
+                                 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500 hover:text-black transition-all disabled:opacity-50"
+                    >
+                      {t.buy_button}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleCancel(listing.id)}
+                      disabled={isPending}
+                      className="px-4 py-2 rounded-lg border border-red-500/40 font-black uppercase text-[9px] tracking-widest
+                                 bg-red-900/15 text-red-400 hover:bg-red-600 hover:text-white transition-all disabled:opacity-50"
+                    >
+                      {t.cancel_button}
+                    </button>
                   )}
                 </div>
-                
-                <div className="flex flex-col items-end z-10">
-                  <span className="text-[9px] text-neon-cyan/70 uppercase font-bold tracking-widest">OVR</span>
-                  <span className="text-2xl font-black text-neon-cyan drop-shadow-[0_0_8px_rgba(0,240,255,0.6)] leading-none">{listing.player.ovr}</span>
-                </div>
-              </div>
-              
-              <div className="flex justify-between items-center mt-2 border-t border-gray-800/60 pt-3 z-10">
-                <div className="flex flex-col">
-                  <span className="text-[9px] text-gray-500 uppercase tracking-widest font-bold">{t.lot_price}</span>
-                  <span className="text-base font-black text-white flex items-center gap-1.5 mt-0.5">
-                    <span className="text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.8)] text-sm">💎</span> 
-                    <span className="font-orbitron tracking-wider">{listing.price_ton}</span>
-                    <span className="text-xs text-blue-500">TON</span>
-                  </span>
-                </div>
-                
-                {activeTab === 'market' ? (
-                  <button 
-                    onClick={() => handleBuy(listing)}
-                    disabled={isPending}
-                    className="px-5 py-2.5 rounded border border-neon-cyan/50 font-black uppercase text-[10px] tracking-widest transition-all bg-neon-cyan/10 text-neon-cyan hover:bg-neon-cyan hover:text-black shadow-[0_0_10px_rgba(0,240,255,0.1)] disabled:opacity-50"
-                  >
-                    {t.buy_button}
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => handleCancel(listing.id)}
-                    disabled={isPending}
-                    className="px-4 py-2 rounded border border-red-500/50 font-black uppercase text-[10px] tracking-widest transition-all bg-red-900/20 text-red-400 hover:bg-red-600 hover:text-white disabled:opacity-50"
-                  >
-                    {t.cancel_button}
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ icon, text, sub }: { icon: React.ReactNode; text: string; sub?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center glass-card p-10 mt-2">
+      <div className="mb-4 opacity-50">{icon}</div>
+      <span className="text-sm font-black text-gray-500 uppercase tracking-widest text-center">{text}</span>
+      {sub && <p className="text-gray-700 text-[10px] uppercase tracking-widest mt-2 text-center max-w-[200px]">{sub}</p>}
     </div>
   );
 }
