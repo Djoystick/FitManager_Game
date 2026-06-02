@@ -62,6 +62,7 @@ export default function LineupPage() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [isHealingAll, setIsHealingAll] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+  const [isBenchOpen, setIsBenchOpen] = useState(false);
 
   const [viewMode, setViewMode] = useState<'lineup' | 'scout'>('lineup');
   const [scoutReport, setScoutReport] = useState<any>(null);
@@ -499,8 +500,6 @@ export default function LineupPage() {
     );
   }
 
-  // Bench drawer state
-  const [isBenchOpen, setIsBenchOpen] = useState(false);
 
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: '#05060f' }}>

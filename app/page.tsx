@@ -466,7 +466,7 @@ export default function DashboardPage() {
       {/* ══════════════════════════════════════════════════════════════════
           SECTION 4 — MATCH HISTORY (horizontal snap carousel)
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="mt-2 flex-1 min-h-0 flex flex-col overflow-hidden">
+      <div className="mt-2 flex-shrink-0 flex flex-col overflow-hidden">
         <div className="px-3 flex items-center justify-between mb-1.5 flex-shrink-0">
           <p className="text-[9px] font-bold text-gray-600 uppercase tracking-[0.2em]">
             {t.match_journal}

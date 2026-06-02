@@ -38,15 +38,24 @@ export default async function BankPage() {
     const { data, error } = await supabase
       .from('users')
       .select(
-        'manager_profile, daily_steps, sweat_points, cardio_coin, fitness_coin, ball_coin, strength_coin'
+        'manager_profile, daily_steps, sweat_points, cardio_coin, fitness_coin, ball_coin, strength_coin, last_step_sync'
       )
       .eq('id', userId)
       .single();
 
     if (!error && data) {
+      let steps = data.daily_steps ?? 0;
+      if (data.last_step_sync) {
+        const syncDate = new Date(data.last_step_sync).toISOString().split('T')[0];
+        const today = new Date().toISOString().split('T')[0];
+        if (syncDate !== today) {
+          steps = 0;
+        }
+      }
+
       userData = {
         manager_profile: (data.manager_profile ?? 'runner') as ManagerProfileType,
-        daily_steps:     data.daily_steps     ?? 0,
+        daily_steps:     steps,
         sweat_points:    data.sweat_points    ?? 0,
         cardio_coin:     data.cardio_coin     ?? 0,
         fitness_coin:    data.fitness_coin    ?? 0,
