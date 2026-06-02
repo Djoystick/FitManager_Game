@@ -529,7 +529,7 @@ export default function LineupPage() {
 
       {/* TABS */}
       <div className="flex justify-center mt-1.5 mb-1 z-10 relative shrink-0 px-3">
-        <div className="glass-card flex w-full p-0.5 gap-0.5">
+        <div className="glass-card flex w-full p-0.5 gap-0.5 relative">
           <div
             className="absolute inset-y-0.5"
             style={{
@@ -785,9 +785,9 @@ export default function LineupPage() {
             />
             <motion.div
               key="bench-drawer"
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
+              initial={{ y: '100%', x: '-50%' }}
+              animate={{ y: 0, x: '-50%' }}
+              exit={{ y: '100%', x: '-50%' }}
               transition={{ type: 'spring', stiffness: 350, damping: 35 }}
               className="bottom-sheet z-[60] pb-20"
             >
@@ -919,7 +919,7 @@ export default function LineupPage() {
           onClick={() => setShowLegend(false)}
         >
           <div
-            className="w-full max-w-[480px] glass-card-violet rounded-b-none p-6 relative overflow-hidden"
+            className="w-full max-w-[480px] max-h-[90vh] overflow-y-auto custom-scrollbar glass-card-violet rounded-b-none p-6 relative"
             onClick={e => e.stopPropagation()}
           >
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent" />
