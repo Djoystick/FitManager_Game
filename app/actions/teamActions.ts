@@ -107,11 +107,6 @@ export async function createStarterFranchise(teamName: string) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // === WIPE PHASE ===
-    await supabaseAdmin.from('teams').delete().eq('user_id', userId);
-    await supabaseAdmin.from('users').delete().like('telegram_id', 'bot_%');
-    await supabaseAdmin.from('league_matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-
     // === CREATE PHASE ===
     const { data: newTeam, error: teamError } = await supabaseAdmin
       .from('teams')

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useCallback } from 'react';
+import { useState, useTransition, useCallback, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { Footprints, Zap, ArrowRightLeft, FlaskConical, Flame, Dumbbell, CircleDot } from 'lucide-react';
 import {
@@ -55,6 +55,7 @@ interface SweatBankClientProps {
     fitness_coin: number;
     ball_coin: number;
     strength_coin: number;
+    last_step_sync: string;
   };
   language: string;
 }
@@ -66,8 +67,15 @@ interface SweatBankClientProps {
 export function SweatBankClient({ initialData, language }: SweatBankClientProps) {
   const t = dict[language as keyof typeof dict];
 
-  // Local mirrors of server state — updated optimistically on action success
-  const [dailySteps, setDailySteps] = useState(initialData.daily_steps);
+  const [dailySteps, setDailySteps] = useState(() => {
+    // Check locally if the date has changed since the server rendered
+    const today = new Date().toISOString().split('T')[0];
+    const syncDate = initialData.last_step_sync;
+    if (syncDate !== today) {
+      return 0;
+    }
+    return initialData.daily_steps;
+  });
   const [sweatPoints, setSweatPoints] = useState(initialData.sweat_points);
   const [coinBalances, setCoinBalances] = useState({
     cardio:   initialData.cardio_coin,
@@ -76,6 +84,24 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
     strength: initialData.strength_coin,
   });
   const profile = initialData.manager_profile;
+
+  // Sync date check on mount (in case client is kept open across midnight)
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    if (initialData.last_step_sync !== today && dailySteps !== 0) {
+      setDailySteps(0);
+    }
+    
+    // Interval to check every minute
+    const interval = setInterval(() => {
+      const currentToday = new Date().toISOString().split('T')[0];
+      if (initialData.last_step_sync !== currentToday) {
+        setDailySteps(0);
+      }
+    }, 60000);
+    
+    return () => clearInterval(interval);
+  }, [initialData.last_step_sync, dailySteps]);
 
   const PROFILE_LABELS: Record<ManagerProfileType, { label: string; emoji: string; color: string }> = {
     runner:      { label: t.profile_runner, emoji: '🏃', color: 'text-neon-green' },

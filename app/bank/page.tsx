@@ -24,6 +24,7 @@ const DEFAULT_DATA = {
   fitness_coin:   0,
   ball_coin:      0,
   strength_coin:  0,
+  last_step_sync: new Date().toISOString().split('T')[0],
 };
 
 export default async function BankPage() {
@@ -61,6 +62,7 @@ export default async function BankPage() {
         fitness_coin:    data.fitness_coin    ?? 0,
         ball_coin:       data.ball_coin       ?? 0,
         strength_coin:   data.strength_coin   ?? 0,
+        last_step_sync:  data.last_step_sync  || new Date().toISOString().split('T')[0],
       };
     }
   }
