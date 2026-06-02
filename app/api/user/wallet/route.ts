@@ -38,6 +38,12 @@ export async function POST(req: Request) {
     }
 
     // 3. Return Success response
+    const { data: team } = await supabase.from('teams').select('id').eq('user_id', userId).single();
+    if (team) {
+      const { checkAndUnlockAchievement } = await import('@/app/services/achievementService');
+      await checkAndUnlockAchievement(team.id, 'WALLET_LINK');
+    }
+
     return NextResponse.json({
       success: true,
       wallet_address: walletAddress,

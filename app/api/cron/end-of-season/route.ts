@@ -130,7 +130,7 @@ export async function GET(request: Request) {
 
         const { data: teamData } = await supabaseAdmin
           .from('teams')
-          .select('user_id, name')
+          .select('id, user_id, name')
           .eq('id', finalStandings[i].team_id)
           .single();
 
@@ -192,6 +192,11 @@ export async function GET(request: Request) {
             .update({ season_reward_paid: true })
             .eq('team_id', finalStandings[i].team_id)
             .eq('league_instance_id', instance.id);
+
+          const { checkAndUnlockAchievement } = await import('@/app/services/achievementService');
+          if (position === 1) await checkAndUnlockAchievement(teamData.id, 'LEAGUE_CHAMP');
+          if (nextTier < instance.tier_level) await checkAndUnlockAchievement(teamData.id, 'PROMOTION');
+          if (nextTier === 1) await checkAndUnlockAchievement(teamData.id, 'TOP_LEAGUE');
 
           if (userData?.telegram_id) {
             let msg = `🏆 *Сезон завершен!*\n\nТвоя команда *${teamData.name}* заняла *${position} место* в Tier ${instance.tier_level}.\n`;

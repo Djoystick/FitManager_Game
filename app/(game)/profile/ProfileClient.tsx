@@ -7,8 +7,6 @@ import { WalletConnect } from '@/components/WalletConnect';
 import Link from 'next/link';
 import { dict } from '@/lib/dictionaries';
 import { renameTeamAction } from '@/app/actions/teamActions';
-import { claimAchievementReward } from '@/app/actions/achievementActions';
-import { ACHIEVEMENTS, AchievementCode } from '@/lib/achievementsDict';
 import { Edit3, FileText, AlertTriangle, Bell, Award, CheckCircle, ChevronRight, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTransition } from 'react';
@@ -21,16 +19,12 @@ export default function ProfileClient({
   isAdmin, 
   initialTeamName, 
   initialLogoUrl, 
-  fcBalance,
-  initialAchievements = [],
-  globalStats = []
+  fcBalance
 }: { 
   isAdmin?: boolean; 
   initialTeamName: string; 
   initialLogoUrl?: string | null; 
   fcBalance: number;
-  initialAchievements?: any[];
-  globalStats?: any[];
 }) {
   const { userId, isAuthenticated } = useContext(TelegramAuthContext);
   const { language, setLanguage } = useContext(LanguageContext);
@@ -39,10 +33,6 @@ export default function ProfileClient({
 
   const [userData, setUserData] = useState<UserData | null>(null);
   const [tgUser, setTgUser] = useState<any>(null);
-
-  const [userAchievements, setUserAchievements] = useState(initialAchievements);
-  const [selectedAchievement, setSelectedAchievement] = useState<any | null>(null);
-  const [isClaiming, setIsClaiming] = useState(false);
 
   const [teamName, setTeamName] = useState(initialTeamName);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -107,22 +97,6 @@ export default function ProfileClient({
         toast.error(errorMsg || 'Error');
       }
     });
-  };
-
-  const handleClaimAchievement = async (code: AchievementCode) => {
-    setIsClaiming(true);
-    const res = await claimAchievementReward(code);
-    if (res.success) {
-      toast.success('Reward claimed! 🎉');
-      setUserAchievements(prev => 
-        prev.map(a => a.achievement_code === code ? { ...a, reward_claimed: true } : a)
-      );
-      window.dispatchEvent(new Event('balanceUpdated'));
-      setSelectedAchievement(null);
-    } else {
-      toast.error(res.error || 'Failed to claim');
-    }
-    setIsClaiming(false);
   };
 
   useEffect(() => {
@@ -256,48 +230,21 @@ export default function ProfileClient({
         </section>
 
         {/* ── ACHIEVEMENTS SHOWCASE ── */}
-        <section className="bg-gray-900/40 backdrop-blur-md p-4 rounded-2xl border border-gray-800 shadow-lg relative overflow-hidden flex flex-col gap-3">
-          <h2 className={`text-[10px] uppercase tracking-widest text-yellow-500 font-bold flex items-center gap-2 ${fontClass}`}>
-            <Award size={14} /> Wall of Fame
-          </h2>
-          
-          <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-2">
-            {Object.values(ACHIEVEMENTS).map((ach) => {
-              const userAch = userAchievements.find(a => a.achievement_code === ach.code);
-              const isUnlocked = !!userAch;
-              const isClaimed = userAch?.reward_claimed;
-              
-              const stats = globalStats.find(s => s.achievement_code === ach.code);
-              const percentage = stats?.percentage ? stats.percentage.toFixed(1) : '< 0.1';
-
-              return (
-                <div 
-                  key={ach.code}
-                  onClick={() => setSelectedAchievement({ ...ach, userAch, percentage })}
-                  className={`snap-center shrink-0 w-24 h-28 rounded-xl border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
-                    isUnlocked 
-                      ? isClaimed 
-                        ? 'bg-gradient-to-b from-gray-800 to-gray-900 border-gray-700 opacity-80' 
-                        : 'bg-gradient-to-b from-yellow-900/40 to-black border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.3)]'
-                      : 'bg-gray-900 border-gray-800 opacity-50 grayscale'
-                  }`}
-                >
-                  <div className="text-3xl filter drop-shadow-md">
-                    {isUnlocked ? ach.icon : '🔒'}
-                  </div>
-                  <div className="text-[9px] font-bold text-center px-1 truncate w-full text-white">
-                    {ach.title[language as 'en' | 'ru']}
-                  </div>
-                  {isUnlocked && !isClaimed && (
-                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />
-                  )}
-                  {isUnlocked && !isClaimed && (
-                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,1)]" />
-                  )}
-                </div>
-              );
-            })}
+        <section className="bg-gray-900/40 backdrop-blur-md p-4 rounded-2xl border border-gray-800 shadow-lg flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-600 to-yellow-900 border border-yellow-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(234,179,8,0.3)]">
+              <Award className="text-yellow-400" size={20} />
+            </div>
+            <div>
+              <h2 className={`text-xs uppercase tracking-widest text-white font-bold ${fontClass}`}>
+                Зал Славы
+              </h2>
+              <p className="text-[10px] text-gray-500 uppercase tracking-widest">Твои достижения</p>
+            </div>
           </div>
+          <Link href="/achievements" className="w-8 h-8 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-400 hover:text-neon-cyan hover:border-neon-cyan/50 transition-colors">
+            <ChevronRight size={16} />
+          </Link>
         </section>
 
         {/* ── LOWER SECTION (System Config) ── */}
@@ -386,72 +333,7 @@ export default function ProfileClient({
         </div>
       )}
 
-      {selectedAchievement && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" onClick={() => setSelectedAchievement(null)}>
-          <div className="w-full max-w-sm bg-gray-900 border border-yellow-500/30 rounded-2xl p-6 shadow-[0_0_30px_rgba(234,179,8,0.15)] relative overflow-hidden flex flex-col items-center text-center" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setSelectedAchievement(null)} className="absolute top-4 right-4 text-gray-500 hover:text-white">
-              <X size={20} />
-            </button>
-            
-            <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center text-4xl mb-4 border border-gray-700 shadow-inner">
-              {selectedAchievement.userAch ? selectedAchievement.icon : '🔒'}
-            </div>
-            
-            <h3 className={`text-white font-bold text-lg mb-1 uppercase tracking-widest ${fontClass}`}>
-              {selectedAchievement.title[language as 'en' | 'ru']}
-            </h3>
-            
-            <div className="inline-flex items-center gap-1 bg-black/50 px-3 py-1 rounded-full text-gray-400 text-[10px] uppercase font-mono tracking-widest mb-4">
-              <Award size={10} className="text-yellow-500" /> 
-              Rarity: {selectedAchievement.percentage}%
-            </div>
-            
-            <p className="text-xs text-gray-400 mb-6 px-4">
-              {selectedAchievement.userAch 
-                ? selectedAchievement.description[language as 'en' | 'ru']
-                : 'Unlock this achievement to reveal the details.'}
-            </p>
-
-            {selectedAchievement.userAch && !selectedAchievement.userAch.reward_claimed && (
-              <div className="w-full bg-black/40 rounded-xl p-4 mb-4 border border-gray-800">
-                <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-2">Reward</div>
-                <div className="flex justify-center gap-4">
-                  {selectedAchievement.reward.fc && (
-                    <div className="flex items-center gap-1 text-yellow-500 font-bold">
-                      <span className="text-lg">{selectedAchievement.reward.fc}</span> FC
-                    </div>
-                  )}
-                  {selectedAchievement.reward.ton && (
-                    <div className="flex items-center gap-1 text-blue-400 font-bold">
-                      <span className="text-lg">{selectedAchievement.reward.ton}</span> TON
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {selectedAchievement.userAch ? (
-              selectedAchievement.userAch.reward_claimed ? (
-                <div className="w-full py-3 bg-gray-800 text-gray-500 font-bold uppercase tracking-widest text-xs rounded-xl flex items-center justify-center gap-2">
-                  <CheckCircle size={14} /> Claimed
-                </div>
-              ) : (
-                <button 
-                  onClick={() => handleClaimAchievement(selectedAchievement.code)}
-                  disabled={isClaiming}
-                  className="w-full py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 text-black font-black uppercase tracking-widest text-xs rounded-xl shadow-[0_0_20px_rgba(234,179,8,0.4)] hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
-                >
-                  {isClaiming ? 'Claiming...' : 'Claim Reward'}
-                </button>
-              )
-            ) : (
-              <div className="w-full py-3 bg-gray-900 border border-gray-800 text-gray-600 font-bold uppercase tracking-widest text-xs rounded-xl flex items-center justify-center gap-2">
-                Locked
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* removed selected achievement modal */}
 
       {showAvatarModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" onClick={() => setShowAvatarModal(false)}>

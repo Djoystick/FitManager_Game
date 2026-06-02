@@ -2,7 +2,6 @@ import React from 'react';
 import { cookies } from 'next/headers';
 import ProfileClient from './ProfileClient';
 import { supabase } from '@/lib/supabase';
-import { getUserAchievements } from '@/app/actions/achievementActions';
 
 export default async function ProfilePage() {
   const cookieStore = await cookies();
@@ -14,12 +13,9 @@ export default async function ProfilePage() {
 
   let fcBalance = 0;
   let team = null;
-  
-  let achievements = [];
-  let stats = [];
 
   if (sessionUuid) {
-    const [{ data: userRes }, { data: teamRes }, achRes] = await Promise.all([
+    const [{ data: userRes }, { data: teamRes }] = await Promise.all([
       supabase
         .from('users')
         .select('telegram_id, balance_fancoins')
@@ -29,8 +25,7 @@ export default async function ProfilePage() {
         .from('teams')
         .select('name, logo_url')
         .eq('user_id', sessionUuid)
-        .single(),
-      getUserAchievements()
+        .single()
     ]);
 
     if (userRes) {
@@ -47,11 +42,6 @@ export default async function ProfilePage() {
     if (teamRes) {
       team = teamRes;
     }
-    
-    if (achRes.success && 'achievements' in achRes) {
-      achievements = achRes.achievements || [];
-      stats = achRes.stats || [];
-    }
   }
 
   return (
@@ -61,8 +51,6 @@ export default async function ProfilePage() {
         initialTeamName={team?.name || 'Unknown'} 
         initialLogoUrl={team?.logo_url || null}
         fcBalance={user?.balance_fancoins || 0}
-        initialAchievements={achievements}
-        globalStats={stats}
       />
     </>
   );

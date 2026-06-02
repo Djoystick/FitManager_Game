@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { getRandomName } from '@/app/utils/nameGenerator';
+import { triggerTransferAchievements } from '@/app/services/achievementService';
 
 function getRandomInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -34,6 +35,9 @@ export async function listPlayerAction(playerId: string, priceTon: number) {
       return { success: false, error: error.message };
     }
 
+    const { data: team } = await supabaseAdmin.from('teams').select('id').eq('user_id', userId).single();
+    if (team) await triggerTransferAchievements(team.id, 'sell');
+
     return { success: true, data };
   } catch (err: any) {
     console.error('[MarketActions] Exception in listPlayer:', err);
@@ -56,6 +60,9 @@ export async function buyPlayerAction(listingId: string) {
       console.error('[MarketActions] buyPlayer error:', error);
       return { success: false, error: error.message };
     }
+
+    const { data: team } = await supabaseAdmin.from('teams').select('id').eq('user_id', userId).single();
+    if (team) await triggerTransferAchievements(team.id, 'buy');
 
     return { success: true, data };
   } catch (err: any) {
@@ -322,6 +329,8 @@ export async function buyFreeAgentAction(token: string) {
       await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins }).eq('id', userId);
       return { success: false, error: 'Failed to recruit player' };
     }
+
+    await triggerTransferAchievements(team.id, 'buy');
 
     return { success: true, player: newPlayer };
 

@@ -146,11 +146,8 @@ export async function POST(req: Request) {
     }
 
     // 11. Unlock WELCOME achievement
-    await supabaseAdmin.from('user_achievements').upsert({
-      user_id: userId,
-      achievement_code: 'WELCOME',
-      reward_claimed: false
-    }, { onConflict: 'user_id, achievement_code', ignoreDuplicates: true });
+    const { checkAndUnlockAchievement } = await import('@/app/services/achievementService');
+    await checkAndUnlockAchievement(newTeam.id, 'WELCOME');
 
     return NextResponse.json({
       success: true,

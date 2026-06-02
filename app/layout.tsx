@@ -52,6 +52,7 @@ import { GlobalHeader } from "@/components/GlobalHeader";
 import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import { Toaster } from "react-hot-toast";
 import { TooltipTour } from "@/components/onboarding/TooltipTour";
+import { AchievementToastProvider } from "@/components/AchievementToastProvider";
 import Script from "next/script";
 
 export default function RootLayout({
@@ -110,6 +111,8 @@ export default function RootLayout({
 
                   {/* Tutorial tooltip overlay — rendered outside main for z-index */}
                   <TooltipTour />
+                  
+                  <AchievementToastProvider />
 
                   <Toaster
                     position="top-center"

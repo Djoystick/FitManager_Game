@@ -405,6 +405,12 @@ export async function changeLogoAction(logoUrl: string) {
     
     if (updateError) return { success: false, error: 'logo_error' };
 
+    const { data: team } = await supabaseAdmin.from('teams').select('id').eq('user_id', userId).single();
+    if (team) {
+      const { checkAndUnlockAchievement } = await import('@/app/services/achievementService');
+      await checkAndUnlockAchievement(team.id, 'FACE_REVEAL');
+    }
+
     return { success: true };
   } catch (e: any) {
     return { success: false, error: e.message };

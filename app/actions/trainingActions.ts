@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { matchService } from '@/services/matchService';
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
+import { triggerTrainingAchievements, triggerInfrastructureAchievements } from '@/app/services/achievementService';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase service-role client (bypasses RLS for server actions)
@@ -350,6 +351,8 @@ export async function batchTrainPlayerAction(
     revalidatePath('/base');
     revalidatePath('/');
 
+    await triggerTrainingAchievements(player.team_id);
+
     return { success: true };
   } catch (err: any) {
     console.error('[batchTrainPlayerAction] error:', err);
@@ -449,6 +452,8 @@ export async function upgradeBuildingAction(
 
     revalidatePath('/base');
     revalidatePath('/');
+
+    await triggerInfrastructureAchievements(team.id);
 
     return { success: true, new_level: currentLevel + 1, new_balance: newBalance };
   } catch (err: any) {

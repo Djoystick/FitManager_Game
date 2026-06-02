@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { MatchReport } from '@/components/MatchReportModal';
 import { createClient } from '@supabase/supabase-js';
 import { simulateMatch as runMatchEngine, MatchPlayer } from '@/app/utils/matchEngine';
+import { triggerMatchAchievements } from '@/app/services/achievementService';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -499,6 +500,10 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
 
     await applyFcTransaction(match.home_team_id, homePlayersData, result.score.home, result.score.away);
     await applyFcTransaction(match.away_team_id, awayPlayersData, result.score.away, result.score.home);
+
+    // ── ШАГ Ж: Ачивки (Achievements) ──────────────────────────────────────────
+    await triggerMatchAchievements(match.home_team_id, result.score.home > result.score.away, result.score.home, result.score.away);
+    await triggerMatchAchievements(match.away_team_id, result.score.away > result.score.home, result.score.away, result.score.home);
 
     console.log(`[resolveMatch] SUCCESS for matchId: ${matchId}`);
     return { success: true };
