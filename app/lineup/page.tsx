@@ -17,6 +17,10 @@ import { ChemistryOverlay } from '@/components/ChemistryOverlay';
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
 import { ScreenGuide } from '@/components/ui/ScreenGuide';
+import { SubNavTabs } from '@/components/ui/SubNavTabs';
+import { PlayerListRow } from '@/components/ui/PlayerListRow';
+import { StatCard } from '@/components/ui/StatCard';
+import Link from 'next/link';
 
 interface PlayerStats {
   pace: number;
@@ -77,6 +81,9 @@ export default function LineupPage() {
   const [profilePlayer, setProfilePlayer] = useState<Player | null>(null);
   const [showChemistry, setShowChemistry] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
+  // Primary TEAM tab
+  const [primaryTab, setPrimaryTab] = useState<'info' | 'players' | 'lineup'>('info');
+  const [playersSubTab, setPlayersSubTab] = useState<'squad' | 'academy'>('squad');
 
   const fetchTeamData = async () => {
     if (!userId) return;
@@ -593,7 +600,6 @@ export default function LineupPage() {
           <p className="text-[8px] text-violet-400/70 uppercase tracking-widest mt-0.5 font-bold">{t.squad_management}</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Heal All — always visible in header */}
           {players.filter(p => p.stamina < 100 || p.is_injured).length > 0 && (
             <button
               onClick={handleMassHeal}
@@ -618,7 +624,103 @@ export default function LineupPage() {
         </div>
       </header>
 
-      {/* TABS */}
+      {/* ── Primary SubNav: INFO | PLAYERS | LINEUP ── */}
+      <div className="flex-shrink-0 pb-1.5 relative z-20">
+        <SubNavTabs
+          tabs={[
+            { id: 'info',    label: 'INFO'    },
+            { id: 'players', label: 'PLAYERS', badge: players.length },
+            { id: 'lineup',  label: 'LINEUP'  },
+          ]}
+          active={primaryTab}
+          onChange={(id) => setPrimaryTab(id as 'info' | 'players' | 'lineup')}
+          accent="violet"
+        />
+      </div>
+
+      {/* ── INFO Tab ─────────────────────────────────────────────────── */}
+      {primaryTab === 'info' && (
+        <div className="flex-1 overflow-y-auto custom-scrollbar pb-28 px-3 flex flex-col gap-3 relative z-10">
+          {/* Stats grid */}
+          <div className="grid grid-cols-3 gap-2">
+            <StatCard label="General OVR" value={averageOvr} accent="violet" />
+            <StatCard label="ATT" value={avgAtt || '—'} accent="cyan" />
+            <StatCard label="DEF" value={avgDef || '—'} accent="emerald" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <StatCard label="Squad Size" value={players.length} subLabel="players" accent="yellow" />
+            <StatCard label="Formation" value={currentFormation} accent="violet" />
+          </div>
+
+          {/* Action grid */}
+          <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold px-0.5">Management</div>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: 'Structures', href: '/base',    emoji: '🏗️' },
+              { label: 'Transfers',  href: '/market',  emoji: '🔄' },
+              { label: 'Staff',      href: '/staff',   emoji: '👔' },
+              { label: 'Finances',   href: '/bank',    emoji: '💰' },
+            ].map(({ label, href, emoji }) => (
+              <Link key={href} href={href}
+                className="glass-card p-3 flex items-center gap-2
+                           hover:border-cyan-500/30 transition-all group">
+                <span className="text-base">{emoji}</span>
+                <div>
+                  <div className="text-[8px] text-gray-600 uppercase tracking-widest">Go to</div>
+                  <div className="text-xs font-black text-white group-hover:text-cyan-300 uppercase tracking-wide transition-colors">{label}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── PLAYERS Tab ──────────────────────────────────────────────── */}
+      {primaryTab === 'players' && (
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-shrink-0 pb-2">
+            <SubNavTabs
+              tabs={[
+                { id: 'squad',   label: 'SQUAD'   },
+                { id: 'academy', label: 'ACADEMY' },
+              ]}
+              active={playersSubTab}
+              onChange={(id) => setPlayersSubTab(id as 'squad' | 'academy')}
+              accent="cyan"
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto custom-scrollbar pb-28 relative z-10">
+            <div className="glass-card mx-3 overflow-hidden">
+              {players.length === 0 ? (
+                <div className="py-12 text-center text-gray-700 text-xs uppercase tracking-widest">No players</div>
+              ) : (
+                players
+                  .filter(() => playersSubTab === 'squad') // Academy filter placeholder
+                  .sort((a, b) => b.ovr - a.ovr)
+                  .map(player => (
+                    <PlayerListRow
+                      key={player.id}
+                      player={{
+                        id: player.id,
+                        name: player.name,
+                        age: player.age,
+                        ovr: player.ovr,
+                        position: player.position,
+                        is_injured: player.is_injured,
+                        stamina: player.stamina,
+                      }}
+                      onClick={() => setProfilePlayer(player)}
+                      isSelected={profilePlayer?.id === player.id}
+                    />
+                  ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* LINEUP Tab — existing pitch layout */}
+      {primaryTab === 'lineup' && (
+      <>{/* TABS */}
       <div className="flex justify-center mt-1.5 mb-1 z-10 relative shrink-0 px-3">
         <div className="glass-card flex w-full p-0.5 gap-0.5 relative">
           <div
@@ -1104,6 +1206,9 @@ export default function LineupPage() {
           </div>
         </div>
       )}
+
+      </> /* end LINEUP tab fragment */
+      )} {/* end primaryTab === 'lineup' */}
 
       <ScreenGuide 
         screenName="squad" 

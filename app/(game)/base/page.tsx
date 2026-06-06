@@ -14,7 +14,10 @@ import {
   Dumbbell,
   Users,
   ChevronRight,
+  Store,
+  Layers,
 } from 'lucide-react';
+import { SubNavTabs } from '@/components/ui/SubNavTabs';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import {
   getClubInfrastructureData,
@@ -41,7 +44,7 @@ import { useRouter } from 'next/navigation';
 // can see all literal class names and include them in the build output.
 // ─────────────────────────────────────────────────────────────────────────────
 
-type TabId = 'infrastructure' | 'training';
+type TabId = 'training' | 'club' | 'stadium';
 
 // ── Stat definitions ──────────────────────────────────────────────────────────
 
@@ -228,7 +231,7 @@ export default function BaseDashboard() {
   const { step, isDone, nextStep, skipTutorial } = useTutorial();
   const router = useRouter();
 
-  const [activeTab, setActiveTab]           = useState<TabId>('infrastructure');
+  const [activeTab, setActiveTab]           = useState<TabId>('training');
   const [infra, setInfra]                   = useState<ClubInfrastructure | null>(null);
   const [campData, setCampData]             = useState<TrainingCampData | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerForTraining | null>(null);
@@ -325,91 +328,80 @@ export default function BaseDashboard() {
       )}
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <header className="flex-shrink-0 px-4 pt-5 pb-3 border-b border-gray-800/60">
-
-        <div className="flex items-center justify-between mt-3 mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-neon-cyan/10 rounded-lg flex items-center justify-center border border-neon-cyan/30">
-              <Dumbbell className="text-neon-cyan" size={16} />
+      <header className="flex-shrink-0 px-3 pt-3 pb-0">
+        <div className="glass-card-cyan relative overflow-hidden p-3">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-xl glass-card flex items-center justify-center border border-cyan-500/25">
+                <Dumbbell className="text-cyan-400" size={16} />
+              </div>
+              <div>
+                <h1 className="text-sm font-black font-orbitron text-white uppercase tracking-widest">Structures</h1>
+                <p className="text-[8px] text-cyan-400/60 uppercase tracking-wider">Club Base</p>
+              </div>
             </div>
-            <h1 className="text-base font-bold font-orbitron text-white uppercase tracking-widest">
-              База клуба
-            </h1>
+            <div className="flex items-center gap-1.5">
+              {infra && (
+                <div className="flex items-center gap-1 px-2 py-1 rounded-full border border-yellow-700/40 bg-yellow-900/20 text-yellow-400">
+                  <span className="text-[9px] font-mono font-bold">🪙 {infra.fancoins.toLocaleString()} FC</span>
+                </div>
+              )}
+            </div>
           </div>
-
-          {/* FanCoin badge */}
-          {infra && (
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-yellow-700/40 bg-yellow-900/20 text-yellow-400">
-              <span className="text-[10px] font-mono font-bold">
-                🪙 {infra.fancoins.toLocaleString()} FC
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Currency ribbon */}
-        {campData && (
-          <div className="flex gap-1.5 flex-wrap">
-            {(
-              [
+          {/* W2E Currency ribbon */}
+          {campData && (
+            <div className="flex gap-1.5 flex-wrap mt-2">
+              {([
                 { emoji: '🏃', val: campData.currencies.cardio_coin,   cls: 'border-cyan-800/40 bg-cyan-900/20 text-cyan-400' },
                 { emoji: '🤸', val: campData.currencies.fitness_coin,  cls: 'border-emerald-800/40 bg-emerald-900/20 text-emerald-400' },
                 { emoji: '⚽', val: campData.currencies.ball_coin,     cls: 'border-orange-800/40 bg-orange-900/20 text-orange-400' },
                 { emoji: '💪', val: campData.currencies.strength_coin, cls: 'border-rose-800/40 bg-rose-900/20 text-rose-400' },
-              ] as const
-            ).map((c, i) => (
-              <div
-                key={i}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold font-mono ${c.cls}`}
-              >
-                <span>{c.emoji}</span>
-                <span>{c.val}</span>
-              </div>
-            ))}
-          </div>
-        )}
+              ] as const).map((c, i) => (
+                <div key={i} className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-bold font-mono ${c.cls}`}>
+                  <span>{c.emoji}</span>
+                  <span>{c.val}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </header>
 
-      {/* ── Tab Navigation ───────────────────────────────────────────────────── */}
-      <nav className="flex-shrink-0 flex border-b border-gray-800/60">
-        {(
-          [
-            { id: 'infrastructure' as TabId, label: 'Инфраструктура' },
-            { id: 'training'       as TabId, label: 'Тренировка' },
-          ] as const
-        ).map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-widest font-orbitron transition-all duration-200 ${
-              activeTab === tab.id
-                ? 'text-neon-cyan border-b-2 border-neon-cyan bg-neon-cyan/5'
-                : 'text-gray-500 hover:text-gray-300'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+      {/* ── SubNav Tabs ──────────────────────────────────────────────────────── */}
+      <div className="flex-shrink-0 py-2">
+        <SubNavTabs
+          tabs={[
+            { id: 'training',  label: 'TRAINING' },
+            { id: 'club',      label: 'CLUB'     },
+            { id: 'stadium',   label: 'STADIUM'  },
+          ]}
+          active={activeTab}
+          onChange={(id) => setActiveTab(id as TabId)}
+          accent="cyan"
+        />
+      </div>
 
       {/* ── Tab Content ─────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto custom-scrollbar pb-28">
         {isLoading ? (
           <LoadingPulse />
-        ) : activeTab === 'infrastructure' ? (
+        ) : activeTab === 'training' ? (
+          <TrainingTab
+            campData={campData}
+            selectedPlayer={selectedPlayer}
+            onSelectPlayer={setSelectedPlayer}
+            onBatchTrain={handleBatchTrain}
+            isPending={isPending}
+          />
+        ) : activeTab === 'club' ? (
           <InfrastructureTab
             infra={infra}
             isPending={isPending}
             onUpgrade={handleUpgrade}
           />
         ) : (
-        <TrainingTab
-          campData={campData}
-          selectedPlayer={selectedPlayer}
-          onSelectPlayer={setSelectedPlayer}
-          onBatchTrain={handleBatchTrain}
-          isPending={isPending}
-        />
+          <StadiumTab infra={infra} isPending={isPending} onUpgrade={handleUpgrade} />
         )}
       </div>
 
@@ -860,6 +852,120 @@ function TrainingTab({
 
         </div>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// StadiumTab — Stadium sub-facilities + ticket pricing
+// Shows pitch, lighting, seating, services levels (from migration 00044)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function StadiumTab({
+  infra,
+  isPending,
+  onUpgrade,
+}: {
+  infra: ClubInfrastructure | null;
+  isPending: boolean;
+  onUpgrade: (type: BuildingType) => void;
+}) {
+  const stadiumLevel = infra?.stadium_level ?? 1;
+  const capacity     = stadiumLevel * 5000;
+
+  return (
+    <div className="p-3 flex flex-col gap-3">
+      {/* Stadium overview card */}
+      <div className="glass-card-violet relative overflow-hidden p-4">
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/50 to-transparent" />
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold mb-0.5">Stadium</div>
+            <div className="text-sm font-black font-orbitron text-white uppercase">
+              Arena Level {stadiumLevel}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-[8px] text-gray-600 uppercase tracking-widest mb-0.5">Capacity</div>
+            <div className="text-lg font-black font-orbitron text-violet-300">
+              {capacity.toLocaleString()}
+            </div>
+          </div>
+        </div>
+
+        {/* Upgrade stadium button */}
+        <button
+          onClick={() => onUpgrade('stadium')}
+          disabled={isPending || !infra}
+          className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all
+            ${isPending
+              ? 'bg-gray-800 text-gray-500 cursor-wait'
+              : 'bg-violet-500/20 border border-violet-500/40 text-violet-300 hover:bg-violet-500/30 active:scale-95'
+            }`}
+        >
+          {isPending ? '...' : `Upgrade Stadium → ${Math.floor(800 * Math.pow(stadiumLevel, 1.8)).toLocaleString()} FC`}
+        </button>
+      </div>
+
+      {/* Sub-facility cards */}
+      <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold px-1">Facilities</div>
+
+      {[
+        { label: 'Pitch Quality',    key: 'pitch',     emoji: '🟩', desc: 'Affects player performance'      },
+        { label: 'Lighting System',  key: 'lighting',  emoji: '💡', desc: 'Enables evening match scheduling' },
+        { label: 'Seating & VIP',    key: 'seating',   emoji: '💺', desc: 'Increases ticket revenue'        },
+        { label: 'Fan Services',     key: 'services',  emoji: '🍔', desc: 'Boosts atmosphere & merch sales' },
+      ].map(({ label, emoji, desc }) => (
+        <div key={label} className="glass-card p-3 flex items-center gap-3">
+          <span className="text-xl flex-shrink-0">{emoji}</span>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-black text-white uppercase tracking-wide">{label}</div>
+            <div className="text-[8px] text-gray-600">{desc}</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[8px] text-gray-600 uppercase tracking-wider">LVL 1</span>
+            <button
+              className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10
+                         text-gray-600 text-[8px] font-bold uppercase tracking-wider
+                         hover:border-cyan-500/30 hover:text-cyan-400 transition-all"
+            >
+              ↑ Soon
+            </button>
+          </div>
+        </div>
+      ))}
+
+      {/* Ticket pricing — references new DB columns */}
+      <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold px-1 mt-1">Ticket Pricing</div>
+      <div className="glass-card p-3 grid grid-cols-2 gap-3">
+        {[
+          { label: 'League',     color: 'text-cyan-400'    },
+          { label: 'Int. Cup',   color: 'text-violet-400'  },
+          { label: 'Nat. Cup',   color: 'text-emerald-400' },
+          { label: 'Friendly',   color: 'text-gray-400'    },
+        ].map(({ label, color }) => (
+          <div key={label} className="flex flex-col gap-1">
+            <div className="text-[7px] text-gray-600 uppercase tracking-wider font-bold">{label}</div>
+            <input
+              type="number"
+              defaultValue={20}
+              min={0}
+              max={999}
+              className="w-full bg-black/50 border border-white/10 text-white px-2 py-1.5
+                         rounded-lg text-[10px] font-mono font-bold focus:border-cyan-500/40 outline-none
+                         [appearance:textfield]"
+              placeholder="FC"
+            />
+          </div>
+        ))}
+      </div>
+      <button
+        disabled
+        className="w-full py-2 rounded-xl text-[9px] font-black uppercase tracking-wider
+                   bg-gray-800/50 text-gray-600 border border-gray-700/30 cursor-not-allowed"
+      >
+        Save Prices — Coming Soon
+      </button>
     </div>
   );
 }

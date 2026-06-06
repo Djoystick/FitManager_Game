@@ -7,13 +7,14 @@ import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
 import toast from 'react-hot-toast';
-import { RefreshCw, Filter, ShieldAlert, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { RefreshCw, Filter, ShieldAlert, TrendingUp, TrendingDown, ArrowLeftRight } from 'lucide-react';
 import { ScreenGuide } from '@/components/ui/ScreenGuide';
 import { MarketWallet } from '@/components/market/MarketWallet';
 import { motion } from 'framer-motion';
 import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
 import { useTutorial } from '@/components/providers/TutorialContext';
 import { useRouter } from 'next/navigation';
+import { SubNavTabs } from '@/components/ui/SubNavTabs';
 interface MarketListing {
   id: string;
   price_ton: number;
@@ -216,25 +217,33 @@ export default function TransferMarketPage() {
         />
       )}
 
-      {/* ── HEADER ─────────────────────────────────────────────────── */}
-      <header className="relative z-10 px-4 pt-4 pb-0">
-        <div className="flex items-center justify-between mb-1">
-          <div>
-            <h1 className="text-2xl font-black font-orbitron uppercase tracking-tight">
-              WEB3 <span className="text-cyan-300 neon-text-cyan">MARKET</span>
-            </h1>
-            <p className="text-[9px] text-gray-500 uppercase tracking-widest font-bold">
-              {activeTab === 'free_agents' ? 'Procedural Scouting Pool' : t.p2p_transfers}
-            </p>
+      {/* ── HEADER ───────────────────────────────────────── */}
+      <header className="relative z-10 px-3 pt-3 pb-0">
+        <div className="glass-card-cyan relative overflow-hidden p-3">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-xl glass-card flex items-center justify-center border border-cyan-500/25">
+                <ArrowLeftRight className="text-cyan-400" size={16} />
+              </div>
+              <div>
+                <h1 className="text-sm font-black font-orbitron text-white uppercase tracking-widest">
+                  Transfer Market
+                </h1>
+                <p className="text-[8px] text-cyan-400/60 uppercase tracking-wider">
+                  {activeTab === 'free_agents' ? 'Scout Pool' : t.p2p_transfers}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={activeTab === 'free_agents' ? fetchFreeAgents : fetchMarket}
+              disabled={isLoading || isPending}
+              className="w-8 h-8 rounded-full glass-card flex items-center justify-center text-gray-400
+                         hover:text-cyan-300 hover:border-cyan-500/40 transition-all"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${(isLoading || isPending) ? 'animate-spin' : ''}`} />
+            </button>
           </div>
-          <button
-            onClick={activeTab === 'free_agents' ? fetchFreeAgents : fetchMarket}
-            disabled={isLoading || isPending}
-            className="w-9 h-9 rounded-full glass-card flex items-center justify-center text-gray-400
-                       hover:text-cyan-300 hover:border-cyan-500/40 transition-all"
-          >
-            <RefreshCw className={`w-4 h-4 ${(isLoading || isPending) ? 'animate-spin' : ''}`} />
-          </button>
         </div>
       </header>
 
@@ -247,26 +256,17 @@ export default function TransferMarketPage() {
         {/* ── WALLET ─────────────────────────────────────────────── */}
         <MarketWallet balance={tonBalance} userId={userId || ''} language={language} onBalanceUpdate={fetchBalance} />
 
-        {/* ── TABS ───────────────────────────────────────────────── */}
-        <div className="glass-card flex p-1 gap-0.5">
-          {[
-            { id: 'market',      label: t.tab_market,   active: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
-            { id: 'free_agents', label: 'Free Agents',  active: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' },
-            { id: 'my_lots',     label: t.tab_my_lots,  active: 'bg-violet-500/20 text-violet-300 border-violet-500/40' },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 py-2 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all duration-200 border ${
-                activeTab === tab.id
-                  ? `${tab.active} shadow-sm`
-                  : 'text-gray-500 border-transparent hover:text-gray-300'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* ── TABS (SubNav) ───────────────────────────────────── */}
+        <SubNavTabs
+          tabs={[
+            { id: 'market',      label: t.tab_market    },
+            { id: 'free_agents', label: 'FREE AGENTS'   },
+            { id: 'my_lots',     label: t.tab_my_lots   },
+          ]}
+          active={activeTab}
+          onChange={(id) => setActiveTab(id as any)}
+          accent="cyan"
+        />
 
         {/* ── FILTERS ────────────────────────────────────────────── */}
         {activeTab === 'market' && (
