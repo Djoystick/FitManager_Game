@@ -893,7 +893,7 @@ export default function LineupPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+              className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
               onClick={() => setActiveHUD(null)}
             />
 
@@ -904,7 +904,7 @@ export default function LineupPage() {
               animate={{ opacity: 1, scale: 1, x: '-50%', y: activeHUD.isBelow ? '0%' : '-100%' }}
               exit={{ opacity: 0, scale: 0.85, x: '-50%', y: activeHUD.isBelow ? '-50%' : '-80%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              className="fixed z-50 glass-card-violet rounded-2xl p-3 flex flex-row gap-2"
+              className="fixed z-[110] glass-card-violet rounded-2xl p-3 flex flex-row gap-2"
               style={{ left: activeHUD.x, top: activeHUD.y, boxShadow: '0 0 30px rgba(147,51,234,0.3)' }}
             >
               <button

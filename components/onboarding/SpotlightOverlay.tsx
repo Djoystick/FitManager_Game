@@ -88,9 +88,6 @@ export function SpotlightOverlay({
   if (!rect) return null;
 
   const TOOLTIP_GAP = 16;
-  const tooltipTop = tooltipBelow
-    ? rect.top + rect.height + TOOLTIP_GAP
-    : rect.top - TOOLTIP_GAP - 140; // approximate tooltip height
 
   return (
     <AnimatePresence>
@@ -130,9 +127,11 @@ export function SpotlightOverlay({
         {/* Tooltip card */}
         <motion.div
           key="spotlight-tooltip"
-          className="absolute mx-4 pointer-events-auto"
+          className="absolute mx-4 pointer-events-auto flex flex-col"
           style={{
-            top: Math.max(8, tooltipTop),
+            ...(tooltipBelow 
+              ? { top: rect.top + rect.height + TOOLTIP_GAP }
+              : { bottom: window.innerHeight - rect.top + TOOLTIP_GAP }),
             left: 16,
             right: 16,
           }}

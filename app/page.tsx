@@ -258,7 +258,7 @@ export default function DashboardPage() {
 
       {/* Tutorial step 0 — shown right after onboarding before SpotlightOverlay kicks in */}
       {!isDone && step === 0 && (
-        <div className="absolute top-16 left-0 right-0 z-50 px-4">
+        <div className="absolute top-28 left-0 right-0 z-[100] px-4">
           <div className="glass-card-violet p-3 rounded-xl flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Zap size={15} className="text-violet-400 flex-shrink-0" />
@@ -320,7 +320,7 @@ export default function DashboardPage() {
           description="Здесь ты управляешь командой. Перемести лучших игроков в стартовый XI!"
           buttonLabel="Посмотреть состав →"
           onNext={nextStep}
-          onSkip={() => {}}
+          onSkip={skipTutorial}
         />
       )}
 
