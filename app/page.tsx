@@ -5,6 +5,7 @@ import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider
 import { useTutorial } from '@/components/providers/TutorialContext';
 import { usePadding } from '@/components/providers/PaddingContext';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { dict } from '@/lib/dictionaries';
 import { LanguageContext } from '@/components/LanguageContext';
 import { CyberLoader } from '@/components/ui/CyberLoader';

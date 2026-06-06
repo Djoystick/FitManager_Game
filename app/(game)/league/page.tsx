@@ -3,6 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 import { Trophy, Medal, Target, Users, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import { requireTeam } from '@/lib/authGuard';
 
+import { FriendlyMatchCard } from './FriendlyMatchCard';
+import { cookies } from 'next/headers';
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -10,10 +13,22 @@ export default async function LeagueDashboard() {
   const team = await requireTeam();
   if (!team) return null;
 
+  const cookieStore = await cookies();
+  const userId = cookieStore.get('tg_user_id')?.value;
+  if (!userId) return null;
+
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
+
+  // Fetch how many friendly matches were played
+  const { data: friendlyLogs } = await supabaseAdmin
+    .from('fitness_logs')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('activity_type', 'friendly_match');
+  const friendlyMatchesPlayed = friendlyLogs?.length || 0;
 
   const { data: userStandings } = await supabaseAdmin
     .from('league_standings')
@@ -62,6 +77,7 @@ export default async function LeagueDashboard() {
   const tierName  = (instanceData?.league_tiers as any)?.name || 'Unknown Tier';
   const groupName = instanceData?.name || 'Unknown Group';
   const isFilling = instanceData?.status === 'filling';
+  const isTransferWindow = instanceData?.start_time && new Date(instanceData.start_time) > new Date();
 
   const userRank = standings.findIndex(s => s.team_id === team.id) + 1;
 
@@ -76,6 +92,10 @@ export default async function LeagueDashboard() {
 
       {/* ── Header ─────────────────────────────────────────────────── */}
       <header className="relative z-10 p-4 pb-0">
+        {/* Friendly Match Card during Transfer Window */}
+        {isTransferWindow && (
+          <FriendlyMatchCard userId={userId} initialMatchesPlayed={friendlyMatchesPlayed} />
+        )}
         <div className="glass-card-violet relative overflow-hidden p-4">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent" />
 
