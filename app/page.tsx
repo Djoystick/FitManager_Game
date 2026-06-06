@@ -94,6 +94,7 @@ export default function DashboardPage() {
   const { language } = useContext(LanguageContext);
   const t = dict[language as keyof typeof dict];
   const { step, isDone, nextStep, skipTutorial, setUserId: setTutorialUserId } = useTutorial();
+  const router = useRouter();
   const { paddingStyle, setUserId: setPaddingUserId } = usePadding();
 
   const [hasTeam,          setHasTeam]          = useState<boolean | null>(null);

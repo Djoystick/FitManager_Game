@@ -77,8 +77,6 @@ export default function LineupPage() {
   const [profilePlayer, setProfilePlayer] = useState<Player | null>(null);
   const [showChemistry, setShowChemistry] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
-  
-  const router = useRouter();
 
   const fetchTeamData = async () => {
     if (!userId) return;
@@ -479,20 +477,32 @@ export default function LineupPage() {
   let averageOvr = 50;
   let starterCount = 0;
   let totalStarterOvr = 0;
+  
+  let attOvr = 0, midOvr = 0, defOvr = 0;
+  let attCount = 0, midCount = 0, defCount = 0;
 
   for (let i = 0; i <= 10; i++) {
     const p = getPlayerInSlot(i);
     if (p) {
       const idealLine = getIdealLineForSlot(i, currentFormation);
       const isOOP = !isCompatible(p.position, idealLine);
-      totalStarterOvr += isOOP ? Math.floor(p.ovr * 0.8) : p.ovr;
+      const effOvr = isOOP ? Math.floor(p.ovr * 0.8) : p.ovr;
+      totalStarterOvr += effOvr;
       starterCount++;
+      
+      if (idealLine === 'FWD') { attOvr += effOvr; attCount++; }
+      else if (idealLine === 'MID') { midOvr += effOvr; midCount++; }
+      else if (idealLine === 'DEF' || idealLine === 'GK') { defOvr += effOvr; defCount++; }
     }
   }
 
   if (starterCount > 0) {
     averageOvr = Math.max(1, Math.round(totalStarterOvr / starterCount));
   }
+  
+  const avgAtt = attCount > 0 ? Math.round(attOvr / attCount) : 0;
+  const avgMid = midCount > 0 ? Math.round(midOvr / midCount) : 0;
+  const avgDef = defCount > 0 ? Math.round(defOvr / defCount) : 0;
 
   // Calculate projected Luxury Tax
   const LEAGUE_OVR_CAP = 80;
@@ -752,27 +762,53 @@ export default function LineupPage() {
             </div>
           </div>
 
-          <div className={`flex-1 relative w-[96%] mx-auto rounded-xl overflow-hidden flex flex-col items-center justify-around transition-opacity duration-300 ${isFormationLoading ? 'opacity-50 blur-sm' : 'opacity-100'}`}
-               style={{ background: 'linear-gradient(180deg, rgba(0,30,10,0.8) 0%, rgba(0,50,15,0.6) 40%, rgba(0,50,15,0.6) 60%, rgba(0,30,10,0.8) 100%)', border: '1px solid rgba(57,255,20,0.25)', boxShadow: 'inset 0 0 40px rgba(57,255,20,0.04), 0 0 20px rgba(0,0,0,0.4)' }}>
-            {/* Pitch Markings — neon cyan lines */}
-            <div className="absolute top-0 w-[45%] h-14 rounded-b-2xl" style={{ border: '1px solid rgba(0,240,255,0.15)', borderTop: 'none' }} />
-            <div className="absolute bottom-0 w-[45%] h-14 rounded-t-2xl" style={{ border: '1px solid rgba(0,240,255,0.15)', borderBottom: 'none' }} />
-            <div className="absolute top-1/2 left-0 w-full" style={{ borderTop: '1px solid rgba(0,240,255,0.12)' }} />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full" style={{ border: '1px solid rgba(0,240,255,0.12)' }} />
-            {/* Center spot */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-cyan-400/30" />
+          <div className="flex-1 w-[96%] mx-auto flex flex-col justify-start gap-3 pb-2">
+            
+            {/* Tactical Blueprint Pitch */}
+            <div className={`relative w-full aspect-[4/5] max-h-[420px] mx-auto rounded-xl overflow-hidden flex flex-col items-center justify-around transition-opacity duration-300 shadow-[0_0_20px_rgba(0,0,0,0.8)] ${isFormationLoading ? 'opacity-50 blur-sm' : 'opacity-100'}`}
+                 style={{ 
+                   background: '#0a0a0a', 
+                   border: '1px solid rgba(0, 240, 255, 0.3)', 
+                   boxShadow: 'inset 0 0 30px rgba(0, 240, 255, 0.05)',
+                   backgroundImage: 'linear-gradient(rgba(0, 240, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 240, 255, 0.05) 1px, transparent 1px)',
+                   backgroundSize: '20px 20px'
+                 }}>
+              {/* Pitch Markings — neon cyan lines */}
+              <div className="absolute top-0 w-[45%] h-14 rounded-b-2xl" style={{ border: '1px solid rgba(0,240,255,0.15)', borderTop: 'none' }} />
+              <div className="absolute bottom-0 w-[45%] h-14 rounded-t-2xl" style={{ border: '1px solid rgba(0,240,255,0.15)', borderBottom: 'none' }} />
+              <div className="absolute top-1/2 left-0 w-full" style={{ borderTop: '1px solid rgba(0,240,255,0.12)' }} />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full" style={{ border: '1px solid rgba(0,240,255,0.12)' }} />
+              {/* Center spot */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-cyan-400/30" />
 
-            {showChemistry && <ChemistryOverlay formation={currentFormation} players={activePlayers} />}
+              {showChemistry && <ChemistryOverlay formation={currentFormation} players={activePlayers} />}
 
-            {/* Player Mapping (Tactical Layout) — dynamic lines from formation */}
-            <div className="relative z-10 w-full h-full flex flex-col justify-between px-2 py-4">
-              {getFormationLines(currentFormation).map((lineSlots, lineIdx) => (
-                <div key={lineIdx} className="w-full flex justify-around items-center" style={{ minHeight: 0, flex: '1 1 0' }}>
-                  {lineSlots.map(idx => renderPitchMarker(idx))}
-                </div>
-              ))}
+              {/* Player Mapping (Tactical Layout) */}
+              <div className="relative z-10 w-full h-full flex flex-col justify-between px-2 py-4">
+                {getFormationLines(currentFormation).map((lineSlots, lineIdx) => (
+                  <div key={lineIdx} className="w-full flex justify-around items-center" style={{ minHeight: 0, flex: '1 1 0' }}>
+                    {lineSlots.map(idx => renderPitchMarker(idx))}
+                  </div>
+                ))}
+              </div>
             </div>
-           </div>
+
+            {/* Team Analytics Dashboard */}
+            <div className="w-full shrink-0 flex gap-2">
+              <div className="flex-1 glass-card-violet p-2 flex flex-col items-center justify-center gap-1 rounded-xl">
+                <span className="text-[8px] uppercase tracking-widest text-gray-400 font-bold">АТАКА</span>
+                <span className="text-sm font-black text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.4)]">{avgAtt}</span>
+              </div>
+              <div className="flex-1 glass-card-cyan p-2 flex flex-col items-center justify-center gap-1 rounded-xl">
+                <span className="text-[8px] uppercase tracking-widest text-gray-400 font-bold">ПОЛУЗАЩИТА</span>
+                <span className="text-sm font-black text-cyan-300 drop-shadow-[0_0_5px_rgba(0,240,255,0.4)]">{avgMid}</span>
+              </div>
+              <div className="flex-1 glass-card p-2 flex flex-col items-center justify-center gap-1 rounded-xl border border-gray-700/50">
+                <span className="text-[8px] uppercase tracking-widest text-gray-400 font-bold">ЗАЩИТА</span>
+                <span className="text-sm font-black text-gray-300">{avgDef}</span>
+              </div>
+            </div>
+          </div>
           </div>
           )}
         </div>
@@ -845,20 +881,21 @@ export default function LineupPage() {
               animate={{ y: 0, x: '-50%' }}
               exit={{ y: '100%', x: '-50%' }}
               transition={{ type: 'spring', stiffness: 350, damping: 35 }}
-              className="bottom-sheet z-[60] pb-20"
+              className="fixed bottom-0 left-1/2 w-full max-w-[480px] z-[60] pb-20 rounded-t-3xl border-t border-cyan-500/30 shadow-[0_-10px_40px_rgba(0,240,255,0.15)]"
+              style={{ background: 'rgba(5,6,15,0.95)', backdropFilter: 'blur(20px)' }}
             >
-              {/* Drag handle */}
-              <div className="flex justify-center pt-3 pb-2">
-                <div className="w-10 h-1 rounded-full bg-white/15" />
+              {/* High-tech Drag Handle */}
+              <div className="flex justify-center pt-3 pb-4">
+                <div className="w-12 h-1.5 rounded-full bg-cyan-500/40 shadow-[0_0_10px_rgba(0,240,255,0.5)]" />
               </div>
 
-              <div className="px-4 pb-2 flex items-center justify-between">
+              <div className="px-4 pb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-                  <span className="text-[9px] font-black uppercase tracking-widest text-violet-300">Скамейка</span>
+                  <div className="w-2 h-2 rounded-sm bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(0,240,255,0.8)]" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-cyan-300">Скамейка</span>
                 </div>
                 {activePlayers.filter(p => p.lineup_status === 'reserve').length > 0 && (
-                  <span className="text-[8px] text-gray-600 uppercase tracking-widest">Резерв →</span>
+                  <span className="text-[8px] text-gray-500 uppercase tracking-widest border border-gray-700/50 px-2 py-0.5 rounded-full">Резерв ➔</span>
                 )}
               </div>
 
