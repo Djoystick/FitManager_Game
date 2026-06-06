@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useCallback, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { Footprints, Zap, ArrowRightLeft, FlaskConical, Flame, Dumbbell, CircleDot } from 'lucide-react';
+import { Footprints, Zap, ArrowRightLeft, Flame, Dumbbell, CircleDot } from 'lucide-react';
 import {
   syncStepsAction,
   convertSweatPointsAction,
@@ -31,7 +31,7 @@ const MULTIPLIER_MATRIX: Record<ManagerProfileType, Record<CurrencyType, number>
 
 const CURRENCY_META: Record<CurrencyType, { label: string; icon: React.ReactNode; accent: string; glow: string }> = {
   cardio:   { label: 'Cardio Coin',    icon: <Flame size={16} />,      accent: 'text-orange-400',  glow: 'shadow-[0_0_10px_rgba(251,146,60,0.4)]'   },
-  fitness:  { label: 'Fitness Coin',   icon: <FlaskConical size={16} />, accent: 'text-purple-400', glow: 'shadow-[0_0_10px_rgba(192,132,252,0.4)]' },
+  fitness:  { label: 'Fitness Coin',   icon: <Zap size={16} />,           accent: 'text-purple-400', glow: 'shadow-[0_0_10px_rgba(192,132,252,0.4)]' },
   ball:     { label: 'Ball Coin',      icon: <CircleDot size={16} />,   accent: 'text-yellow-400',  glow: 'shadow-[0_0_10px_rgba(250,204,21,0.4)]'   },
   strength: { label: 'Strength Coin',  icon: <Dumbbell size={16} />,    accent: 'text-red-400',     glow: 'shadow-[0_0_10px_rgba(248,113,113,0.4)]'  },
 };
@@ -211,28 +211,60 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
           </span>
         </div>
 
-        {/* DEBUG UI */}
-        <div className="flex flex-col gap-1.5">
-          <p className="text-[9px] uppercase tracking-widest text-gray-600 font-bold flex items-center gap-1">
-            <FlaskConical size={10} />
-            {t.debug_mode}
+        {/* Fitness Tracker Connection Widget */}
+        <div className="flex flex-col gap-2">
+          <p className="text-[9px] uppercase tracking-widest text-gray-600 font-bold flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-700" />
+            Источник данных
           </p>
-          <div className="flex gap-2">
-            {[1000, 5500].map(amt => (
-              <button
-                key={amt}
-                onClick={() => handleSyncSteps(amt)}
-                disabled={isSyncing}
-                className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all ${
-                  isSyncing
-                    ? 'bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed'
-                    : 'bg-neon-green/10 text-neon-green border-neon-green/40 hover:bg-neon-green/20 active:scale-95'
-                }`}
-              >
-                {isSyncing ? '...' : `+${amt.toLocaleString()} ${t.steps_lower}`}
-              </button>
-            ))}
+
+          {/* Google Health */}
+          <div className="flex items-center justify-between px-3 py-2.5 rounded-xl
+                          bg-gradient-to-r from-[#4285f4]/8 to-transparent
+                          border border-[#4285f4]/20">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-white/5 border border-[#4285f4]/30
+                              flex items-center justify-center text-base">
+                🏃
+              </div>
+              <div>
+                <div className="text-[11px] font-bold text-white">Google Health</div>
+                <div className="text-[9px] text-gray-600 font-mono uppercase tracking-wider">Не подключён</div>
+              </div>
+            </div>
+            <button disabled
+              className="px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider
+                         bg-[#4285f4]/10 border border-[#4285f4]/25 text-[#4285f4]/60
+                         cursor-not-allowed opacity-60">
+              Скоро
+            </button>
           </div>
+
+          {/* Apple Health */}
+          <div className="flex items-center justify-between px-3 py-2.5 rounded-xl
+                          bg-gradient-to-r from-rose-500/8 to-transparent
+                          border border-rose-500/20">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-white/5 border border-rose-500/30
+                              flex items-center justify-center text-base">
+                🍎
+              </div>
+              <div>
+                <div className="text-[11px] font-bold text-white">Apple Health</div>
+                <div className="text-[9px] text-gray-600 font-mono uppercase tracking-wider">Не подключён</div>
+              </div>
+            </div>
+            <button disabled
+              className="px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider
+                         bg-rose-500/10 border border-rose-500/25 text-rose-400/60
+                         cursor-not-allowed opacity-60">
+              Скоро
+            </button>
+          </div>
+
+          <p className="text-[8px] text-gray-700 text-center uppercase tracking-widest mt-0.5">
+            Подключение к трекеру откроет автоматическую синхронизацию шагов
+          </p>
         </div>
       </section>
 

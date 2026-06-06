@@ -27,17 +27,13 @@ export function OnboardingFlow({ userId, onSuccess }: OnboardingFlowProps) {
     setIsCreatingTeam(true);
     setErrorMsg(null);
     try {
-      const res = await fetch('/api/team/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, teamName: teamNameInput.trim() }),
-      });
+      const { createStarterFranchise } = await import('@/app/actions/teamActions');
+      const res = await createStarterFranchise(teamNameInput.trim());
       
-      if (res.ok) {
+      if (res.success) {
         onSuccess();
       } else {
-        const err = await res.json();
-        setErrorMsg(err.error || 'Failed to create team');
+        setErrorMsg(res.error || 'Failed to create team');
       }
     } catch (error: any) {
       setErrorMsg(error.message || 'Network error');

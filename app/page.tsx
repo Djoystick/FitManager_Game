@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { dict } from '@/lib/dictionaries';
 import { LanguageContext } from '@/components/LanguageContext';
 import { CyberLoader } from '@/components/ui/CyberLoader';
-import { Users, Activity, ShoppingCart, Trophy, ChevronRight, Zap, Lock, Settings } from 'lucide-react';
+import { Users, Activity, ShoppingCart, Trophy, ChevronRight, Zap, Lock, User } from 'lucide-react';
 import { UnseenMatchesModal } from '@/components/UnseenMatchesModal';
 import { NextMatchCountdown } from '@/components/dashboard/NextMatchCountdown';
 import { OffseasonCard } from '@/components/dashboard/OffseasonCard';
@@ -256,19 +256,30 @@ export default function DashboardPage() {
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_40%_at_50%_0%,rgba(147,51,234,0.12)_0%,transparent_100%)]" />
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_60%_30%_at_50%_100%,rgba(0,240,255,0.06)_0%,transparent_100%)]" />
 
-      {/* ── Skip tutorial button ──────────────────────────────────────────── */}
-      {!isDone && (
+      {/* Tutorial step 0 — shown right after onboarding before SpotlightOverlay kicks in */}
+      {!isDone && step === 0 && (
         <div className="absolute top-16 left-0 right-0 z-50 px-4">
-          <button
-            onClick={() => {
-              skipTutorial();
-              localStorage.setItem('fitmanager_tour_completed_v2', 'true');
-            }}
-            className="w-full glass-card-violet p-3 rounded-xl flex items-center justify-center gap-2 font-bold animate-pulse"
-          >
-            <Lock size={16} className="text-violet-400" />
-            <span className="text-sm text-violet-300">Пройти обучение (Разблокировать меню)</span>
-          </button>
+          <div className="glass-card-violet p-3 rounded-xl flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Zap size={15} className="text-violet-400 flex-shrink-0" />
+              <span className="text-xs text-violet-200 font-bold">Добро пожаловать! Давай начнём обучение 🚀</span>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <button
+                onClick={() => nextStep()}
+                className="px-3 py-1.5 rounded-lg bg-violet-500 text-white text-[10px] font-black uppercase tracking-wider
+                           shadow-[0_0_10px_rgba(147,51,234,0.5)] hover:bg-violet-400 transition-all active:scale-95"
+              >
+                Начать
+              </button>
+              <button
+                onClick={() => skipTutorial()}
+                className="px-2 py-1.5 rounded-lg text-gray-600 text-[10px] hover:text-gray-400 transition-colors"
+              >
+                Пропустить
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -380,12 +391,12 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Settings link */}
+            {/* Profile link */}
             <Link href="/profile"
               className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
                          border border-white/10 bg-white/5 hover:border-violet-500/40 hover:bg-violet-500/10
                          transition-all duration-200 active:scale-90">
-              <Settings size={14} className="text-gray-400" />
+              <User size={14} className="text-gray-400" />
             </Link>
           </div>
 
@@ -434,7 +445,7 @@ export default function DashboardPage() {
               top: 'via-blue-400/40',
             },
             {
-              href: '/training', icon: Activity, label: t.dashboard_training,
+              href: '/bank', icon: Activity, label: t.dashboard_training,
               from: 'from-emerald-600/20', to: 'to-emerald-900/10',
               border: 'border-emerald-500/25', text: 'text-emerald-300',
               glow: 'hover:shadow-[0_0_20px_rgba(16,185,129,0.25)]',

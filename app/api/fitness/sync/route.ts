@@ -1,11 +1,20 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+import { cookies } from 'next/headers';
+
 export async function POST(req: Request) {
   try {
-    const { userId, steps, timezoneDate } = await req.json();
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    if (!userId || typeof steps !== 'number' || steps <= 0 || !timezoneDate) {
+    const { steps, timezoneDate } = await req.json();
+
+    if (typeof steps !== 'number' || steps <= 0 || !timezoneDate) {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });
     }
 

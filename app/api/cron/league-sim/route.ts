@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 export async function GET(req: Request) {
+  if (process.env.NODE_ENV !== 'development') {
+    return NextResponse.json({ error: "Legacy endpoint disabled in production" }, { status: 403 });
+  }
+
   // 1. Basic security check: Require Bearer token matching CRON_SECRET
   const authHeader = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;

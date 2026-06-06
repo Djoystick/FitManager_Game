@@ -1,14 +1,18 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function getInjuredPlayers(userId: string) {
+export async function getInjuredPlayers() {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'Unauthorized' };
     // 1. Get user's team
     const { data: team } = await supabaseAdmin
       .from('teams')
@@ -33,8 +37,11 @@ export async function getInjuredPlayers(userId: string) {
   }
 }
 
-export async function healPlayer(userId: string, playerId: string) {
+export async function healPlayer(playerId: string) {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'Unauthorized' };
     // 1. Check user's SP balance
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
@@ -103,8 +110,11 @@ export async function healPlayer(userId: string, playerId: string) {
   }
 }
 
-export async function getStadiumData(userId: string) {
+export async function getStadiumData() {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'Unauthorized' };
     // 1. Get user uuid and balance
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
@@ -155,8 +165,11 @@ export async function getStadiumData(userId: string) {
   }
 }
 
-export async function upgradeStadium(userId: string) {
+export async function upgradeStadium() {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'Unauthorized' };
     // 1. Get user uuid and balance
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
@@ -224,8 +237,12 @@ export async function upgradeStadium(userId: string) {
   }
 }
 
-export async function forceInjuryDebug(userId: string) {
+export async function forceInjuryDebug() {
   try {
+    if (process.env.NODE_ENV !== 'development') return { success: false, error: 'Dev only' };
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'Unauthorized' };
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
       .select('id')
@@ -266,8 +283,11 @@ export async function forceInjuryDebug(userId: string) {
   }
 }
 
-export async function upgradeMedicalCenter(userId: string) {
+export async function upgradeMedicalCenter() {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'Unauthorized' };
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
       .select('id, balance_fancoins')
@@ -329,8 +349,11 @@ export async function upgradeMedicalCenter(userId: string) {
   }
 }
 
-export async function upgradeTrainingCenter(userId: string) {
+export async function upgradeTrainingCenter() {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'Unauthorized' };
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
       .select('id, balance_fancoins')
@@ -400,13 +423,16 @@ export async function upgradeTrainingCenter(userId: string) {
 // Used by the "Heal All" button in the Lineup screen.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function healAllPlayers(userId: string): Promise<{
+export async function healAllPlayers(): Promise<{
   success: boolean;
   playersHealed?: number;
   new_balance?: number;
   error?: string;
 }> {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'Unauthorized' };
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
       .select('sweat_points')

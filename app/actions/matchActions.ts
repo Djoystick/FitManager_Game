@@ -25,6 +25,20 @@ export interface MatchResult {
 
 export async function markMatchAsViewed(matchId: string): Promise<{ success: boolean; error?: string }> {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'Unauthorized' };
+
+    const { data: team } = await supabaseAdmin.from('teams').select('id').eq('user_id', userId).single();
+    if (!team) return { success: false, error: 'Team not found' };
+
+    const { data: match } = await supabaseAdmin.from('league_matches').select('home_team_id, away_team_id').eq('id', matchId).single();
+    if (!match) return { success: false, error: 'Match not found' };
+
+    if (match.home_team_id !== team.id && match.away_team_id !== team.id) {
+      return { success: false, error: 'Forbidden: You do not own this match' };
+    }
+
     const { error } = await supabaseAdmin
       .from('league_matches')
       .update({ is_viewed: true })
@@ -555,8 +569,12 @@ export async function getUnviewedMatch(userId: string) {
   }
 }
 
-export async function simulateNextPendingMatch(userId: string) {
+export async function simulateNextPendingMatch() {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'Unauthorized' };
+
     console.log('[simulateNextPendingMatch] START for user:', userId);
     const { data: teamData, error: teamError } = await supabaseAdmin
       .from('teams')

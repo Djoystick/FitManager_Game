@@ -18,7 +18,7 @@ export function AdminConsoleClient({ userId }: Props) {
 
   const handleSimulate = async () => {
     setIsSimulating(true);
-    const result = await simulateNextPendingMatch(userId);
+    const result = await simulateNextPendingMatch();
     setIsSimulating(false);
     
     if (result && !result.success) {

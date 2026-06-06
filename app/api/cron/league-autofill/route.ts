@@ -179,7 +179,17 @@ export async function GET(request: Request) {
         // Just in case it's full but status didn't update
         const startTime = new Date(Date.now()).toISOString();
         await supabaseAdmin.from('league_instances').update({ status: 'active', start_time: startTime }).eq('id', instance.id);
-        await generateLeagueSchedule(instance.id);
+        
+        const { count: existingMatches } = await supabaseAdmin
+          .from('league_matches')
+          .select('*', { count: 'exact', head: true })
+          .eq('league_instance_id', instance.id);
+
+        if (!existingMatches || existingMatches === 0) {
+          await generateLeagueSchedule(instance.id);
+        } else {
+          console.log(`[CRON AutoFill] Instance ${instance.id} already has ${existingMatches} matches — skipping schedule generation.`);
+        }
       }
     }
 

@@ -423,8 +423,10 @@ function LoadingPulse() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tab 1: Infrastructure
+// Tab 1: Infrastructure — Premium Redesign
 // ─────────────────────────────────────────────────────────────────────────────
+
+const MAX_BUILDING_LEVEL = 10;
 
 function InfrastructureTab({
   infra,
@@ -435,115 +437,147 @@ function InfrastructureTab({
   isPending: boolean;
   onUpgrade: (key: BuildingType) => void;
 }) {
-  const fancoins = infra?.fancoins ?? 0;
+  const fancoins   = infra?.fancoins ?? 0;
+  const totalLevel = BUILDING_DEFS.reduce((sum, b) => sum + getInfraLevel(infra, b.key), 0);
+  const totalMax   = BUILDING_DEFS.length * MAX_BUILDING_LEVEL;
+  const powerPct   = Math.round((totalLevel / totalMax) * 100);
 
   return (
-    <div className="p-4 flex flex-col gap-3">
-      <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">
-        Клубные здания
-      </p>
+    <div className="px-3 py-4 flex flex-col gap-4">
 
+      {/* ── Club Power Panel ──────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-yellow-500/25
+                      bg-gradient-to-r from-yellow-900/10 via-black/60 to-amber-900/10
+                      p-4 shadow-[0_0_25px_rgba(234,179,8,0.08)]">
+        <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full blur-3xl bg-yellow-500/6 pointer-events-none" />
+        <div className="flex items-center justify-between mb-3 relative z-10">
+          <div>
+            <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">Мощь клуба</p>
+            <p className="text-xl font-black font-orbitron text-yellow-400 leading-none">
+              {totalLevel} <span className="text-[11px] text-gray-600 font-mono">/ {totalMax}</span>
+            </p>
+          </div>
+          <div className="flex flex-col items-end">
+            <div className="text-[9px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">Рейтинг базы</div>
+            <div className={`text-2xl font-black font-orbitron leading-none ${
+              powerPct >= 80 ? 'text-neon-cyan' : powerPct >= 50 ? 'text-violet-400' : 'text-gray-500'
+            }`}>{powerPct}%</div>
+          </div>
+        </div>
+        <div className="relative z-10 h-2 bg-black/50 rounded-full overflow-hidden border border-yellow-900/40">
+          <div
+            className="h-full rounded-full transition-all duration-1000"
+            style={{
+              width: `${powerPct}%`,
+              background: 'linear-gradient(90deg, rgba(234,179,8,0.6), rgba(251,191,36,0.9), rgba(245,158,11,0.7))',
+              boxShadow: '0 0 8px rgba(234,179,8,0.5)',
+            }}
+          />
+        </div>
+        <p className="text-[8px] text-gray-700 uppercase tracking-widest font-mono mt-1.5 relative z-10">
+          Баланс: {fancoins.toLocaleString()} FanCoins
+        </p>
+      </div>
+
+      <p className="text-[9px] text-gray-600 uppercase tracking-[0.25em] font-bold px-1 -mb-1">Здания клуба</p>
+
+      {/* ── Building Cards ─────────────────────────────────────────────────── */}
       {BUILDING_DEFS.map(b => {
-        const level      = getInfraLevel(infra, b.key);
-        const cost       = level * 1000;
-        const canAfford  = fancoins >= cost;
-        const Icon       = b.Icon;
+        const level     = getInfraLevel(infra, b.key);
+        const cost      = level * 1000;
+        const canAfford = fancoins >= cost;
+        const isMaxed   = level >= MAX_BUILDING_LEVEL;
+        const Icon      = b.Icon;
 
         return (
           <div
             key={b.key}
-            className={`
-              relative overflow-hidden rounded-2xl border
-              bg-black/40 ${b.colorBorder} ${b.colorHoverBorder}
-              transition-colors duration-200 shadow-lg group
-            `}
+            className={`relative overflow-hidden rounded-2xl border
+                        bg-black/50 backdrop-blur-md transition-all duration-300
+                        ${ isMaxed
+                          ? 'border-yellow-500/40 shadow-[0_0_20px_rgba(234,179,8,0.12)]'
+                          : `${b.colorBorder} ${b.colorHoverBorder}`
+                        }`}
           >
-            {/* Ambient glow blob */}
-            <div
-              className={`
-                absolute -top-8 -right-8 w-32 h-32 rounded-full blur-3xl
-                ${b.colorGlow} group-hover:opacity-200 transition-opacity duration-300
-              `}
-            />
+            {/* Ambient glow */}
+            <div className={`absolute -top-10 -right-10 w-36 h-36 rounded-full blur-3xl pointer-events-none ${b.colorGlow} opacity-80`} />
 
-            <div className="relative z-10 flex items-center justify-between p-4">
-              {/* Left: icon + info */}
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div
-                  className={`
-                    w-12 h-12 flex-shrink-0 rounded-xl flex items-center justify-center
-                    border ${b.colorBg} ${b.colorBorder}
-                  `}
-                >
-                  <Icon className={b.colorText} size={22} />
-                </div>
-
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <h2 className="text-sm font-bold font-orbitron text-white uppercase tracking-widest">
-                      {b.label}
-                    </h2>
-                    <span
-                      className={`
-                        text-[9px] font-bold font-mono px-1.5 py-0.5 rounded
-                        ${b.colorBg} ${b.colorText} border ${b.colorBorder}
-                      `}
-                    >
-                      LVL {level}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-gray-500 leading-tight">{b.description}</p>
-                  <p className={`text-[10px] font-mono font-bold mt-0.5 ${b.colorText}`}>
-                    {b.bonusLabel}
-                  </p>
-                </div>
+            {/* Main content row */}
+            <div className="relative z-10 flex items-center gap-3 p-3">
+              <div className={`w-12 h-12 flex-shrink-0 rounded-xl flex items-center justify-center
+                               border ${b.colorBg} ${b.colorBorder}
+                               shadow-[inset_0_0_12px_rgba(0,0,0,0.4)]`}>
+                <Icon className={b.colorText} size={22} />
               </div>
 
-              {/* Right: upgrade button */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <h2 className="text-sm font-black font-orbitron text-white uppercase tracking-wider leading-none">
+                    {b.label}
+                  </h2>
+                  <span className={`text-[8px] font-black font-mono px-1.5 py-0.5 rounded-md
+                                   ${ isMaxed
+                                     ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40'
+                                     : `${b.colorBg} ${b.colorText} border ${b.colorBorder}`
+                                   }`}>
+                    {isMaxed ? '★ MAX' : `LVL ${level}`}
+                  </span>
+                </div>
+                <p className="text-[9px] text-gray-500 leading-snug truncate">{b.description}</p>
+                <p className={`text-[9px] font-bold font-mono mt-0.5 ${b.colorText}`}>{b.bonusLabel}</p>
+              </div>
+
               <button
                 id={`upgrade-${b.key}`}
                 onClick={() => onUpgrade(b.key)}
-                disabled={isPending || !canAfford}
-                className={`
-                  ml-3 flex-shrink-0 flex flex-col items-center justify-center
-                  px-3 py-2 rounded-xl text-[9px] font-bold font-orbitron uppercase
-                  tracking-widest transition-all duration-200 min-w-[64px]
-                  ${isPending
-                    ? 'bg-gray-800/60 text-gray-500 cursor-wait'
-                    : !canAfford
-                    ? 'bg-gray-800/40 text-gray-600 border border-gray-700/30 cursor-not-allowed'
-                    : `${b.colorBg} ${b.colorText} border ${b.colorBorder}
-                       hover:brightness-125 active:scale-95
-                       shadow-[0_0_12px_rgba(0,0,0,0.3)]`
-                  }
-                `}
+                disabled={isPending || !canAfford || isMaxed}
+                className={`flex-shrink-0 flex flex-col items-center justify-center
+                            px-3 py-2 rounded-xl text-[8px] font-black font-orbitron uppercase
+                            tracking-wider transition-all duration-200 min-w-[60px] border
+                            ${ isPending
+                              ? 'bg-gray-800/60 text-gray-500 border-gray-700/30 cursor-wait'
+                              : isMaxed
+                              ? 'bg-yellow-900/20 text-yellow-600 border-yellow-700/30 cursor-default'
+                              : !canAfford
+                              ? 'bg-gray-800/40 text-gray-600 border-gray-700/30 cursor-not-allowed'
+                              : `${b.colorBg} ${b.colorText} ${b.colorBorder} hover:brightness-125 active:scale-95 shadow-[0_0_12px_rgba(0,0,0,0.3)]`
+                            }`}
               >
-                {isPending ? (
-                  <span>...</span>
-                ) : (
-                  <>
-                    <span>UPGRADE</span>
-                    <span className="text-[8px] font-mono opacity-75 mt-0.5">
-                      {cost.toLocaleString()} FC
-                    </span>
-                  </>
-                )}
+                {isPending ? <span className="animate-pulse">...</span>
+                  : isMaxed ? <span>★</span>
+                  : <><span>UP</span><span className="text-[7px] font-mono opacity-75 mt-0.5">{cost.toLocaleString()}</span></>
+                }
               </button>
             </div>
 
-            {/* Level progress dots */}
-            <div className="relative z-10 flex gap-1 px-4 pb-3">
-              {Array.from({ length: Math.min(level, 10) }).map((_, i) => (
-                <span
+            {/* Segmented level progress bar */}
+            <div className="relative z-10 flex gap-0.5 px-3 pb-3">
+              {Array.from({ length: MAX_BUILDING_LEVEL }).map((_, i) => (
+                <div
                   key={i}
-                  className={`w-4 h-1 rounded-full ${b.colorBg} border ${b.colorBorder}`}
-                  style={{ opacity: 1 - (i * 0.07) }}
+                  className={`flex-1 h-1.5 rounded-full transition-all duration-500 ${
+                    i < level
+                      ? isMaxed
+                        ? 'bg-yellow-400 shadow-[0_0_4px_rgba(234,179,8,0.6)]'
+                        : b.colorBorder.replace('border-', 'bg-').replace('/40', '/80')
+                      : 'bg-white/5'
+                  }`}
+                  style={{ transitionDelay: `${i * 30}ms` }}
                 />
               ))}
             </div>
+
+            {/* Affordable hint */}
+            {!canAfford && !isMaxed && !isPending && (
+              <p className="relative z-10 px-3 pb-2.5 -mt-1 text-[8px] text-gray-700 font-mono">
+                Нужно ещё {(cost - fancoins).toLocaleString()} FC
+              </p>
+            )}
           </div>
         );
       })}
+
+      <div className="h-4" />
     </div>
   );
 }

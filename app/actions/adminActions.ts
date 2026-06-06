@@ -11,6 +11,14 @@ export interface AdminActionResult {
   error?: string;
 }
 
+async function checkIsAdmin(sessionUuid: string, supabaseAdmin: any): Promise<boolean> {
+  const { data: user } = await supabaseAdmin.from('users').select('telegram_id').eq('id', sessionUuid).single();
+  const rawAdminIds = process.env.ADMIN_TG_IDS || '';
+  const adminIdsArray = rawAdminIds.split(',').map(id => id.trim().toString());
+  const currentUserIdStr = user?.telegram_id ? String(user.telegram_id).trim() : '';
+  return !!currentUserIdStr && adminIdsArray.includes(currentUserIdStr);
+}
+
 const FIRST_NAMES = ['Bot', 'Auto', 'Cyber', 'Neon', 'Meta', 'Holo', 'Quantum', 'Plasma', 'Aura', 'Zenith', 'Echo', 'Nexus', 'Apex'];
 const LAST_NAMES = ['Strikers', 'United', 'City', 'FC', 'Athletic', 'Rovers', 'Wanderers', 'Dynamos', 'Titans', 'Legends', 'Force', 'Stars'];
 const POSITIONS = ['GK', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'MID', 'FWD', 'FWD']; // Typical 4-4-2 distribution for 11 players
@@ -166,17 +174,8 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
     }
 
     // 0. Check Authorization (RBAC)
-    const { data: user } = await supabase
-      .from('users')
-      .select('telegram_id')
-      .eq('id', sessionUuid)
-      .single();
-
-    const rawAdminIds = process.env.ADMIN_TG_IDS || '';
-    const adminIdsArray = rawAdminIds.split(',').map(id => id.trim().toString());
-    const currentUserIdStr = user?.telegram_id ? String(user.telegram_id).trim() : '';
-    
-    if (!currentUserIdStr || !adminIdsArray.includes(currentUserIdStr)) {
+    const isAdmin = await checkIsAdmin(sessionUuid, supabase);
+    if (!isAdmin) {
       return { success: false, error: 'Forbidden: Admin access required.' };
     }
 
@@ -201,6 +200,11 @@ export async function addSweatPoints(amount: number): Promise<AdminActionResult>
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+    const isAdmin = await checkIsAdmin(sessionUuid, supabaseAdmin);
+    if (!isAdmin) {
+      return { success: false, error: 'Forbidden: Admin access required.' };
+    }
+
     const { data: userData } = await supabaseAdmin.from('users').select('sweat_points').eq('id', sessionUuid).single();
     
     const { error } = await supabaseAdmin.from('users').update({ sweat_points: (userData?.sweat_points || 0) + amount }).eq('id', sessionUuid);
@@ -214,9 +218,18 @@ export async function addSweatPoints(amount: number): Promise<AdminActionResult>
 
 export async function hardResetUserTeam(userId: string): Promise<AdminActionResult> {
   try {
+    const cookieStore = await cookies();
+    const sessionUuid = cookieStore.get('tg_user_id')?.value;
+    if (!sessionUuid) return { success: false, error: 'Unauthorized' };
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const isAdmin = await checkIsAdmin(sessionUuid, supabaseAdmin);
+    if (!isAdmin) {
+      return { success: false, error: 'Forbidden: Admin access required.' };
+    }
 
     // Get user's team
     const { data: team, error: teamError } = await supabaseAdmin

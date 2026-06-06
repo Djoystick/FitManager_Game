@@ -136,14 +136,14 @@ export const dict = {
     avg_stamina: "Avg Stamina",
     quick_actions: "Quick Terminals",
     dashboard_squad: "Lineup",
-    dashboard_training: "Training",
+    dashboard_training: "Activity",
     dashboard_market: "Market",
     loading: "Loading...",
 
     // Bank Additions
     bank_title: "Sweat Bank",
     bank_subtitle: "Steps → SP → Coins",
-    pedometer: "Pedometer",
+    pedometer: "Activity Tracker",
     manager_profile_title: "Manager Profile",
     sp_exchange: "SP Exchange",
     exchange_btn: "Exchange",
@@ -292,7 +292,7 @@ export const dict = {
 
     // Training Additions
     training_base_title: "Тренировочная база",
-    training_base_desc: "Ваша реальная физическая активность (шаги) конвертируется в Sweat Points (SP). Используйте SP для тренировки кибер-атлетов и буста их характеристик!",
+    training_base_desc: "Ваша реальная физическая активность (шаги) конвертируется в Очки Пота (SP). Используйте SP для тренировки своих игроков и буста их характеристик!",
     training_hub: "Тренировочный Центр",
     training_hub_desc: "Панель валидации активности (Proof-of-Effort)",
     multiplier_status: "Текущий статус множителя",
@@ -312,7 +312,7 @@ export const dict = {
     tour_welcome: "Добро пожаловать в FitManager!",
     tour_welcome_desc: "Это ваш футуристичный центр управления. Здесь вы руководите своими кибер-атлетами.",
     tour_steps: "Конвертация шагов",
-    tour_steps_desc: "Каждые 1000 ваших реальных шагов равны 1 Sweat Point (SP). Используйте SP для лечения и тренировки игроков.",
+    tour_steps_desc: "Каждые 1000 реальных шагов = 1 Очко Пота (SP). Используй SP для лечения и тренировки игроков.",
     tour_match: "Симулятор Матчей",
     tour_match_desc: "Настройте стартовые 11 игроков. Матчи проходят автоматически дважды в день. Готовьтесь покорять лиги!",
     tour_next: "ДАЛЕЕ",
@@ -326,14 +326,14 @@ export const dict = {
     avg_stamina: "Средняя Стамина",
     quick_actions: "Терминалы Быстрого Доступа",
     dashboard_squad: "Состав",
-    dashboard_training: "Тренировка",
+    dashboard_training: "Активность",
     dashboard_market: "Рынок",
     loading: "Загрузка...",
 
     // Bank Additions
-    bank_title: "Sweat Bank",
+    bank_title: "Банк пота",
     bank_subtitle: "Шаги → SP → Монеты",
-    pedometer: "Шагомер",
+    pedometer: "Трекер активности",
     manager_profile_title: "Профиль Менеджера",
     sp_exchange: "Обменник SP",
     exchange_btn: "Обменять",

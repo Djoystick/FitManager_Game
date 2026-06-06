@@ -142,6 +142,10 @@ export async function getMarketListingsAction(filters?: { minOvr?: number, posit
 
 export async function debugAddTonAction(amount: number) {
   try {
+    if (process.env.NODE_ENV !== 'development') {
+      return { success: false, error: 'Available only in development mode' };
+    }
+
     const cookieStore = await cookies();
     const userId = cookieStore.get('tg_user_id')?.value;
     if (!userId) return { success: false, error: 'User not authenticated' };

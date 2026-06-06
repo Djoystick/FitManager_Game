@@ -158,22 +158,50 @@ export default function LineupPage() {
     }
   };
 
-  const FORMATIONS = {
-    '4-4-2': { FWD: [9, 10], MID: [5, 6, 7, 8], DEF: [1, 2, 3, 4], GK: [0] },
-    '4-3-3': { FWD: [8, 9, 10], MID: [5, 6, 7], DEF: [1, 2, 3, 4], GK: [0] },
-    '3-5-2': { FWD: [9, 10], MID: [4, 5, 6, 7, 8], DEF: [1, 2, 3], GK: [0] }
+  const FORMATIONS: Record<string, { FWD: number[]; MID: number[]; DEF: number[]; GK: number[]; CAM?: number[]; CDM?: number[] }> = {
+    '4-4-2':   { GK: [0], DEF: [1,2,3,4],   MID: [5,6,7,8],      FWD: [9,10]    },
+    '4-3-3':   { GK: [0], DEF: [1,2,3,4],   MID: [5,6,7],        FWD: [8,9,10]  },
+    '3-5-2':   { GK: [0], DEF: [1,2,3],     MID: [4,5,6,7,8],    FWD: [9,10]    },
+    '4-2-3-1': { GK: [0], DEF: [1,2,3,4],   CDM: [5,6], CAM: [7,8,9], MID: [],  FWD: [10]  },
+    '4-1-4-1': { GK: [0], DEF: [1,2,3,4],   CDM: [5],   MID: [6,7,8,9], FWD: [10] },
+    '5-3-2':   { GK: [0], DEF: [1,2,3,4,5], MID: [6,7,8],        FWD: [9,10]    },
+    '3-4-3':   { GK: [0], DEF: [1,2,3],     MID: [4,5,6,7],      FWD: [8,9,10]  },
+    '4-5-1':   { GK: [0], DEF: [1,2,3,4],   MID: [5,6,7,8,9],    FWD: [10]      },
   };
 
-  const currentFormation = activeFormation;
-
-  const getIdealLineForSlot = (slotIndex: number, formation: string) => {
-    const layout = FORMATIONS[formation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2'];
+  // Map slot → line label for all formations including special roles
+  const getIdealLineForSlot = (slotIndex: number, formation: string): string => {
+    const layout = FORMATIONS[formation] || FORMATIONS['4-4-2'];
     if (layout.FWD.includes(slotIndex)) return 'FWD';
+    if (layout.CAM && layout.CAM.includes(slotIndex)) return 'MID'; // CAM plays as MID compatible
+    if (layout.CDM && layout.CDM.includes(slotIndex)) return 'MID'; // CDM plays as MID compatible
     if (layout.MID.includes(slotIndex)) return 'MID';
     if (layout.DEF.includes(slotIndex)) return 'DEF';
     if (layout.GK.includes(slotIndex)) return 'GK';
-    return ''; // For Bench slots
+    return '';
   };
+
+  // Render helper: get all slot indices for a formation in order (FWD→MID/CAM/CDM→DEF→GK)
+  const getFormationLines = (formation: string): number[][] => {
+    const layout = FORMATIONS[formation] || FORMATIONS['4-4-2'];
+    const lines: number[][] = [];
+    if (layout.FWD.length > 0) lines.push(layout.FWD);
+    if (layout.CAM && layout.CAM.length > 0) lines.push(layout.CAM);
+    if (layout.CDM) {
+      // For 4-2-3-1: CDM below CAM
+      const midLine = layout.MID.length > 0 ? layout.MID : layout.CDM;
+      if (layout.CAM) lines.push(layout.CDM); // CDM as separate line
+      else lines.push(midLine);
+    } else if (layout.MID.length > 0) {
+      lines.push(layout.MID);
+    }
+    if (layout.DEF.length > 0) lines.push(layout.DEF);
+    if (layout.GK.length > 0) lines.push(layout.GK);
+    return lines;
+  };
+
+  // Alias so existing JSX references still work
+  const currentFormation = activeFormation;
 
   const isCompatible = (natural: string, idealLine: string) => {
     if (!idealLine) return true;
@@ -261,7 +289,7 @@ export default function LineupPage() {
     setIsHealingAll(true);
     setSubmitMessage(null);
     try {
-      const res = await healAllPlayers(userId);
+      const res = await healAllPlayers();
       if (res.success) {
         const count = res.playersHealed ?? 0;
         if (count === 0) {
@@ -521,9 +549,29 @@ export default function LineupPage() {
           </div>
           <p className="text-[8px] text-violet-400/70 uppercase tracking-widest mt-0.5 font-bold">{t.squad_management}</p>
         </div>
-        <div className="flex flex-col items-end">
-          <div className="text-[8px] uppercase tracking-widest text-gray-600 font-bold">OVR</div>
-          <div className="text-2xl font-black font-orbitron text-emerald-300 neon-text-green leading-none">{averageOvr}</div>
+        <div className="flex items-center gap-2">
+          {/* Heal All — always visible in header */}
+          {players.filter(p => p.stamina < 100 || p.is_injured).length > 0 && (
+            <button
+              onClick={handleMassHeal}
+              disabled={isHealingAll || isSubmitting || isSwapping}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase
+                          tracking-wider border transition-all ${
+                isHealingAll || isSubmitting || isSwapping
+                  ? 'bg-white/5 text-gray-600 border-white/5 cursor-not-allowed'
+                  : 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30 hover:bg-cyan-500/20 shadow-[0_0_10px_rgba(0,240,255,0.2)] active:scale-95'
+              }`}
+            >
+              <span>⚡</span>
+              <span>
+                {isHealingAll ? '…' : `Heal (${players.filter(p => p.stamina < 100 || p.is_injured).length})`}
+              </span>
+            </button>
+          )}
+          <div className="flex flex-col items-end">
+            <div className="text-[8px] uppercase tracking-widest text-gray-600 font-bold">OVR</div>
+            <div className="text-2xl font-black font-orbitron text-emerald-300 neon-text-green leading-none">{averageOvr}</div>
+          </div>
         </div>
       </header>
 
@@ -661,24 +709,28 @@ export default function LineupPage() {
               ?
             </button>
           </div>
-          <div className="flex justify-center gap-1.5 shrink-0 z-20 mt-0.5 mb-1.5 px-3">
-            {['4-4-2', '4-3-3', '3-5-2'].map(f => {
-              const isRealActive = currentFormation === f;
-              return (
-                <button
-                  key={f}
-                  onClick={() => handleFormationChange(f)}
-                  disabled={isFormationLoading}
-                  className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border ${
-                    isRealActive
-                      ? 'bg-violet-500/20 text-violet-300 border-violet-500/50 shadow-[0_0_10px_rgba(147,51,234,0.4)]'
-                      : 'glass-card text-gray-600 hover:text-gray-300'
-                  } ${isFormationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {f}
-                </button>
-              );
-            })}
+          {/* Formation selector — scrollable row of 8 */}
+          <div className="shrink-0 z-20 px-2 mb-1">
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+              {Object.keys(FORMATIONS).map(f => {
+                const isActive = currentFormation === f;
+                return (
+                  <button
+                    key={f}
+                    onClick={() => handleFormationChange(f)}
+                    disabled={isFormationLoading}
+                    className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-[9px] font-black
+                                uppercase tracking-widest transition-all border whitespace-nowrap ${
+                      isActive
+                        ? 'bg-violet-500/20 text-violet-300 border-violet-500/50 shadow-[0_0_10px_rgba(147,51,234,0.4)]'
+                        : 'bg-black/30 border-gray-700/50 text-gray-500 hover:text-gray-300 hover:border-gray-600'
+                    } ${isFormationLoading ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  >
+                    {f}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className={`flex-1 relative w-[96%] mx-auto rounded-xl overflow-hidden flex flex-col items-center justify-around transition-opacity duration-300 ${isFormationLoading ? 'opacity-50 blur-sm' : 'opacity-100'}`}
@@ -693,29 +745,14 @@ export default function LineupPage() {
 
             {showChemistry && <ChemistryOverlay formation={currentFormation} players={activePlayers} />}
 
-            {/* Player Mapping (Tactical Layout) */}
+            {/* Player Mapping (Tactical Layout) — dynamic lines from formation */}
             <div className="relative z-10 w-full h-full flex flex-col justify-between px-2 py-4">
-              
-              {/* FWD Line */}
-              <div className="w-full flex justify-around items-center h-[20%]">
-                 {(FORMATIONS[currentFormation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2']).FWD.map(idx => renderPitchMarker(idx))}
-              </div>
-              
-              {/* MID Line */}
-              <div className="w-full flex justify-around items-center h-[20%]">
-                 {(FORMATIONS[currentFormation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2']).MID.map(idx => renderPitchMarker(idx))}
-              </div>
-              
-              {/* DEF Line */}
-              <div className="w-full flex justify-around items-center h-[20%]">
-                 {(FORMATIONS[currentFormation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2']).DEF.map(idx => renderPitchMarker(idx))}
-              </div>
-              
-              {/* GK Line */}
-              <div className="w-full flex justify-around items-center h-[20%]">
-               {(FORMATIONS[currentFormation as keyof typeof FORMATIONS] || FORMATIONS['4-4-2']).GK.map(idx => renderPitchMarker(idx))}
-              </div>
-             </div>
+              {getFormationLines(currentFormation).map((lineSlots, lineIdx) => (
+                <div key={lineIdx} className="w-full flex justify-around items-center" style={{ minHeight: 0, flex: '1 1 0' }}>
+                  {lineSlots.map(idx => renderPitchMarker(idx))}
+                </div>
+              ))}
+            </div>
            </div>
           </div>
           )}

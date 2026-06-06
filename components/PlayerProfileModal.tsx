@@ -127,7 +127,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
     setErrorMsg(null);
 
     try {
-      const res = await healPlayer(userId, player.id);
+      const res = await healPlayer(player.id);
       if (res.success) {
         const newBal = res.new_balance ?? sweatPoints - cost;
         setSweatPoints(newBal);
