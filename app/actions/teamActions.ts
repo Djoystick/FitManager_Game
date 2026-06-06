@@ -152,11 +152,12 @@ export async function createStarterFranchise(teamName: string) {
       generatePlayer(newTeam.id, p.pos, p.status, index.toString(), index === captainIndex)
     );
 
-    const { error: playersError } = await supabaseAdmin
+    const { data: insertedPlayers, error: playersError } = await supabaseAdmin
       .from('players')
-      .insert(playersToInsert);
+      .insert(playersToInsert)
+      .select();
 
-    if (playersError) {
+    if (playersError || !insertedPlayers) {
       await supabaseAdmin.from('teams').delete().eq('id', newTeam.id);
       return { success: false, error: 'Failed to generate players, team creation rolled back' };
     }
@@ -218,7 +219,7 @@ export async function createStarterFranchise(teamName: string) {
       // The frontend will show a countdown and trigger it after 60 seconds.
     }
 
-    return { success: true };
+    return { success: true, team: newTeam, players: insertedPlayers };
   } catch (error: any) {
     console.error("createStarterFranchise Error:", error);
     return { success: false, error: error.message || 'Internal Server Error' };

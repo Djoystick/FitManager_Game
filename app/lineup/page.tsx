@@ -549,12 +549,26 @@ export default function LineupPage() {
       <div className="absolute inset-0 pointer-events-none bg-grid-violet opacity-30" style={{ backgroundImage: 'linear-gradient(rgba(147,51,234,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(147,51,234,0.05) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_30%_at_50%_0%,rgba(147,51,234,0.08)_0%,transparent_100%)]" />
 
+      {/* Tutorial Spotlight Step 1 */}
+      {!isDone && step === 1 && (
+        <SpotlightOverlay
+          targetId="bench-drawer-handle"
+          title="🔄 Скамья запасных"
+          description="Твои основные игроки устают. Открой скамейку запасных, чтобы выпустить свежих игроков на поле!"
+          buttonLabel="Я понял →"
+          onNext={() => {
+            nextStep();
+          }}
+          onSkip={skipTutorial}
+        />
+      )}
+
       {/* Tutorial Spotlight Step 2 */}
       {!isDone && step === 2 && (
         <SpotlightOverlay
           targetId="tab-base"
           title="🏢 Развитие Базы"
-          description="Команда собрана! Теперь перейдем на Базу — там можно зарабатывать ресурсы."
+          description="Команда собрана! Обрати внимание на рейтинги линий. Теперь перейдем на Базу — там можно зарабатывать ресурсы."
           buttonLabel="Перейти на Базу →"
           onNext={() => {
             nextStep();
@@ -830,6 +844,7 @@ export default function LineupPage() {
 
           {/* Bench toggle button */}
           <button
+            id="bench-drawer-handle"
             onClick={() => setIsBenchOpen(prev => !prev)}
             className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 active:scale-98"
             style={{

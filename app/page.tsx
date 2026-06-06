@@ -245,7 +245,7 @@ export default function DashboardPage() {
     }
   };
 
-  const showSpotlightStep1 = !isDone && step === 1;
+  const showSpotlightStep0 = !isDone && step === 0;
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -258,31 +258,19 @@ export default function DashboardPage() {
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_40%_at_50%_0%,rgba(147,51,234,0.12)_0%,transparent_100%)]" />
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_60%_30%_at_50%_100%,rgba(0,240,255,0.06)_0%,transparent_100%)]" />
 
-      {/* Tutorial step 0 — shown right after onboarding before SpotlightOverlay kicks in */}
-      {!isDone && step === 0 && (
-        <div className="absolute top-28 left-0 right-0 z-[100] px-4">
-          <div className="glass-card-violet p-3 rounded-xl flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Zap size={15} className="text-violet-400 flex-shrink-0" />
-              <span className="text-xs text-violet-200 font-bold">Добро пожаловать! Давай начнём обучение 🚀</span>
-            </div>
-            <div className="flex gap-2 flex-shrink-0">
-              <button
-                onClick={() => nextStep()}
-                className="px-3 py-1.5 rounded-lg bg-violet-500 text-white text-[10px] font-black uppercase tracking-wider
-                           shadow-[0_0_10px_rgba(147,51,234,0.5)] hover:bg-violet-400 transition-all active:scale-95"
-              >
-                Начать
-              </button>
-              <button
-                onClick={() => skipTutorial()}
-                className="px-2 py-1.5 rounded-lg text-gray-600 text-[10px] hover:text-gray-400 transition-colors"
-              >
-                Пропустить
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Tutorial Spotlight Step 0 */}
+      {showSpotlightStep0 && (
+        <SpotlightOverlay
+          targetId="tab-lineup"
+          title="Добро пожаловать, Тренер!"
+          description="Твоя команда ждет указаний. Давай перейдем в раздел Состав и расставим игроков по позициям!"
+          buttonLabel="Перейти к составу →"
+          onNext={() => {
+            nextStep();
+            router.push('/lineup');
+          }}
+          onSkip={skipTutorial}
+        />
       )}
 
       {/* ── Lobby waiting overlay ─────────────────────────────────────────── */}
@@ -315,11 +303,11 @@ export default function DashboardPage() {
       <UnseenMatchesModal matches={unseenMatches} onAcknowledge={handleAcknowledgeUnseen} />
 
       {/* ── Tutorial Spotlight ──────────────────────────────────────────── */}
-      {showSpotlightStep1 && (
+      {showSpotlightStep0 && (
         <SpotlightOverlay
           targetId="tab-lineup"
           title="👟 Твой состав"
-          description="Здесь ты управляешь командой. Перемести лучших игроков в стартовый XI!"
+          description="Добро пожаловать в клуб! Здесь сводка твоих успехов. Давай начнем с настройки команды."
           buttonLabel="Посмотреть состав →"
           onNext={() => {
             nextStep();

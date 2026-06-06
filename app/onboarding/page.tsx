@@ -219,17 +219,13 @@ export default function OnboardingPage() {
     const res = await createStarterFranchise(teamName.trim());
 
     if (res.success) {
-      try {
-        const teamRes = await fetch(`/api/team/my-team?userId=${userId}`);
-        if (teamRes.ok) {
-          const data = await teamRes.json();
-          setTopPlayers(
-            (data.players || [])
-              .sort((a: any, b: any) => (b.ovr || 0) - (a.ovr || 0))
-              .slice(0, 3)
-          );
-        }
-      } catch {}
+      if (res.players && res.players.length > 0) {
+        setTopPlayers(
+          res.players
+            .sort((a: any, b: any) => (b.ovr || 0) - (a.ovr || 0))
+            .slice(0, 3)
+        );
+      }
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 2600);
       setTimeout(() => setScreen(2), 600);

@@ -4,6 +4,9 @@ import React, { useState } from 'react';
 import { Swords, Gift, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
+import { useTutorial } from '@/components/providers/TutorialContext';
+import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
+
 interface FriendlyMatchCardProps {
   userId: string;
   initialMatchesPlayed: number;
@@ -12,6 +15,7 @@ interface FriendlyMatchCardProps {
 export function FriendlyMatchCard({ userId, initialMatchesPlayed }: FriendlyMatchCardProps) {
   const [matchesPlayed, setMatchesPlayed] = useState(initialMatchesPlayed);
   const [isLoading, setIsLoading] = useState(false);
+  const { step, isDone, nextStep, skipTutorial } = useTutorial();
   const maxMatches = 5;
 
   const playMatch = async () => {
@@ -48,6 +52,20 @@ export function FriendlyMatchCard({ userId, initialMatchesPlayed }: FriendlyMatc
     <div className="glass-card-cyan relative overflow-hidden p-4 mb-4 mt-1 border border-cyan-500/30">
       <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent pointer-events-none" />
       
+      {/* Tutorial Spotlight Step 6 */}
+      {!isDone && step === 6 && (
+        <SpotlightOverlay
+          targetId="friendly-match-btn"
+          title="⚽ Первый Матч"
+          description="Пока мы ждем начала сезона, сыграй товарищеский матч, чтобы заработать стартовые ресурсы."
+          buttonLabel="Завершить обучение →"
+          onNext={() => {
+            nextStep();
+          }}
+          onSkip={skipTutorial}
+        />
+      )}
+
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg glass-card flex items-center justify-center">
@@ -76,6 +94,7 @@ export function FriendlyMatchCard({ userId, initialMatchesPlayed }: FriendlyMatc
         </button>
       ) : (
         <button
+          id="friendly-match-btn"
           onClick={playMatch}
           disabled={isLoading}
           className={`w-full relative overflow-hidden py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 ${

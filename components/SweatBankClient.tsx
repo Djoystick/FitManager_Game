@@ -177,13 +177,13 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
       {/* Tutorial Spotlight Step 4 */}
       {!isDone && step === 4 && (
         <SpotlightOverlay
-          targetId="tab-league"
-          title="🏆 Мультиплеерная Лига"
-          description="Тут играют реальные люди. Твоя команда готова к турнирам. Врывайся!"
-          buttonLabel="Завершить обучение →"
+          targetId="tab-market"
+          title="🛒 Трансферный рынок"
+          description="За SP и FC ты можешь покупать новые карточки или развивать текущих игроков. Пошли на рынок!"
+          buttonLabel="Перейти на Рынок →"
           onNext={() => {
             nextStep();
-            router.push('/league');
+            router.push('/market');
           }}
           onSkip={skipTutorial}
         />

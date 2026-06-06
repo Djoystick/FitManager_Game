@@ -94,7 +94,7 @@ export function SpotlightOverlay({
       {/* Full-screen overlay — blocks all interaction except the ring */}
       <motion.div
         key="spotlight-backdrop"
-        className="fixed inset-0 z-[200] pointer-events-auto"
+        className="fixed inset-0 z-[9999] pointer-events-auto"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

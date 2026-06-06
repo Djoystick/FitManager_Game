@@ -6,14 +6,16 @@ import { createClient } from '@supabase/supabase-js';
 // ─────────────────────────────────────────────────────────────────────────────
 // Tutorial Step Enum
 // -1 = DONE (tutorial completed)
-//  0 = WELCOME           → onboarding screen
-//  1 = VIEW_SQUAD        → spotlight on "Состав" tab
-//  2 = MOVE_PLAYER       → spotlight on player card (drag to starting XI)
-//  3 = FIRST_MATCH       → spotlight on "Сыграть" button (practice match)
-//  4 = CLAIM_REWARD      → spotlight on reward notification
+//  0 = WELCOME           → onboarding screen -> unlock /lineup
+//  1 = LINEUP_SWAP       → spotlight on bench player
+//  2 = LINEUP_CHEMISTRY  → spotlight on base tab -> unlock /base
+//  3 = BASE_INTRO        → spotlight on bank tab -> unlock /bank
+//  4 = BANK_CLAIM        → spotlight on claim button -> unlock /market
+//  5 = MARKET_INTRO      → spotlight on league tab -> unlock /league
+//  6 = LEAGUE_FRIENDLY   → spotlight on friendly match -> DONE
 // ─────────────────────────────────────────────────────────────────────────────
 export const TUTORIAL_DONE = -1;
-export type TutorialStep = -1 | 0 | 1 | 2 | 3 | 4;
+export type TutorialStep = -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 const STORAGE_KEY = 'fm_tutorial_step';
 
@@ -90,7 +92,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 
   const nextStep = useCallback(() => {
     setStep(prev => {
-      const next = (prev === 4 ? TUTORIAL_DONE : (prev + 1)) as TutorialStep;
+      const next = (prev === 6 ? TUTORIAL_DONE : (prev + 1)) as TutorialStep;
       localStorage.setItem(STORAGE_KEY, String(next));
       persistStep(userId, next);
       return next;

@@ -25,8 +25,11 @@ const LOCKED_TOAST_MSG = '🎓 Сначала пройди обучение!';
 function isTabLocked(href: string, step: number): boolean {
   if (step === TUTORIAL_DONE) return false;
   if (href === '/' || href === '') return false;
-  if (href === '/lineup' && step >= 1) return false;
+  if (href === '/lineup' && step >= 0) return false;
   if (href === '/base'   && step >= 2) return false;
+  if (href === '/bank'   && step >= 3) return false;
+  if (href === '/market' && step >= 4) return false;
+  if (href === '/league' && step >= 5) return false;
   return true;
 }
 

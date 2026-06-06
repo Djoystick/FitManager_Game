@@ -32,6 +32,9 @@ import toast from 'react-hot-toast';
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
 import { ScreenGuide } from '@/components/ui/ScreenGuide';
+import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
+import { useTutorial } from '@/components/providers/TutorialContext';
+import { useRouter } from 'next/navigation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Static definitions — declared outside component so Tailwind class scanner
@@ -222,6 +225,8 @@ export default function BaseDashboard() {
   const { userId, isAuthenticated } = useContext(TelegramAuthContext);
   const { language } = useContext(LanguageContext);
   const t = dict[language as keyof typeof dict];
+  const { step, isDone, nextStep, skipTutorial } = useTutorial();
+  const router = useRouter();
 
   const [activeTab, setActiveTab]           = useState<TabId>('infrastructure');
   const [infra, setInfra]                   = useState<ClubInfrastructure | null>(null);
@@ -303,6 +308,21 @@ export default function BaseDashboard() {
 
   return (
     <div className="flex flex-col flex-1 h-full overflow-hidden bg-space-dark">
+
+      {/* Tutorial Spotlight Step 3 */}
+      {!isDone && step === 3 && (
+        <SpotlightOverlay
+          targetId="tab-bank"
+          title="🏦 Банк и награды"
+          description="Здесь ты улучшаешь здания, чтобы получать бонусы. Давай зайдем в Банк, чтобы забрать заработанные ресурсы!"
+          buttonLabel="Перейти в Банк →"
+          onNext={() => {
+            nextStep();
+            router.push('/bank');
+          }}
+          onSkip={skipTutorial}
+        />
+      )}
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="flex-shrink-0 px-4 pt-5 pb-3 border-b border-gray-800/60">
