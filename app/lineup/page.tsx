@@ -10,6 +10,8 @@ import { CyberLoader } from '@/components/ui/CyberLoader';
 import { Shirt, X, RefreshCw, User, Eye, EyeOff, Zap, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlayerProfileModal } from '@/components/PlayerProfileModal';
+import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
+import { useTutorial } from '@/components/providers/TutorialContext';
 import { InfoPopover } from '@/components/ui/InfoPopover';
 import { ChemistryOverlay } from '@/components/ChemistryOverlay';
 import { LanguageContext } from '@/components/LanguageContext';
@@ -53,6 +55,8 @@ export default function LineupPage() {
   const { userId, isAuthenticated, isLoading: isAuthLoading } = useContext(TelegramAuthContext);
   const { language } = useContext(LanguageContext);
   const t = dict[language as keyof typeof dict];
+  const router = useRouter();
+  const { step, isDone, nextStep, skipTutorial } = useTutorial();
   const [team, setTeam] = useState<Team | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -531,9 +535,24 @@ export default function LineupPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: '#05060f' }}>
-      {/* ── Background decorations ── */}
+      {/* Background decorations */}
       <div className="absolute inset-0 pointer-events-none bg-grid-violet opacity-30" style={{ backgroundImage: 'linear-gradient(rgba(147,51,234,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(147,51,234,0.05) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_30%_at_50%_0%,rgba(147,51,234,0.08)_0%,transparent_100%)]" />
+
+      {/* Tutorial Spotlight Step 2 */}
+      {!isDone && step === 2 && (
+        <SpotlightOverlay
+          targetId="tab-base"
+          title="🏢 Развитие Базы"
+          description="Команда собрана! Теперь перейдем на Базу — там можно зарабатывать ресурсы."
+          buttonLabel="Перейти на Базу →"
+          onNext={() => {
+            nextStep();
+            router.push('/base');
+          }}
+          onSkip={skipTutorial}
+        />
+      )}
 
       {/* HEADER */}
       <header className="glass-card-violet relative overflow-hidden mx-3 mt-3 mb-1 p-3 flex justify-between items-center shrink-0">

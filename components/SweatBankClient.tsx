@@ -1,5 +1,8 @@
 'use client';
 
+import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
+import { useTutorial } from '@/components/providers/TutorialContext';
+import { useRouter } from 'next/navigation';
 import { useState, useTransition, useCallback, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { Footprints, Zap, ArrowRightLeft, Flame, Dumbbell, CircleDot } from 'lucide-react';
@@ -65,6 +68,8 @@ interface SweatBankClientProps {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function SweatBankClient({ initialData, language }: SweatBankClientProps) {
+  const router = useRouter();
+  const { step, isDone, nextStep, skipTutorial } = useTutorial();
   const t = dict[language as keyof typeof dict];
 
   const [dailySteps, setDailySteps] = useState(() => {
@@ -168,7 +173,23 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col gap-4 p-4 pb-6">
+    <div className="flex flex-col gap-4 p-4 pb-6 relative text-white">
+      {/* Tutorial Spotlight Step 4 */}
+      {!isDone && step === 4 && (
+        <SpotlightOverlay
+          targetId="tab-league"
+          title="🏆 Мультиплеерная Лига"
+          description="Тут играют реальные люди. Твоя команда готова к турнирам. Врывайся!"
+          buttonLabel="Завершить обучение →"
+          onNext={() => {
+            nextStep();
+            router.push('/league');
+          }}
+          onSkip={skipTutorial}
+        />
+      )}
+
+      {/* Header Tabs */}
 
       {/* ── BLOCK 1: Pedometer ─────────────────────────────────────────────── */}
       <section className="bg-black/40 border border-gray-800 rounded-2xl p-4 flex flex-col gap-3">
@@ -374,3 +395,4 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
     </div>
   );
 }
+

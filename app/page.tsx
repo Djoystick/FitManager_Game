@@ -319,7 +319,10 @@ export default function DashboardPage() {
           title="👟 Твой состав"
           description="Здесь ты управляешь командой. Перемести лучших игроков в стартовый XI!"
           buttonLabel="Посмотреть состав →"
-          onNext={nextStep}
+          onNext={() => {
+            nextStep();
+            router.push('/lineup');
+          }}
           onSkip={skipTutorial}
         />
       )}
