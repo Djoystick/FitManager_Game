@@ -456,7 +456,7 @@ function InfrastructureTab({
   const powerPct   = Math.round((totalLevel / totalMax) * 100);
 
   return (
-    <div className="px-3 py-3 flex flex-col gap-3">
+    <div className="px-3 py-2 flex flex-col gap-1.5">
 
       {/* ── Club Power Panel ──────────────────────────────────────────────── */}
       <div className="relative overflow-hidden rounded-2xl border border-yellow-500/25
@@ -516,7 +516,7 @@ function InfrastructureTab({
             <div className={`absolute -top-10 -right-10 w-36 h-36 rounded-full blur-3xl pointer-events-none ${b.colorGlow} opacity-80`} />
 
             {/* Main content row */}
-            <div className="relative z-10 flex items-center gap-3 p-3">
+            <div className="relative z-10 flex items-center gap-2.5 p-2">
               <div className={`w-12 h-12 flex-shrink-0 rounded-xl flex items-center justify-center
                                border ${b.colorBg} ${b.colorBorder}
                                shadow-[inset_0_0_12px_rgba(0,0,0,0.4)]`}>
@@ -564,7 +564,7 @@ function InfrastructureTab({
             </div>
 
             {/* Segmented level progress bar */}
-            <div className="relative z-10 flex gap-0.5 px-3 pb-3">
+            <div className="relative z-10 flex gap-0.5 px-2 pb-2">
               {Array.from({ length: MAX_BUILDING_LEVEL }).map((_, i) => (
                 <div
                   key={i}
@@ -582,7 +582,7 @@ function InfrastructureTab({
 
             {/* Affordable hint */}
             {!canAfford && !isMaxed && !isPending && (
-              <p className="relative z-10 px-3 pb-2.5 -mt-1 text-[8px] text-gray-700 font-mono">
+              <p className="relative z-10 px-2 pb-2 -mt-1 text-[8px] text-gray-700 font-mono">
                 Нужно ещё {(cost - fancoins).toLocaleString()} FC
               </p>
             )}
@@ -590,7 +590,7 @@ function InfrastructureTab({
         );
       })}
 
-      <div className="h-32" />
+      <div className="h-6" />
     </div>
   );
 }

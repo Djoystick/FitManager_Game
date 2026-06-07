@@ -150,29 +150,41 @@ export async function hireStaffAction(
       .from('teams').select('id').eq('user_id', userId).single();
     if (!team) return { success: false, error: 'Team not found' };
 
-    const NAMES = ['Marcus Bell','Sofia Rossi','Jin Park','Elena Volkov',
-                   'Omar Farouq','Ana Lima','Kofi Mensah','Lars Hendricks'];
-    const NATS  = ['England','Italy','South Korea','Russia',
-                   'Egypt','Brazil','Ghana','Netherlands'];
-    const idx = Math.floor(Math.random() * NAMES.length);
+    const FIRST_NAMES = ['Marcus','Sofia','Jin','Elena','Omar','Ana','Kofi','Lars','Diego','Hans','Yuki','Aisha','Leon','Nina','Kenji','Maya','Lucas','Zara','Oliver','Mia'];
+    const LAST_NAMES  = ['Bell','Rossi','Park','Volkov','Farouq','Lima','Mensah','Hendricks','Silva','Muller','Tanaka','Ali','Gomez','Ivanov','Sato','Patel','Smith','Dubois','Jones','Kim'];
+    const NATS  = ['England','Italy','South Korea','Russia','Egypt','Brazil','Ghana','Netherlands','Spain','Germany','Japan','Morocco','Argentina','France','USA','India','Mexico','Belgium','Portugal','Canada'];
+    
+    const idx1 = Math.floor(Math.random() * FIRST_NAMES.length);
+    const idx2 = Math.floor(Math.random() * LAST_NAMES.length);
+    const idxNat = Math.floor(Math.random() * NATS.length);
+    const fullName = `${FIRST_NAMES[idx1]} ${LAST_NAMES[idx2]}`;
 
-    const base = 40 + Math.floor(Math.random() * 20);
+    const base = 35 + Math.floor(Math.random() * 25); // 35-60 base
+    
+    // Role-specific bonuses
+    let bDef = 0, bPas = 0, bSho = 0, bPac = 0, bPhy = 0, bMen = 0, bGkp = 0;
+    if (role === 'head_coach') { bMen = 25; bPas = 15; }
+    if (role === 'assistant_coach') { bMen = 15; bDef = 10; bSho = 10; }
+    if (role === 'fitness_coach') { bPhy = 30; bPac = 30; }
+    if (role === 'gk_coach') { bGkp = 40; bDef = 15; }
+    if (role === 'scout') { bMen = 30; bPas = 10; }
+
     const newMember = {
       team_id: team.id,
-      name: NAMES[idx],
+      name: fullName,
       role,
       department,
-      age: 28 + Math.floor(Math.random() * 20),
-      nationality: NATS[idx],
+      age: 28 + Math.floor(Math.random() * 35),
+      nationality: NATS[idxNat],
       contract_end: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      salary_per_match: role === 'head_coach' ? 250 : role === 'scout' ? 80 : 150,
-      attr_def: base + Math.floor(Math.random() * 20),
-      attr_pas: base + Math.floor(Math.random() * 20),
-      attr_sho: base + Math.floor(Math.random() * 20),
-      attr_pac: base + Math.floor(Math.random() * 20),
-      attr_phy: base + Math.floor(Math.random() * 20),
-      attr_men: base + Math.floor(Math.random() * 25),
-      attr_gkp: role === 'gk_coach' ? base + Math.floor(Math.random() * 30) : 10,
+      salary_per_match: role === 'head_coach' ? 250 : role === 'scout' ? 90 : 150,
+      attr_def: Math.min(99, base + bDef + Math.floor(Math.random() * 15)),
+      attr_pas: Math.min(99, base + bPas + Math.floor(Math.random() * 15)),
+      attr_sho: Math.min(99, base + bSho + Math.floor(Math.random() * 15)),
+      attr_pac: Math.min(99, base + bPac + Math.floor(Math.random() * 15)),
+      attr_phy: Math.min(99, base + bPhy + Math.floor(Math.random() * 15)),
+      attr_men: Math.min(99, base + bMen + Math.floor(Math.random() * 15)),
+      attr_gkp: Math.min(99, base + bGkp + Math.floor(Math.random() * 15)),
     };
 
     const { data, error } = await supabaseAdmin
