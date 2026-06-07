@@ -75,15 +75,15 @@ export async function getStaffAction(
     if (!data || data.length === 0) {
       await supabaseAdmin.from('staff').insert([
         {
-          team_id: team.id, name: 'Default Coach', role: 'head_coach',
-          department: 'first_team', age: 42, nationality: 'Unknown',
+          team_id: team.id, name: 'Main Team Coach', role: 'head_coach',
+          department: 'first_team', age: 42, nationality: 'CyberCity',
           salary_per_match: 200,
           attr_def: 55, attr_pas: 50, attr_sho: 45,
           attr_pac: 45, attr_phy: 50, attr_men: 60, attr_gkp: 10,
         },
         {
-          team_id: team.id, name: 'Default Scout', role: 'scout',
-          department: 'first_team', age: 35, nationality: 'Unknown',
+          team_id: team.id, name: 'Main Team Scout', role: 'scout',
+          department: 'first_team', age: 35, nationality: 'CyberCity',
           salary_per_match: 80,
           attr_def: 30, attr_pas: 50, attr_sho: 30,
           attr_pac: 55, attr_phy: 35, attr_men: 45, attr_gkp: 10,

@@ -113,8 +113,7 @@ export function GlobalHeader() {
 
         {/* Main bar — safe-area-inset-top keeps content below TMA system buttons */}
         <div
-          className="w-full bg-[#05060f]/90 backdrop-blur-xl border-b border-white/5 px-3 pb-2 shadow-[0_4px_24px_rgba(0,0,0,0.7)]"
-          style={{ paddingTop: 'max(40px, env(safe-area-inset-top, 40px))' }}
+          className="w-full bg-[#05060f]/90 backdrop-blur-xl border-b border-white/5 px-3 pt-14 pb-2 shadow-[0_4px_24px_rgba(0,0,0,0.7)]"
         >
           <div className="flex items-center justify-between gap-2">
 

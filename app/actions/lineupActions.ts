@@ -156,7 +156,7 @@ export async function updateTeamFormation(teamId: string, formation: string) {
     }
 
     // 2. Update Formation
-    const allowedFormations = ['4-4-2', '4-3-3', '3-5-2'];
+    const allowedFormations = ['4-4-2', '4-3-3', '3-5-2', '4-2-3-1', '4-1-4-1', '5-3-2', '3-4-3', '4-5-1'];
     if (!allowedFormations.includes(formation)) {
       return { success: false, error: 'Invalid formation' };
     }

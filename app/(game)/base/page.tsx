@@ -590,7 +590,7 @@ function InfrastructureTab({
         );
       })}
 
-      <div className="h-4" />
+      <div className="h-32" />
     </div>
   );
 }
