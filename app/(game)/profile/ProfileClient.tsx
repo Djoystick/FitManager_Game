@@ -189,7 +189,7 @@ export default function ProfileClient({
 
             {/* Identity */}
             <div className="flex-1 min-w-0">
-              <div className="text-[8px] text-violet-400/70 uppercase tracking-widest font-bold mb-0.5">Manager</div>
+              <div className="text-[8px] text-violet-400/70 uppercase tracking-widest font-bold mb-0.5">{t.mgr_manage || 'Manage'}r</div>
               <div className="text-sm font-black text-white font-orbitron truncate">
                 {tgUser?.first_name} {tgUser?.last_name}
               </div>
@@ -275,7 +275,7 @@ export default function ProfileClient({
             <div className="glass-card p-3">
               <div className="flex items-center gap-3 mb-3">
                 <div className="flex-1">
-                  <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold mb-0.5">Board Mandate</div>
+                  <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold mb-0.5">{t.mgr_board || 'Board Mandate'}</div>
                   <div className="text-[10px] text-gray-400 uppercase tracking-wider">Season Objectives</div>
                 </div>
                 <ApprovalRingMeter value={approvalRating} />
@@ -309,11 +309,11 @@ export default function ProfileClient({
             <div className="grid grid-cols-2 gap-2">
               <Link href="/bank" className="glass-card p-3 flex flex-col gap-1.5 hover:border-yellow-500/30 transition-colors group">
                 <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold">Sweat Bank</div>
-                <div className="text-xs font-black text-yellow-400 group-hover:text-yellow-300">Open Vault →</div>
+                <div className="text-xs font-black text-yellow-400 group-hover:text-yellow-300">{t.mgr_open_vault || 'Open Vault'} →</div>
               </Link>
               <Link href="/staff" className="glass-card p-3 flex flex-col gap-1.5 hover:border-cyan-500/30 transition-colors group">
                 <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold">Staff</div>
-                <div className="text-xs font-black text-cyan-400 group-hover:text-cyan-300">Manage →</div>
+                <div className="text-xs font-black text-cyan-400 group-hover:text-cyan-300">{t.mgr_manage || 'Manage'} →</div>
               </Link>
             </div>
 

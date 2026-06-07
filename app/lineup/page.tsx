@@ -625,9 +625,9 @@ export default function LineupPage() {
       <div className="flex-shrink-0 pb-1.5 relative z-20">
         <SubNavTabs
           tabs={[
-            { id: 'info',    label: 'INFO'    },
-            { id: 'players', label: 'PLAYERS', badge: players.length },
-            { id: 'lineup',  label: 'LINEUP'  },
+            { id: 'info',    label: t.team_info || 'INFO'    },
+            { id: 'players', label: t.team_players || 'PLAYERS', badge: players.length },
+            { id: 'lineup',  label: t.team_lineup || 'LINEUP'  },
           ]}
           active={primaryTab}
           onChange={(id) => setPrimaryTab(id as 'info' | 'players' | 'lineup')}
@@ -653,10 +653,10 @@ export default function LineupPage() {
           <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold px-0.5">Management</div>
           <div className="grid grid-cols-2 gap-2.5">
             {([
-              { label: 'Structures', sub: 'Club & Stadium',   href: '/base',   bg: 'from-teal-950 to-cyan-950',    border: 'border-teal-700/30',    hb: 'hover:border-teal-400/60',    glow: 'hover:shadow-[0_0_20px_rgba(20,184,166,0.18)]',  accent: 'text-teal-400',   Icon: Building2 },
-              { label: 'Transfers',  sub: 'Buy & Sell',       href: '/market', bg: 'from-violet-950 to-purple-950', border: 'border-violet-700/30',  hb: 'hover:border-violet-400/60',  glow: 'hover:shadow-[0_0_20px_rgba(139,92,246,0.18)]',  accent: 'text-violet-400', Icon: Shuffle   },
-              { label: 'Staff',      sub: 'Coaches & Scouts', href: '/staff',  bg: 'from-emerald-950 to-green-950', border: 'border-emerald-700/30', hb: 'hover:border-emerald-400/60', glow: 'hover:shadow-[0_0_20px_rgba(52,211,153,0.18)]',   accent: 'text-emerald-400', Icon: Users    },
-              { label: 'Finances',   sub: 'FanCoins & W2E',   href: '/bank',   bg: 'from-yellow-950 to-amber-950',  border: 'border-yellow-700/30',  hb: 'hover:border-yellow-400/60',  glow: 'hover:shadow-[0_0_20px_rgba(234,179,8,0.18)]',   accent: 'text-yellow-400', Icon: Wallet   },
+              { label: t.team_structures || 'STRUCTURES', sub: t.team_club_stadium || 'Club & Stadium',   href: '/base',   bg: 'from-teal-950 to-cyan-950',    border: 'border-teal-700/30',    hb: 'hover:border-teal-400/60',    glow: 'hover:shadow-[0_0_20px_rgba(20,184,166,0.18)]',  accent: 'text-teal-400',   Icon: Building2 },
+              { label: t.team_transfers || 'TRANSFERS',  sub: t.team_buy_sell || 'Buy & Sell',       href: '/market', bg: 'from-violet-950 to-purple-950', border: 'border-violet-700/30',  hb: 'hover:border-violet-400/60',  glow: 'hover:shadow-[0_0_20px_rgba(139,92,246,0.18)]',  accent: 'text-violet-400', Icon: Shuffle   },
+              { label: t.team_staff || 'STAFF',      sub: t.team_coaches || 'Coaches & Scouts', href: '/staff',  bg: 'from-emerald-950 to-green-950', border: 'border-emerald-700/30', hb: 'hover:border-emerald-400/60', glow: 'hover:shadow-[0_0_20px_rgba(52,211,153,0.18)]',   accent: 'text-emerald-400', Icon: Users    },
+              { label: t.team_finances || 'FINANCES',   sub: t.team_fancoins || 'FanCoins & W2E',   href: '/bank',   bg: 'from-yellow-950 to-amber-950',  border: 'border-yellow-700/30',  hb: 'hover:border-yellow-400/60',  glow: 'hover:shadow-[0_0_20px_rgba(234,179,8,0.18)]',   accent: 'text-yellow-400', Icon: Wallet   },
             ]).map(({ label, sub, href, bg, border, hb, glow, accent, Icon }) => (
               <motion.div key={href} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
                 <Link

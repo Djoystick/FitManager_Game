@@ -470,6 +470,8 @@ function InfrastructureTab({
   isPending: boolean;
   onUpgrade: (key: BuildingType) => void;
 }) {
+  const { language } = useContext(LanguageContext);
+  const t = dict[language as keyof typeof dict];
   const fancoins   = infra?.fancoins ?? 0;
   const totalLevel = BUILDING_DEFS.reduce((sum, b) => sum + getInfraLevel(infra, b.key), 0);
   const totalMax   = BUILDING_DEFS.length * MAX_BUILDING_LEVEL;
@@ -578,7 +580,7 @@ function InfrastructureTab({
               >
                 {isPending ? <span className="animate-pulse">...</span>
                   : isMaxed ? <span>★</span>
-                  : <><span>UP</span><span className="text-[7px] font-mono opacity-75 mt-0.5">{cost.toLocaleString()}</span></>
+                  : <><span>{t.base_up || 'UP'}</span><span className="text-[7px] font-mono opacity-75 mt-0.5">{cost.toLocaleString()}</span></>
                 }
               </button>
             </div>
@@ -968,6 +970,8 @@ function StadiumTab({
   onUpgrade: (type: BuildingType) => void;
   onUpgradeFacility: (type: StadiumFacilityType) => void;
 }) {
+  const { language } = useContext(LanguageContext);
+  const t = dict[language as keyof typeof dict];
   const stadiumLevel = infra?.stadium_level ?? 1;
   const capacity     = stadiumLevel * 5000;
   const fancoins     = infra?.fancoins ?? 0;
@@ -1114,7 +1118,7 @@ function StadiumTab({
               >
                 {isPending ? <span className="animate-pulse">...</span>
                   : isMaxed ? <span>★</span>
-                  : <><span>UP</span><span className="text-[7px] font-mono opacity-70 mt-0.5">{cost.toLocaleString()}</span></>
+                  : <><span>{t.base_up || 'UP'}</span><span className="text-[7px] font-mono opacity-70 mt-0.5">{cost.toLocaleString()}</span></>
                 }
               </button>
             </div>

@@ -897,7 +897,7 @@ export default function DashboardPage() {
               </div>
               <span className="text-xs font-black font-orbitron uppercase tracking-widest text-white"
                     style={{ textShadow: '0 0 20px rgba(0,240,255,0.6)' }}>
-                PROCEED TO NEXT MATCH
+                {t.home_proceed || 'PROCEED TO NEXT MATCH'}
               </span>
               {nextOpponent && (
                 <span className="text-[9px] text-cyan-400/70 uppercase tracking-wider font-bold">
@@ -1032,7 +1032,7 @@ export default function DashboardPage() {
                             group-hover:bg-violet-500/25 transition-colors">
               <Trophy size={16} className="text-violet-400" />
             </div>
-            <span className="text-[8px] font-black uppercase tracking-widest text-violet-300">STANDINGS</span>
+            <span className="text-[8px] font-black uppercase tracking-widest text-violet-300">{t.home_standings || 'STANDINGS'}</span>
           </button>
 
           {/* WOOF / Social Feed — opens social feed modal */}
@@ -1068,7 +1068,7 @@ export default function DashboardPage() {
                             group-hover:bg-emerald-500/25 transition-colors">
               <Dumbbell size={16} className="text-emerald-400" />
             </div>
-            <span className="text-[8px] font-black uppercase tracking-widest text-emerald-300">FITNESS</span>
+            <span className="text-[8px] font-black uppercase tracking-widest text-emerald-300">{t.home_fitness || 'FITNESS'}</span>
           </button>
         </motion.div>
       </div>
@@ -1111,7 +1111,7 @@ export default function DashboardPage() {
               <Zap className="w-5 h-5 text-gray-700" />
             </div>
             <p className="text-gray-600 text-xs font-bold uppercase tracking-wider">No matches yet</p>
-            <p className="text-gray-700 text-[10px] mt-1">Wait for the next league round</p>
+            <p className="text-gray-700 text-[10px] mt-1">{t.home_wait_next || 'Wait for the next league round'}</p>
           </div>
         )}
       </div>
