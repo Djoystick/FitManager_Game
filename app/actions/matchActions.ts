@@ -462,12 +462,19 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       const totalSalary = players.reduce((sum, p) =>
         sum + calcPlayerSalary(Number(p.ovr ?? 55), Number(p.age ?? 25)), 0);
 
-      // Calculate FC reward
-      const matchResult = gf > ga ? 'win' : gf === ga ? 'draw' : 'loss';
+      // ── Fetch infrastructure (stadium_level, seating_level, ticket price) ───
       const { data: infra } = await supabaseAdmin
-        .from('infrastructure').select('stadium_level').eq('team_id', teamId).maybeSingle();
-      const stadiumLevel = infra?.stadium_level ?? 1;
+        .from('infrastructure')
+        .select('stadium_level, seating_level, ticket_price_league')
+        .eq('team_id', teamId)
+        .maybeSingle();
 
+      const stadiumLevel  = infra?.stadium_level  ?? 1;
+      const seatingLevel  = infra?.seating_level  ?? 1;
+      const ticketPrice   = infra?.ticket_price_league ?? 20;
+
+      // ── Match result FC reward (base + stadium bonus) ─────────────────────
+      const matchResult = gf > ga ? 'win' : gf === ga ? 'draw' : 'loss';
       const baseReward  = matchResult === 'win'  ? 500 : matchResult === 'draw' ? 250 : 100;
       const levelBonus  = matchResult === 'win'  ? 150 : matchResult === 'draw' ? 70  : 30;
       const rawReward   = baseReward + stadiumLevel * levelBonus;
@@ -475,7 +482,27 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       const { data: userData } = await supabaseAdmin
         .from('users').select('prestige_multiplier').eq('id', userId).maybeSingle();
       const multiplier  = Number(userData?.prestige_multiplier ?? 1.0);
-      const totalReward = Math.floor(rawReward * multiplier);
+      const matchReward = Math.floor(rawReward * multiplier);
+
+      // ── Ticket Revenue (migration 00045 formula) ──────────────────────────
+      // Attendance: simulate 60–90% fill rate with slight randomness
+      const capacity    = stadiumLevel * 5000;
+      const fillRate    = 0.60 + Math.random() * 0.30;        // 60%–90% stochastic
+      const attendance  = Math.min(Math.floor(capacity * fillRate), capacity);
+      const baseTickets = Math.floor((attendance * ticketPrice) / 100);
+      const ticketRevenue = Math.floor(baseTickets * (1 + seatingLevel * 0.05));
+
+      // ── Services passive income: services_level × 30 FC ──────────────────
+      const servicesLevel   = (infra as any)?.services_level ?? 1;
+      const servicesRevenue = servicesLevel * 30;
+
+      const totalReward = matchReward + ticketRevenue + servicesRevenue;
+
+      console.log(
+        `[resolveMatch] FC tx team ${teamId}: ` +
+        `-${totalSalary} salary | +${matchReward} match (${matchResult}) | ` +
+        `+${ticketRevenue} tickets (${attendance} fans) | +${servicesRevenue} services`
+      );
 
       // ── R6: Single atomic RPC — no race condition possible ─────────────────
       const { error: rpcError } = await supabaseAdmin.rpc('update_fancoins_after_match', {
@@ -486,22 +513,19 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
 
       if (rpcError) {
         console.error(`[resolveMatch] FC transaction RPC error for team ${teamId}:`, rpcError);
-        // Fallback: bankruptcy check via direct query if RPC unavailable
+        // Fallback: direct update (no RPC available)
         const { data: fallbackUser } = await supabaseAdmin
           .from('users').select('balance_fancoins').eq('id', userId).maybeSingle();
         const currentBalance = Number(fallbackUser?.balance_fancoins ?? 0);
         const newBalance = Math.max(0, currentBalance - totalSalary + totalReward);
         await supabaseAdmin.from('users').update({ balance_fancoins: newBalance }).eq('id', userId);
-      } else {
-        console.log(`[resolveMatch] FC tx for team ${teamId}: -${totalSalary} salary, +${totalReward} reward (${matchResult}).`);
       }
 
-      // Apply bankruptcy stamina penalty if balance dropped to zero
-      // We check after the RPC since GREATEST(0,...) may have floored to 0
+      // Apply bankruptcy stamina penalty if balance hit zero
       const { data: afterUpdate } = await supabaseAdmin
         .from('users').select('balance_fancoins').eq('id', userId).maybeSingle();
       if ((afterUpdate?.balance_fancoins ?? 1) === 0 && totalSalary > totalReward) {
-        console.warn(`[resolveMatch] Team ${teamId} went bankrupt (salary > reward + balance). Applying stamina penalty.`);
+        console.warn(`[resolveMatch] Team ${teamId} went bankrupt. Applying stamina penalty.`);
         await Promise.all(
           players.map(p =>
             supabaseAdmin.from('players')

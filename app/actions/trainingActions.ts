@@ -30,8 +30,11 @@ export type SpecCurrencyType =
   | 'ball_coin'
   | 'strength_coin';
 
-/** Club building types */
+/** Club building types (main facilities) */
 export type BuildingType = 'stadium' | 'medical' | 'academy' | 'scout';
+
+/** Stadium sub-facility types */
+export type StadiumFacilityType = 'pitch' | 'lighting' | 'seating' | 'services';
 
 export interface TrainStatResult {
   stat_name: string;
@@ -48,11 +51,16 @@ export interface ClubInfrastructure {
   academy_level: number;
   scout_level: number;
   fancoins: number;
-  // Ticket pricing (persisted in infrastructure table via migration 00044)
+  // Ticket pricing (persisted in infrastructure table)
   ticket_price_league:   number;
   ticket_price_intcup:   number;
   ticket_price_natcup:   number;
   ticket_price_friendly: number;
+  // Stadium sub-facilities (added migration 00044/00045)
+  pitch_level:    number;
+  lighting_level: number;
+  seating_level:  number;
+  services_level: number;
 }
 
 export interface PlayerForTraining {
@@ -353,6 +361,19 @@ export async function batchTrainPlayerAction(
       return { success: false, error: 'Failed to update player stats.' };
     }
 
+    // 9. Record OVR progression snapshot (only when OVR actually changed)
+    if (newOvr !== (player.ovr as number)) {
+      try {
+        await supabaseAdmin.rpc('append_player_progression', {
+          p_player_id: playerId,
+          p_new_ovr:   newOvr,
+        });
+      } catch (progErr) {
+        // Non-critical: log but don't fail the training action
+        console.warn('[batchTrainPlayerAction] progression history write failed:', progErr);
+      }
+    }
+
     revalidatePath('/base');
     revalidatePath('/');
 
@@ -416,12 +437,11 @@ export async function upgradeBuildingAction(
     if (infraErr || !infra) return { success: false, error: 'Infrastructure record not found.' };
 
     const currentLevel = (infra as unknown as Record<string, number>)[column] ?? 1;
-    // Exponential cost formula: FLOOR(800 × level^1.8)
-    // Более агрессивная кривая vs старой (500 × level^1.5):
-    //   lvl 3→4:  ~5 177 FC (было 2 598)   | lvl 7→8:  ~27 560 FC (было 9 193)
-    //   lvl 9→10: ~47 200 FC (было 13 500) | lvl 10→11: ~57 243 FC (было 15 811)
-    // При 2 матчах/день стадион 10+ займёт 4+ месяцев — правильный темп.
-    const upgradeCost  = Math.floor(800 * Math.pow(currentLevel, 1.8));
+    // Exponential cost formula: FLOOR(3000 × level^1.8) — raised from 800 in migration 00045
+    //   lvl 1→2:    3,000 FC  | lvl 2→3:   10,392 FC | lvl 3→4:   23,148 FC
+    //   lvl 5→6:   53,977 FC  | lvl 7→8:  107,650 FC | lvl 9→10: 182,900 FC
+    // При 2 матчах/день стадион LVL10 займёт 6+ месяцев — правильный темп.
+    const upgradeCost  = Math.floor(3000 * Math.pow(currentLevel, 1.8));
 
     if (user.balance_fancoins < upgradeCost) {
       return {
@@ -494,9 +514,15 @@ export async function getClubInfrastructureData(
 
     if (teamErr || !team) return { success: false, error: 'Team not found.' };
 
+    const INFRA_COLUMNS = [
+      'stadium_level', 'medical_center_level', 'academy_level', 'scout_level',
+      'ticket_price_league', 'ticket_price_intcup', 'ticket_price_natcup', 'ticket_price_friendly',
+      'pitch_level', 'lighting_level', 'seating_level', 'services_level',
+    ].join(', ');
+
     let { data: infra } = await supabaseAdmin
       .from('infrastructure')
-      .select('stadium_level, medical_center_level, academy_level, scout_level, ticket_price_league, ticket_price_intcup, ticket_price_natcup, ticket_price_friendly')
+      .select(INFRA_COLUMNS)
       .eq('team_id', team.id)
       .maybeSingle();
 
@@ -505,26 +531,32 @@ export async function getClubInfrastructureData(
       const { data: newInfra } = await supabaseAdmin
         .from('infrastructure')
         .insert({ team_id: team.id })
-        .select('stadium_level, medical_center_level, academy_level, scout_level, ticket_price_league, ticket_price_intcup, ticket_price_natcup, ticket_price_friendly')
+        .select(INFRA_COLUMNS)
         .single();
       infra = newInfra;
     }
 
     if (!infra) return { success: false, error: 'Infrastructure not found.' };
 
-    const infraRow = infra as Record<string, unknown>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const infraRow = (infra as any) as Record<string, unknown>;
     return {
       success: true,
       data: {
-        stadium_level:          (infra.stadium_level          as number) ?? 1,
-        medical_level:          (infra.medical_center_level   as number) ?? 1,
-        academy_level:          (infra.academy_level          as number) ?? 1,
-        scout_level:            (infra.scout_level            as number) ?? 1,
-        fancoins:               (user.balance_fancoins                   ) ?? 0,
-        ticket_price_league:    (infraRow.ticket_price_league   as number) ?? 20,
-        ticket_price_intcup:    (infraRow.ticket_price_intcup   as number) ?? 30,
-        ticket_price_natcup:    (infraRow.ticket_price_natcup   as number) ?? 25,
-        ticket_price_friendly:  (infraRow.ticket_price_friendly as number) ?? 10,
+        stadium_level:          (infraRow.stadium_level          as number) ?? 1,
+        medical_level:          (infraRow.medical_center_level   as number) ?? 1,
+        academy_level:          (infraRow.academy_level          as number) ?? 1,
+        scout_level:            (infraRow.scout_level            as number) ?? 1,
+        fancoins:               (user.balance_fancoins                     ) ?? 0,
+        ticket_price_league:    (infraRow.ticket_price_league    as number) ?? 20,
+        ticket_price_intcup:    (infraRow.ticket_price_intcup    as number) ?? 30,
+        ticket_price_natcup:    (infraRow.ticket_price_natcup    as number) ?? 25,
+        ticket_price_friendly:  (infraRow.ticket_price_friendly  as number) ?? 10,
+        // Sub-facilities (migration 00044/00045)
+        pitch_level:            (infraRow.pitch_level            as number) ?? 1,
+        lighting_level:         (infraRow.lighting_level         as number) ?? 1,
+        seating_level:          (infraRow.seating_level          as number) ?? 1,
+        services_level:         (infraRow.services_level         as number) ?? 1,
       },
     };
   } catch (err: any) {
@@ -627,5 +659,87 @@ export async function saveTicketPricesAction(prices: {
   } catch (err: any) {
     console.error('[saveTicketPricesAction] error:', err);
     return { success: false, error: err.message ?? 'Failed to save ticket prices.' };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTION: upgradeStadiumFacilityAction
+//
+// Upgrades one of 4 stadium sub-facilities:
+//   pitch    → Reduces injury chance by pitch_level × 2% per match
+//   lighting → Unlocks evening matches (scheduling bonus)
+//   seating  → Ticket revenue × (1 + seating_level × 0.05)
+//   services → Passive +services_level × 30 FC per match
+//
+// Delegates to the upgrade_stadium_facility() Postgres RPC which acquires
+// row-level locks on both users and infrastructure — race-condition safe.
+//
+// Cost formula: FLOOR(1500 × currentLevel^1.8)
+//   lvl 1→2:  1,500 FC | lvl 3→4: 11,574 FC | lvl 5→6: 26,988 FC
+//   lvl 7→8: 53,825 FC | lvl 9→10: 91,450 FC
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function upgradeStadiumFacilityAction(
+  facilityType: StadiumFacilityType
+): Promise<{ success: boolean; new_level?: number; new_balance?: number; error?: string }> {
+  try {
+    const userId = await getAuthUserId();
+    if (!userId) return { success: false, error: 'Unauthorized: Valid Telegram session required.' };
+
+    const validTypes: StadiumFacilityType[] = ['pitch', 'lighting', 'seating', 'services'];
+    if (!validTypes.includes(facilityType)) {
+      return { success: false, error: `Invalid facility type: ${facilityType}` };
+    }
+
+    // Get team — ownership validated inside RPC too (double-check)
+    const { data: team, error: teamErr } = await supabaseAdmin
+      .from('teams')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    if (teamErr || !team) return { success: false, error: 'Team not found.' };
+
+    // Delegate to atomic RPC (handles locking, balance check, level update)
+    const { data: rpcResult, error: rpcErr } = await supabaseAdmin.rpc(
+      'upgrade_stadium_facility',
+      {
+        p_team_id:  team.id,
+        p_facility: facilityType,
+        p_user_id:  userId,
+      }
+    );
+
+    if (rpcErr) {
+      console.error('[upgradeStadiumFacilityAction] RPC error:', rpcErr);
+      const msg = rpcErr.message?.includes('Insufficient')
+        ? `Недостаточно FanCoins: ${rpcErr.message.split('Required:')[1] ?? ''}`
+        : rpcErr.message?.includes('maximum')
+        ? 'Facility уже на максимальном уровне (10).'
+        : rpcErr.message?.includes('Forbidden')
+        ? 'Доступ запрещён.'
+        : (rpcErr.message ?? 'Upgrade failed.');
+      return { success: false, error: msg };
+    }
+
+    const result = rpcResult as {
+      success: boolean;
+      facility: string;
+      new_level: number;
+      cost: number;
+      new_balance: number;
+    };
+
+    revalidatePath('/base');
+    revalidatePath('/');
+
+    return {
+      success: true,
+      new_level: result.new_level,
+      new_balance: result.new_balance,
+    };
+  } catch (err: any) {
+    console.error('[upgradeStadiumFacilityAction] error:', err);
+    return { success: false, error: err.message ?? 'Failed to upgrade facility.' };
   }
 }

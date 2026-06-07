@@ -23,6 +23,7 @@ import {
   getClubInfrastructureData,
   getTrainingCampData,
   upgradeBuildingAction,
+  upgradeStadiumFacilityAction,
   batchTrainPlayerAction,
   saveTicketPricesAction,
   type ClubInfrastructure,
@@ -31,6 +32,7 @@ import {
   type StatKey,
   type SpecCurrencyType,
   type BuildingType,
+  type StadiumFacilityType,
 } from '@/app/actions/trainingActions';
 import toast from 'react-hot-toast';
 import { LanguageContext } from '@/components/LanguageContext';
@@ -292,6 +294,19 @@ export default function BaseDashboard() {
     });
   };
 
+  const handleUpgradeFacility = (facilityType: StadiumFacilityType) => {
+    startTransition(async () => {
+      const res = await upgradeStadiumFacilityAction(facilityType);
+      if (res.success) {
+        toast.success(`Facility улучшена до уровня ${res.new_level}! 🏟️`, { icon: '⬆️' });
+        window.dispatchEvent(new Event('balanceUpdated'));
+        await fetchAll(selectedPlayer?.id);
+      } else {
+        toast.error(res.error ?? 'Ошибка улучшения facility');
+      }
+    });
+  };
+
   const handleBatchTrain = (increments: Record<StatKey, number>) => {
     if (!selectedPlayer) return;
     const playerId = selectedPlayer.id;
@@ -402,7 +417,12 @@ export default function BaseDashboard() {
             onUpgrade={handleUpgrade}
           />
         ) : (
-          <StadiumTab infra={infra} isPending={isPending} onUpgrade={handleUpgrade} />
+          <StadiumTab
+            infra={infra}
+            isPending={isPending}
+            onUpgrade={handleUpgrade}
+            onUpgradeFacility={handleUpgradeFacility}
+          />
         )}
       </div>
 
@@ -783,7 +803,7 @@ function TrainingTab({
                     />
                     {pendingInc > 0 && (
                       <div
-                        className={`h-full transition-all duration-500 bg-neon-green/80`}
+                        className="h-full transition-all duration-500 bg-neon-green/80"
                         style={{ width: `${(pendingInc / 99) * 100}%` }}
                       />
                     )}
@@ -803,7 +823,7 @@ function TrainingTab({
                         <button
                           onClick={() => handleAdjust(stat.key, -1)}
                           disabled={isPending}
-                          className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold transition-all bg-red-900/40 text-red-400 border border-red-800/40 hover:bg-red-800/60 active:scale-90`}
+                          className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold transition-all bg-red-900/40 text-red-400 border border-red-800/40 hover:bg-red-800/60 active:scale-90"
                         >
                           -
                         </button>
@@ -841,8 +861,8 @@ function TrainingTab({
               className={`
                 mt-4 w-full py-3 rounded-xl font-black uppercase tracking-widest text-xs
                 transition-all duration-200
-                ${isPending 
-                  ? 'bg-gray-800 text-gray-500 cursor-wait' 
+                ${isPending
+                  ? 'bg-gray-800 text-gray-500 cursor-wait'
                   : 'bg-neon-cyan text-black hover:bg-neon-cyan/80 shadow-[0_0_15px_rgba(0,255,255,0.4)]'
                 }
               `}
@@ -858,31 +878,107 @@ function TrainingTab({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// StadiumTab — Stadium sub-facilities + ticket pricing (fully wired to Supabase)
-// Prices hydrated from ClubInfrastructure; saved via saveTicketPricesAction.
-// Sub-facility upgrade UI is a placeholder (V4 roadmap).
+// StadiumTab — Stadium sub-facilities + ticket pricing (fully wired)
+// Sub-facility upgrade cost formula: FLOOR(1500 × level^1.8)
 // ─────────────────────────────────────────────────────────────────────────────
+
+const MAX_FACILITY_LEVEL = 10;
+
+interface FacilityDef {
+  key: StadiumFacilityType;
+  label: string;
+  emoji: string;
+  description: string;
+  effectLabel: (level: number) => string;
+  colorText: string;
+  colorBg: string;
+  colorBorder: string;
+  colorBar: string;
+}
+
+const FACILITY_DEFS: FacilityDef[] = [
+  {
+    key: 'pitch',
+    label: 'Pitch Quality',
+    emoji: '🟩',
+    description: 'Снижает шанс травмы игроков на матче',
+    effectLabel: (lvl) => `−${lvl * 2}% шанс травмы`,
+    colorText:   'text-emerald-400',
+    colorBg:     'bg-emerald-900/20',
+    colorBorder: 'border-emerald-700/40',
+    colorBar:    'bg-emerald-500',
+  },
+  {
+    key: 'lighting',
+    label: 'Lighting System',
+    emoji: '💡',
+    description: 'Разблокирует вечерние матчи для бонуса посещаемости',
+    effectLabel: (lvl) => lvl >= 3 ? '✅ Вечерние матчи открыты' : `Нужен LVL 3 (сейчас ${lvl})`,
+    colorText:   'text-yellow-400',
+    colorBg:     'bg-yellow-900/20',
+    colorBorder: 'border-yellow-700/40',
+    colorBar:    'bg-yellow-400',
+  },
+  {
+    key: 'seating',
+    label: 'Seating & VIP',
+    emoji: '💺',
+    description: 'Мультипликатор дохода с билетов каждый матч',
+    effectLabel: (lvl) => `×${(1 + lvl * 0.05).toFixed(2)} ticket revenue`,
+    colorText:   'text-violet-400',
+    colorBg:     'bg-violet-900/20',
+    colorBorder: 'border-violet-700/40',
+    colorBar:    'bg-violet-500',
+  },
+  {
+    key: 'services',
+    label: 'Fan Services',
+    emoji: '🍔',
+    description: 'Пассивный доход с мерча и фастфуда per match',
+    effectLabel: (lvl) => `+${lvl * 30} FC / матч`,
+    colorText:   'text-orange-400',
+    colorBg:     'bg-orange-900/20',
+    colorBorder: 'border-orange-700/40',
+    colorBar:    'bg-orange-400',
+  },
+];
+
+function facilityLevel(infra: ClubInfrastructure | null, key: StadiumFacilityType): number {
+  if (!infra) return 1;
+  switch (key) {
+    case 'pitch':    return infra.pitch_level    ?? 1;
+    case 'lighting': return infra.lighting_level ?? 1;
+    case 'seating':  return infra.seating_level  ?? 1;
+    case 'services': return infra.services_level ?? 1;
+  }
+}
+
+function facilityCost(currentLevel: number): number {
+  return Math.floor(1500 * Math.pow(currentLevel, 1.8));
+}
 
 function StadiumTab({
   infra,
   isPending,
   onUpgrade,
+  onUpgradeFacility,
 }: {
   infra: ClubInfrastructure | null;
   isPending: boolean;
   onUpgrade: (type: BuildingType) => void;
+  onUpgradeFacility: (type: StadiumFacilityType) => void;
 }) {
   const stadiumLevel = infra?.stadium_level ?? 1;
   const capacity     = stadiumLevel * 5000;
+  const fancoins     = infra?.fancoins ?? 0;
+  const stadiumCost  = Math.floor(3000 * Math.pow(stadiumLevel, 1.8));
 
-  // ── Ticket price local state — hydrated from DB infra row ──────────────────
   const [priceLeague,    setPriceLeague]    = useState(infra?.ticket_price_league   ?? 20);
   const [priceIntcup,    setPriceIntcup]    = useState(infra?.ticket_price_intcup   ?? 30);
   const [priceNatcup,    setPriceNatcup]    = useState(infra?.ticket_price_natcup   ?? 25);
   const [priceFriendly,  setPriceFriendly]  = useState(infra?.ticket_price_friendly ?? 10);
   const [isSavingPrices, setIsSavingPrices] = useState(false);
 
-  // Re-sync state when infra prop loads (first render may have null)
   useEffect(() => {
     if (!infra) return;
     setPriceLeague(infra.ticket_price_league   ?? 20);
@@ -897,16 +993,11 @@ function StadiumTab({
     setIsSavingPrices(true);
     try {
       const res = await saveTicketPricesAction({
-        league:   priceLeague,
-        intcup:   priceIntcup,
-        natcup:   priceNatcup,
-        friendly: priceFriendly,
+        league: priceLeague, intcup: priceIntcup,
+        natcup: priceNatcup, friendly: priceFriendly,
       });
-      if (res.success) {
-        toast.success('Ticket prices saved ✅');
-      } else {
-        toast.error(res.error ?? 'Failed to save prices');
-      }
+      if (res.success) toast.success('Ticket prices saved ✅');
+      else toast.error(res.error ?? 'Failed to save prices');
     } finally {
       setIsSavingPrices(false);
     }
@@ -919,69 +1010,139 @@ function StadiumTab({
     { label: 'Friendly', accentColor: 'text-gray-400',    val: priceFriendly, set: setPriceFriendly },
   ];
 
+  const seatingLevel      = infra?.seating_level ?? 1;
+  const previewAttendance = Math.floor(capacity * 0.75);
+  const previewBase       = Math.floor((previewAttendance * priceLeague) / 100);
+  const previewFinal      = Math.floor(previewBase * (1 + seatingLevel * 0.05));
+
   return (
     <div className="p-3 flex flex-col gap-3">
-      {/* Stadium overview card */}
-      <div className="glass-card-violet relative overflow-hidden p-4">
+
+      {/* ── Stadium main upgrade card ─────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-900/15 via-black/60 to-purple-900/10 p-4 shadow-[0_0_25px_rgba(139,92,246,0.08)]">
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/50 to-transparent" />
-        <div className="flex items-center justify-between mb-3">
+        <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full blur-3xl bg-violet-500/5 pointer-events-none" />
+        <div className="relative z-10 flex items-center justify-between mb-3">
           <div>
             <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold mb-0.5">Stadium</div>
-            <div className="text-sm font-black font-orbitron text-white uppercase">
-              Arena Level {stadiumLevel}
-            </div>
+            <div className="text-sm font-black font-orbitron text-white uppercase">Arena Level {stadiumLevel}</div>
+            <div className="text-[9px] text-violet-400 font-mono mt-0.5">Capacity: {capacity.toLocaleString()} fans</div>
           </div>
           <div className="text-right">
-            <div className="text-[8px] text-gray-600 uppercase tracking-widest mb-0.5">Capacity</div>
-            <div className="text-lg font-black font-orbitron text-violet-300">
-              {capacity.toLocaleString()}
-            </div>
+            <div className="text-[8px] text-gray-600 uppercase tracking-widest mb-0.5">Revenue preview</div>
+            <div className="text-lg font-black font-orbitron text-violet-300">{previewFinal.toLocaleString()}</div>
+            <div className="text-[8px] text-gray-600 font-mono">FC / match (75% fill)</div>
           </div>
         </div>
-
-        {/* Upgrade stadium button */}
+        <div className="relative z-10 flex gap-0.5 mb-3">
+          {Array.from({ length: MAX_BUILDING_LEVEL }).map((_, i) => (
+            <div key={i} className={`flex-1 h-1.5 rounded-full transition-all duration-500 ${
+              i < stadiumLevel
+                ? stadiumLevel >= MAX_BUILDING_LEVEL
+                  ? 'bg-yellow-400 shadow-[0_0_4px_rgba(234,179,8,0.6)]'
+                  : 'bg-violet-500 shadow-[0_0_4px_rgba(139,92,246,0.6)]'
+                : 'bg-white/5'
+            }`} style={{ transitionDelay: `${i * 30}ms` }} />
+          ))}
+        </div>
         <button
           onClick={() => onUpgrade('stadium')}
-          disabled={isPending || !infra}
-          className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all
-            ${isPending
-              ? 'bg-gray-800 text-gray-500 cursor-wait'
-              : 'bg-violet-500/20 border border-violet-500/40 text-violet-300 hover:bg-violet-500/30 active:scale-95'
-            }`}
+          disabled={isPending || !infra || stadiumLevel >= MAX_BUILDING_LEVEL}
+          className={`relative z-10 w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all ${
+            stadiumLevel >= MAX_BUILDING_LEVEL
+              ? 'bg-yellow-900/20 text-yellow-600 border border-yellow-700/30 cursor-default'
+              : isPending
+              ? 'bg-gray-800 text-gray-500 cursor-wait border border-transparent'
+              : fancoins >= stadiumCost
+              ? 'bg-violet-500/20 border border-violet-500/40 text-violet-300 hover:bg-violet-500/30 active:scale-95 shadow-[0_0_12px_rgba(139,92,246,0.2)]'
+              : 'bg-gray-800/40 border border-gray-700/30 text-gray-600 cursor-not-allowed'
+          }`}
         >
-          {isPending ? '...' : `Upgrade Stadium → ${Math.floor(800 * Math.pow(stadiumLevel, 1.8)).toLocaleString()} FC`}
+          {stadiumLevel >= MAX_BUILDING_LEVEL
+            ? '★ MAX LEVEL'
+            : isPending ? '...'
+            : `Upgrade Arena → ${stadiumCost.toLocaleString()} FC`}
         </button>
+        {fancoins < stadiumCost && stadiumLevel < MAX_BUILDING_LEVEL && (
+          <p className="relative z-10 text-[8px] text-gray-700 font-mono mt-1.5 text-center">
+            Нужно ещё {(stadiumCost - fancoins).toLocaleString()} FC
+          </p>
+        )}
       </div>
 
-      {/* Sub-facility cards (upgrades coming in V4) */}
+      {/* ── Sub-facility cards ─────────────────────────────────────────────── */}
       <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold px-1">Facilities</div>
 
-      {[
-        { label: 'Pitch Quality',   emoji: '🟩', desc: 'Affects player performance'       },
-        { label: 'Lighting System', emoji: '💡', desc: 'Enables evening match scheduling'  },
-        { label: 'Seating & VIP',   emoji: '💺', desc: 'Increases ticket revenue'          },
-        { label: 'Fan Services',    emoji: '🍔', desc: 'Boosts atmosphere & merch sales'  },
-      ].map(({ label, emoji, desc }) => (
-        <div key={label} className="glass-card p-3 flex items-center gap-3">
-          <span className="text-xl flex-shrink-0">{emoji}</span>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-black text-white uppercase tracking-wide">{label}</div>
-            <div className="text-[8px] text-gray-600">{desc}</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[8px] text-gray-600 uppercase tracking-wider">LVL 1</span>
-            <button className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10
-                               text-gray-600 text-[8px] font-bold uppercase tracking-wider
-                               hover:border-cyan-500/30 hover:text-cyan-400 transition-all">
-              ↑ Soon
-            </button>
-          </div>
-        </div>
-      ))}
+      {FACILITY_DEFS.map(f => {
+        const level     = facilityLevel(infra, f.key);
+        const cost      = facilityCost(level);
+        const canAfford = fancoins >= cost;
+        const isMaxed   = level >= MAX_FACILITY_LEVEL;
 
-      {/* Ticket Pricing — fully wired, prices stored in infrastructure table */}
+        return (
+          <div
+            key={f.key}
+            className={`relative overflow-hidden rounded-2xl border bg-black/50 transition-all duration-300 ${
+              isMaxed ? 'border-yellow-500/40 shadow-[0_0_16px_rgba(234,179,8,0.1)]' : f.colorBorder
+            }`}
+          >
+            <div className={`absolute -top-8 -right-8 w-28 h-28 rounded-full blur-2xl pointer-events-none ${f.colorBg} opacity-60`} />
+            <div className="relative z-10 flex items-center gap-3 p-3">
+              <div className={`w-11 h-11 flex-shrink-0 rounded-xl flex items-center justify-center border ${f.colorBg} ${f.colorBorder}`}>
+                <span className="text-xl">{f.emoji}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-xs font-black font-orbitron text-white uppercase tracking-wide">{f.label}</span>
+                  <span className={`text-[8px] font-black font-mono px-1.5 py-0.5 rounded-md border ${
+                    isMaxed ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40' : `${f.colorBg} ${f.colorText} ${f.colorBorder}`
+                  }`}>{isMaxed ? '★ MAX' : `LVL ${level}`}</span>
+                </div>
+                <p className="text-[8px] text-gray-600 leading-snug">{f.description}</p>
+                <p className={`text-[9px] font-bold font-mono mt-0.5 ${f.colorText}`}>{f.effectLabel(level)}</p>
+              </div>
+              <button
+                id={`upgrade-facility-${f.key}`}
+                onClick={() => onUpgradeFacility(f.key)}
+                disabled={isPending || !canAfford || isMaxed}
+                className={`flex-shrink-0 flex flex-col items-center justify-center px-3 py-2 rounded-xl text-[8px] font-black font-orbitron uppercase tracking-wider transition-all duration-200 min-w-[64px] border ${
+                  isPending ? 'bg-gray-800/60 text-gray-500 border-gray-700/30 cursor-wait'
+                    : isMaxed ? 'bg-yellow-900/20 text-yellow-600 border-yellow-700/30 cursor-default'
+                    : !canAfford ? 'bg-gray-800/40 text-gray-600 border-gray-700/30 cursor-not-allowed'
+                    : `${f.colorBg} ${f.colorText} ${f.colorBorder} hover:brightness-125 active:scale-95`
+                }`}
+              >
+                {isPending ? <span className="animate-pulse">...</span>
+                  : isMaxed ? <span>★</span>
+                  : <><span>UP</span><span className="text-[7px] font-mono opacity-70 mt-0.5">{cost.toLocaleString()}</span></>
+                }
+              </button>
+            </div>
+            <div className="relative z-10 flex gap-0.5 px-3 pb-3">
+              {Array.from({ length: MAX_FACILITY_LEVEL }).map((_, i) => (
+                <div key={i} className={`flex-1 h-1.5 rounded-full transition-all duration-500 ${
+                  i < level ? isMaxed ? 'bg-yellow-400 shadow-[0_0_4px_rgba(234,179,8,0.5)]' : f.colorBar : 'bg-white/5'
+                }`} style={{ transitionDelay: `${i * 25}ms` }} />
+              ))}
+            </div>
+            {!canAfford && !isMaxed && !isPending && (
+              <p className="relative z-10 px-3 pb-2 -mt-1.5 text-[8px] text-gray-700 font-mono">
+                Нужно ещё {(cost - fancoins).toLocaleString()} FC
+              </p>
+            )}
+          </div>
+        );
+      })}
+
+      {/* ── Ticket Pricing ─────────────────────────────────────────────────── */}
       <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold px-1 mt-1">Ticket Pricing</div>
-      <div className="glass-card p-3 flex flex-col gap-3">
+      <div className="relative overflow-hidden rounded-2xl border border-cyan-700/30 bg-black/50 p-3 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <p className="text-[8px] text-gray-600 font-mono">Доход = (посетители × цена) / 100 × seating bonus</p>
+          <span className={`text-[8px] font-bold font-mono px-2 py-0.5 rounded-full border ${
+            previewFinal > 500 ? 'text-cyan-400 border-cyan-700/40 bg-cyan-900/20' : 'text-gray-600 border-gray-700/40'
+          }`}>~{previewFinal.toLocaleString()} FC</span>
+        </div>
         <div className="grid grid-cols-2 gap-2.5">
           {TICKET_ROWS.map(({ label, accentColor, val, set }) => (
             <div key={label} className="flex flex-col gap-1">
@@ -990,28 +1151,22 @@ function StadiumTab({
                 type="number"
                 value={val}
                 onChange={e => set(Math.max(0, Math.min(999, parseInt(e.target.value, 10) || 0)))}
-                min={0}
-                max={999}
-                className="w-full bg-black/50 border border-white/10 text-white px-2 py-1.5
-                           rounded-lg text-[10px] font-mono font-bold
-                           focus:border-cyan-500/40 focus:outline-none
-                           focus:shadow-[0_0_8px_rgba(0,240,255,0.12)]
-                           [appearance:textfield] transition-all"
+                min={0} max={999}
+                className="w-full bg-black/50 border border-white/10 text-white px-2 py-1.5 rounded-lg text-[10px] font-mono font-bold focus:border-cyan-500/40 focus:outline-none [appearance:textfield] transition-all"
                 placeholder="FC"
               />
             </div>
           ))}
         </div>
-
         <button
           id="stadium-save-prices-btn"
           onClick={handleSavePrices}
           disabled={isSavingPrices || isPending}
-          className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all
-            ${isSavingPrices || isPending
+          className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all ${
+            isSavingPrices || isPending
               ? 'bg-gray-800/50 text-gray-500 cursor-wait'
               : 'bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/25 active:scale-95 shadow-[0_0_12px_rgba(0,240,255,0.08)]'
-            }`}
+          }`}
         >
           {isSavingPrices ? 'Saving...' : '💾 Save Ticket Prices'}
         </button>

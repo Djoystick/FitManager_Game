@@ -1,16 +1,17 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { X, Activity, Zap, User, Crosshair, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Activity, TrendingUp, User, Crosshair, Zap, BarChart2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { bulkTrainPlayer } from '@/app/actions/playerActions';
 import { healPlayer } from '@/app/actions/baseActions';
 import { renamePlayerAction, retirePlayerToAcademy, quickSellPlayer } from '@/app/actions/teamActions';
-import { InfoPopover } from '@/components/ui/InfoPopover';
-import Link from 'next/link';
 import { listPlayerAction } from '@/app/actions/marketActions';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, PolarRadiusAxis } from 'recharts';
+import {
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, PolarRadiusAxis,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+} from 'recharts';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -24,6 +25,11 @@ interface PlayerStats {
   physical:  number;
 }
 
+interface ProgressionEntry {
+  ovr:         number;
+  recorded_at: string;
+}
+
 interface Player {
   id:                   string;
   name:                 string;
@@ -34,57 +40,118 @@ interface Player {
   stamina:              number;
   stats:                PlayerStats;
   traits?:              string[];
+  perks?:               string[];
   is_injured?:          boolean;
   injury_matches_left?: number;
   lineup_status:        string;
   is_for_sale?:         boolean;
   is_retired?:          boolean;
   seasons_played?:      number;
+  progression_history?: ProgressionEntry[];
 }
 
 interface Props {
-  player:          Player;
-  userId:          string;
-  onClose:         () => void;
-  onTrainSuccess:  (updatedPlayer: Player, newBalance: number) => void;
+  player:         Player;
+  userId:         string;
+  onClose:        () => void;
+  onTrainSuccess: (updatedPlayer: Player, newBalance: number) => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helpers
+// Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Exponential building cost mirror (for display only) */
-function buildingUpgradeCost(level: number) {
-  return Math.floor(500 * Math.pow(level, 1.5));
+type TabId = 'general' | 'progression' | 'details';
+
+const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
+  { id: 'general',     label: 'GENERAL',     icon: <BarChart2 size={11} /> },
+  { id: 'progression', label: 'PROGRESS',    icon: <TrendingUp size={11} /> },
+  { id: 'details',     label: 'DETAILS',     icon: <User size={11} /> },
+];
+
+const STAT_CONFIG: { key: keyof PlayerStats; label: string; color: string; bar: string }[] = [
+  { key: 'pace',      label: 'PAC', color: 'text-cyan-400',    bar: 'bg-cyan-400' },
+  { key: 'shooting',  label: 'SHO', color: 'text-pink-400',    bar: 'bg-pink-400' },
+  { key: 'passing',   label: 'PAS', color: 'text-yellow-400',  bar: 'bg-yellow-400' },
+  { key: 'defending', label: 'DEF', color: 'text-blue-400',    bar: 'bg-blue-400' },
+  { key: 'physical',  label: 'PHY', color: 'text-emerald-400', bar: 'bg-emerald-400' },
+];
+
+/** Role weights: position → which stats to emphasize */
+const ROLE_WEIGHTS: Record<string, Partial<Record<keyof PlayerStats, number>>> = {
+  GK:  { physical: 0.35, defending: 0.35, pace: 0.15, passing: 0.15 },
+  CB:  { defending: 0.40, physical: 0.30, pace: 0.20, passing: 0.10 },
+  LB:  { defending: 0.30, pace: 0.30, physical: 0.20, passing: 0.20 },
+  RB:  { defending: 0.30, pace: 0.30, physical: 0.20, passing: 0.20 },
+  CDM: { defending: 0.30, passing: 0.30, physical: 0.25, pace: 0.15 },
+  CM:  { passing: 0.35,   physical: 0.20, defending: 0.20, pace: 0.15, shooting: 0.10 },
+  CAM: { passing: 0.35,   shooting: 0.30, pace: 0.20, physical: 0.15 },
+  LW:  { pace: 0.35,      shooting: 0.25, passing: 0.25, physical: 0.15 },
+  RW:  { pace: 0.35,      shooting: 0.25, passing: 0.25, physical: 0.15 },
+  ST:  { shooting: 0.40,  pace: 0.25, physical: 0.20, passing: 0.15 },
+  CF:  { shooting: 0.35,  passing: 0.25, pace: 0.25, physical: 0.15 },
+};
+
+function calcRoleOvr(stats: PlayerStats, position: string): number {
+  const weights = ROLE_WEIGHTS[position] ?? {};
+  const defaultW = 0.2;
+  let sum = 0, totalW = 0;
+  for (const cfg of STAT_CONFIG) {
+    const w = (weights[cfg.key] ?? defaultW);
+    sum    += stats[cfg.key] * w;
+    totalW += w;
+  }
+  return Math.round(sum / totalW);
 }
 
+function ovrGrade(ovr: number): { label: string; color: string } {
+  if (ovr >= 90) return { label: 'LEGEND', color: 'text-yellow-400' };
+  if (ovr >= 80) return { label: 'ELITE',  color: 'text-violet-400' };
+  if (ovr >= 70) return { label: 'PRO',    color: 'text-cyan-400'   };
+  if (ovr >= 60) return { label: 'SOLID',  color: 'text-emerald-400'};
+  return             { label: 'ROOKIE', color: 'text-gray-400'    };
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Component
+// Custom Tooltip for Line Chart
+// ─────────────────────────────────────────────────────────────────────────────
+
+function OvrTooltip({ active, payload }: { active?: boolean; payload?: { value: number }[] }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-black/90 border border-cyan-500/30 rounded-lg px-2 py-1 text-[10px] font-mono text-cyan-400">
+      OVR {payload[0].value}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main Component
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: Props) {
-  const [fancoins,      setFancoins]      = useState<number>(0);
-  const [sweatPoints,   setSweatPoints]   = useState<number>(0);
-  const [medicalLevel,  setMedicalLevel]  = useState<number>(1);
-  const [stadiumLevel,  setStadiumLevel]  = useState<number>(1);
-  const [isLoadingData, setIsLoadingData] = useState(true);
-  const [isHealing,     setIsHealing]     = useState(false);
-  const [errorMsg,      setErrorMsg]      = useState<string | null>(null);
+  const [activeTab,      setActiveTab]      = useState<TabId>('general');
+  const [fancoins,       setFancoins]       = useState(0);
+  const [sweatPoints,    setSweatPoints]    = useState(0);
+  const [medicalLevel,   setMedicalLevel]   = useState(1);
+  const [stadiumLevel,   setStadiumLevel]   = useState(1);
+  const [isLoadingData,  setIsLoadingData]  = useState(true);
+  const [isHealing,      setIsHealing]      = useState(false);
+  const [errorMsg,       setErrorMsg]       = useState<string | null>(null);
 
-  const [sellMode,      setSellMode]      = useState(false);
-  const [sellPrice,     setSellPrice]     = useState('');
-  const [isPendingSell, startTransition]  = React.useTransition();
+  const [sellMode,         setSellMode]         = useState(false);
+  const [sellPrice,        setSellPrice]        = useState('');
+  const [isPendingSell,    startTransition]     = React.useTransition();
 
-  const [renameMode,      setRenameMode]      = useState(false);
-  const [newName,         setNewName]         = useState(player.name);
-  const [isPendingRename, startTransitionRename] = React.useTransition();
+  const [renameMode,           setRenameMode]           = useState(false);
+  const [newName,              setNewName]              = useState(player.name);
+  const [isPendingRename,      startTransitionRename]   = React.useTransition();
+  const [isPendingRetire,      startTransitionRetire]   = React.useTransition();
+  const [isPendingQuickSell,   startTransitionQuickSell] = React.useTransition();
 
-  const [isPendingRetire, startTransitionRetire] = React.useTransition();
-  const [isPendingQuickSell, startTransitionQuickSell] = React.useTransition();
+  const stats = player.stats ?? { pace: 50, shooting: 50, passing: 50, defending: 50, physical: 50 };
 
-  // ── Load balances + medical level ─────────────────────────────────────────
-
+  // ── Data Fetch ─────────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -92,521 +159,613 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
           fetch(`/api/infrastructure?userId=${userId}`),
           fetch(`/api/user/me?userId=${userId}`),
         ]);
-
         if (infraRes.ok) {
-          const infraData = await infraRes.json();
-          setMedicalLevel(infraData.infrastructure?.medical_center_level ?? 1);
-          setStadiumLevel(infraData.infrastructure?.stadium_level ?? 1);
+          const d = await infraRes.json();
+          setMedicalLevel(d.infrastructure?.medical_center_level ?? 1);
+          setStadiumLevel(d.infrastructure?.stadium_level ?? 1);
         }
         if (userRes.ok) {
-          const userData = await userRes.json();
-          setFancoins(userData.user?.balance_fancoins ?? 0);
-          setSweatPoints(userData.user?.sweat_points ?? 0);
+          const d = await userRes.json();
+          setFancoins(d.user?.balance_fancoins ?? 0);
+          setSweatPoints(d.user?.sweat_points ?? 0);
         }
-      } catch (err) {
-        console.error('[PlayerProfileModal] Failed to fetch data:', err);
-      } finally {
-        setIsLoadingData(false);
-      }
+      } catch { /* silent */ }
+      finally { setIsLoadingData(false); }
     };
     fetchData();
   }, [userId]);
 
-  // ── Computed ──────────────────────────────────────────────────────────────
+  // ── Computed ───────────────────────────────────────────────────────────────
+  const healCost      = Math.max(0, 100 - (player.stamina ?? 100));
+  const canAffordHeal = sweatPoints >= healCost;
+  const roleOvr       = calcRoleOvr(stats, player.position);
+  const grade         = ovrGrade(player.ovr);
 
-  const stats = player.stats || { pace: 50, shooting: 50, passing: 50, defending: 50, physical: 50 };
+  // Progression chart data
+  const chartData = (player.progression_history ?? []).map((e, i) => ({
+    i,
+    ovr:   e.ovr,
+    label: e.recorded_at.slice(5, 10), // "MM-DD"
+  }));
 
-  const cost = Math.max(0, 100 - (player.stamina ?? 100));
-  const canAffordHeal = sweatPoints >= cost;
+  // Fill flat line if no history yet
+  const chartPoints = chartData.length >= 2
+    ? chartData
+    : [{ i: 0, ovr: player.ovr, label: 'Now' }];
 
-  // ── Heal handler ─────────────────────────────────────────────────────────
-
+  // ── Handlers ───────────────────────────────────────────────────────────────
   const handleHeal = async () => {
     if (!canAffordHeal || isHealing) return;
-    setIsHealing(true);
-    setErrorMsg(null);
-
+    setIsHealing(true); setErrorMsg(null);
     try {
       const res = await healPlayer(player.id);
       if (res.success) {
-        const newBal = res.new_balance ?? sweatPoints - cost;
+        const newBal = res.new_balance ?? sweatPoints - healCost;
         setSweatPoints(newBal);
         window.dispatchEvent(new Event('balanceUpdated'));
-        const updatedPlayer = { ...player, stamina: 100, is_injured: false, injury_matches_left: 0 };
-        onTrainSuccess(updatedPlayer as Player, newBal);
-      } else {
-        setErrorMsg(res.error ?? 'Healing failed');
-      }
-    } catch {
-      setErrorMsg('Network error occurred.');
-    } finally {
-      setIsHealing(false);
-    }
+        onTrainSuccess({ ...player, stamina: 100, is_injured: false, injury_matches_left: 0 } as Player, newBal);
+      } else { setErrorMsg(res.error ?? 'Healing failed'); }
+    } catch { setErrorMsg('Network error.'); }
+    finally { setIsHealing(false); }
   };
 
-  // ── Sell handler ─────────────────────────────────────────────────────────
   const handleSell = () => {
     const price = parseFloat(sellPrice);
-    if (isNaN(price) || price <= 0) {
-      toast.error('Введите корректную цену в TON');
-      return;
-    }
+    if (isNaN(price) || price <= 0) { toast.error('Введите корректную цену в TON'); return; }
     const fee = stadiumLevel * 250;
-    if (fancoins < fee) {
-      toast.error(`Недостаточно FanCoins для налога. Нужно: ${fee} FC`);
-      return;
-    }
+    if (fancoins < fee) { toast.error(`Нужно ${fee} FC для налога`); return; }
     if (player.lineup_status === 'starting' || player.lineup_status === 'bench') {
-      toast.error('Игрок в составе. Сначала переведите его в резерв.');
-      return;
+      toast.error('Сначала переведите игрока в резерв'); return;
     }
-
     startTransition(async () => {
       const res = await listPlayerAction(player.id, price);
-      if (res.success) {
-        toast.success(`Игрок выставлен на рынок за ${price} TON`);
-        window.dispatchEvent(new Event('balanceUpdated'));
-        onClose(); // Close modal on success
-      } else {
-        toast.error(res.error || 'Ошибка при выставлении на рынок');
-      }
+      if (res.success) { toast.success(`Выставлен за ${price} TON`); window.dispatchEvent(new Event('balanceUpdated')); onClose(); }
+      else toast.error(res.error || 'Ошибка');
     });
   };
 
-  // ── Rename handler ───────────────────────────────────────────────────────
   const handleRename = () => {
     const trimmed = newName.trim();
-    if (!trimmed || trimmed.length < 3) {
-      toast.error('Имя должно содержать минимум 3 символа');
-      return;
-    }
-    if (fancoins < 1000) {
-      toast.error('Недостаточно FanCoins для переименования (Нужно: 1000 FC)');
-      return;
-    }
-
+    if (!trimmed || trimmed.length < 3) { toast.error('Минимум 3 символа'); return; }
+    if (fancoins < 1000) { toast.error('Нужно 1000 FC'); return; }
     startTransitionRename(async () => {
       const res = await renamePlayerAction(player.id, trimmed);
       if (res.success) {
-        toast.success(`Игрок успешно переименован в ${trimmed}!`);
+        toast.success(`Переименован в ${trimmed}!`);
         window.dispatchEvent(new Event('balanceUpdated'));
-        setFancoins(prev => prev - 1000);
-        player.name = trimmed; // optimistic update
+        setFancoins(p => p - 1000);
+        player.name = trimmed;
         setRenameMode(false);
-      } else {
-        toast.error(res.error || 'Ошибка при переименовании');
-      }
+      } else toast.error(res.error || 'Ошибка');
     });
   };
 
-  // ── Retire handler ───────────────────────────────────────────────────────
   const handleRetire = () => {
     startTransitionRetire(async () => {
       const res = await retirePlayerToAcademy(player.id);
-      if (res.success) {
-        toast.success(`Перк тренера успешно применен к Академии!`);
-        onClose(); // Close modal on success (player is burnt)
-      } else {
-        toast.error(res.error || 'Ошибка при применении перка');
-      }
+      if (res.success) { toast.success('Тренер применён к Академии!'); onClose(); }
+      else toast.error(res.error || 'Ошибка');
     });
   };
 
-  // ── Quick Sell handler ───────────────────────────────────────────────────
   const handleQuickSell = () => {
-    if (confirm(`Вы уверены, что хотите продать ${player.name} системе? Это действие нельзя отменить.`)) {
-      startTransitionQuickSell(async () => {
-        const res = await quickSellPlayer(player.id);
-        if (res.success) {
-          toast.success(`Игрок успешно продан системе за ${res.payout} FC!`);
-          onClose();
-        } else {
-          toast.error(res.error || 'Ошибка при продаже игрока');
-        }
-      });
-    }
-  };
-
-  // ── Stat display config ───────────────────────────────────────────────────
-
-  const statLabels: Record<keyof PlayerStats, string> = {
-    pace:      'PAC',
-    shooting:  'SHO',
-    passing:   'PAS',
-    defending: 'DEF',
-    physical:  'PHY',
-  };
-
-  const statColors: Record<keyof PlayerStats, string> = {
-    pace:      'bg-neon-cyan',
-    shooting:  'bg-neon-pink',
-    passing:   'bg-yellow-400',
-    defending: 'bg-blue-500',
-    physical:  'bg-green-500',
+    if (!confirm(`Продать ${player.name} системе? Это нельзя отменить.`)) return;
+    startTransitionQuickSell(async () => {
+      const res = await quickSellPlayer(player.id);
+      if (res.success) { toast.success(`Продан за ${res.payout} FC!`); onClose(); }
+      else toast.error(res.error || 'Ошибка');
+    });
   };
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────────────────────────────────
-
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        className="w-full max-w-sm bg-gray-950 border border-neon-cyan/50 shadow-[0_0_30px_rgba(0,255,255,0.15)] rounded-2xl overflow-hidden relative flex flex-col max-h-[90vh]"
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+        className="w-full max-w-sm bg-[#0a0e1a] border border-white/8 shadow-[0_0_40px_rgba(0,240,255,0.1)] rounded-t-3xl sm:rounded-3xl overflow-hidden relative flex flex-col max-h-[92vh]"
       >
-        {/* ── Header ─────────────────────────────────────────────────────── */}
-        <div className="p-5 border-b border-gray-800 flex justify-between items-start bg-gradient-to-b from-neon-cyan/10 to-transparent flex-shrink-0">
-          <div className="flex gap-4 items-center">
-            <div className="relative w-16 h-16 rounded-xl bg-black/60 border border-neon-cyan/40 shadow-[inset_0_0_15px_rgba(0,255,255,0.2)] flex items-center justify-center overflow-hidden">
-              <img 
-                src={`https://api.dicebear.com/9.x/micah/svg?seed=${player.id}&backgroundColor=transparent`}
-                alt="Avatar"
-                className="w-full h-full object-cover opacity-90 mix-blend-screen"
-              />
-              <div className="absolute bottom-0 left-0 right-0 bg-black/70 flex justify-center items-center py-0.5 border-t border-neon-cyan/30">
-                <span className="text-[10px] font-black text-white">{player.ovr}</span>
-                <span className="text-[8px] font-bold text-neon-cyan ml-1">{player.position}</span>
+        {/* ── Hero Header ─────────────────────────────────────────────────── */}
+        <div className="relative flex-shrink-0 bg-gradient-to-br from-[#0d1428] via-[#0a0e1a] to-[#0d1020] px-5 pt-5 pb-4 border-b border-white/6">
+          {/* Ambient glow */}
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-24 bg-cyan-500/10 blur-3xl pointer-events-none" />
+
+          <div className="relative flex gap-4 items-start">
+            {/* Avatar + OVR */}
+            <div className="relative flex-shrink-0">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-900/40 to-violet-900/40 border border-cyan-500/20 flex items-center justify-center overflow-hidden shadow-[0_0_20px_rgba(0,240,255,0.15)]">
+                <img
+                  src={`https://api.dicebear.com/9.x/micah/svg?seed=${player.id}&backgroundColor=transparent`}
+                  alt="Avatar"
+                  className="w-full h-full object-cover opacity-90 mix-blend-screen"
+                />
+              </div>
+              {/* OVR badge */}
+              <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-xl bg-black border border-cyan-500/40 flex flex-col items-center justify-center shadow-[0_0_8px_rgba(0,240,255,0.3)]">
+                <span className="text-[10px] font-black font-orbitron text-white leading-none">{player.ovr}</span>
+                <span className="text-[6px] text-cyan-400 font-bold uppercase leading-none">{player.position}</span>
               </div>
             </div>
-            <div>
-              <h2 className="text-lg font-black text-white uppercase tracking-wider flex items-center gap-2">
-                {player.name}
-                {!player.is_retired && !player.is_for_sale && (
-                  <button onClick={() => setRenameMode(true)} className="p-1 hover:bg-gray-800 rounded-md transition-colors text-gray-500 hover:text-neon-cyan" title="Rename Player (1000 FC)">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                  </button>
-                )}
-                {player.is_injured && (
-                  <span className="text-[10px] bg-red-900/40 text-red-400 px-1 py-0.5 rounded border border-red-500/50 animate-pulse">
-                    🚑 {player.injury_matches_left}M
-                  </span>
-                )}
-              </h2>
-              <div className="flex flex-col gap-1 mt-1">
-                <div className="flex items-center gap-2 text-xs font-bold font-orbitron">
-                  <span className={`px-1.5 py-0.5 rounded ${player.age >= 35 ? 'bg-purple-900/50 text-purple-400 border border-purple-500/50' : player.age >= 31 ? 'bg-red-900/40 text-red-400 border border-red-500/50' : 'bg-gray-800 text-gray-400 border border-gray-700'}`}>
-                    {player.age} YO
-                  </span>
-                  {player.age >= 31 && !player.is_retired && (
-                    <span className="text-[9px] text-red-500 uppercase tracking-widest bg-red-900/20 px-1 rounded">Decay</span>
-                  )}
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <h2 className="text-base font-black font-orbitron text-white uppercase tracking-wide leading-tight truncate flex items-center gap-1.5">
+                    {player.name}
+                    {!player.is_retired && !player.is_for_sale && (
+                      <button
+                        onClick={() => setRenameMode(true)}
+                        className="p-0.5 hover:bg-gray-800 rounded transition-colors text-gray-600 hover:text-cyan-400 flex-shrink-0"
+                        title="Rename (1000 FC)"
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                      </button>
+                    )}
+                  </h2>
+
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    {/* Age badge */}
+                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md border font-orbitron ${
+                      player.age >= 35 ? 'bg-purple-900/50 text-purple-400 border-purple-500/40'
+                        : player.age >= 31 ? 'bg-red-900/40 text-red-400 border-red-500/40'
+                        : 'bg-gray-800/60 text-gray-400 border-gray-700/40'
+                    }`}>{player.age} YO</span>
+
+                    {/* Decay warning */}
+                    {player.age >= 31 && !player.is_retired && (
+                      <span className="text-[7px] text-red-500 uppercase tracking-widest bg-red-900/20 px-1 py-0.5 rounded border border-red-800/40">Decay</span>
+                    )}
+
+                    {/* Grade */}
+                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md bg-black/40 border border-white/6 ${grade.color}`}>{grade.label}</span>
+
+                    {/* Injured */}
+                    {player.is_injured && (
+                      <span className="text-[8px] bg-red-900/40 text-red-400 px-1.5 py-0.5 rounded border border-red-500/40 animate-pulse">
+                        🚑 {player.injury_matches_left}M
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Stamina */}
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <Activity size={10} className={player.stamina > 50 ? 'text-emerald-400' : 'text-red-400'} />
+                    <div className="flex-1 h-1 bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${player.stamina > 60 ? 'bg-emerald-400' : player.stamina > 30 ? 'bg-yellow-400' : 'bg-red-400'}`}
+                        style={{ width: `${player.stamina}%` }}
+                      />
+                    </div>
+                    <span className="text-[9px] font-mono text-gray-500">{player.stamina}%</span>
+                  </div>
+
+                  {/* Potential */}
+                  <div className="flex items-center gap-1 mt-1">
+                    <span className="text-[8px] text-gray-600 font-mono uppercase tracking-wider">POT</span>
+                    <span className="text-[8px] font-black font-orbitron text-pink-400">{player.potential_limit}</span>
+                    <span className="text-[8px] text-gray-700 font-mono">/ 99</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 text-xs text-gray-400 mt-1">
-                  <Activity size={12} className={player.stamina > 50 ? 'text-neon-green' : 'text-red-500'} />
-                  <span>Stamina: {player.stamina}%</span>
-                </div>
-                <div className="flex items-center gap-1 text-[10px] text-gray-500 font-orbitron">
-                  <span>POTENTIAL:</span>
-                  <span className="text-neon-pink font-bold">{player.potential_limit}</span>
-                </div>
+
+                {/* Close */}
+                <button
+                  onClick={onClose}
+                  className="p-1.5 text-gray-600 hover:text-white bg-black/40 rounded-xl border border-white/6 hover:border-gray-600 transition-all flex-shrink-0"
+                >
+                  <X size={14} />
+                </button>
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 text-gray-500 hover:text-white transition-colors bg-black/40 rounded-full border border-gray-800 hover:border-gray-600">
-            <X size={20} />
-          </button>
+
+          {/* Tab bar */}
+          {!sellMode && !renameMode && (
+            <div className="flex gap-1 mt-4 bg-black/40 p-1 rounded-xl border border-white/5">
+              {TABS.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id)}
+                  className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                    activeTab === t.id
+                      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_8px_rgba(0,240,255,0.15)]'
+                      : 'text-gray-600 hover:text-gray-400'
+                  }`}
+                >
+                  {t.icon}{t.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* ── Content ────────────────────────────────────────────────────── */}
-        <div className="overflow-y-auto custom-scrollbar flex-1 p-5 flex flex-col gap-5">
-
-          {sellMode ? (
-            <div className="flex flex-col gap-4 animate-in fade-in duration-300">
-              <h3 className="text-sm font-black text-white uppercase tracking-widest text-center">Выставить на рынок</h3>
-              <p className="text-xs text-gray-400 text-center -mt-2">Продажа NFT-карточки за TON</p>
-              
-              <div className="bg-black/50 p-4 rounded-xl border border-gray-800">
-                <label className="text-xs text-gray-400 font-bold uppercase tracking-widest">Цена (TON)</label>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xl">💎</span>
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    min="0"
-                    value={sellPrice}
-                    onChange={(e) => setSellPrice(e.target.value)}
-                    placeholder="Например: 1.5"
-                    className="flex-1 w-0 bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-orbitron text-xl focus:border-neon-cyan outline-none transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-red-900/20 border border-red-500/30 p-4 rounded-xl flex flex-col gap-2">
-                <div className="flex justify-between text-xs text-red-400 font-bold uppercase tracking-widest">
-                  <span>Налог на размещение (Fee):</span>
-                  <span>{stadiumLevel * 250} FC</span>
-                </div>
-                <p className="text-[10px] text-red-500/70">
-                  Этот налог высчитывается из уровня вашего Стадиона ({stadiumLevel} ур.) и будет сожжен навсегда.
-                </p>
-              </div>
-
-              <div className="flex gap-3 mt-2">
-                <button 
-                  onClick={() => setSellMode(false)}
-                  disabled={isPendingSell}
-                  className="flex-1 py-3 rounded-lg font-bold uppercase tracking-widest text-xs bg-gray-800 text-white hover:bg-gray-700 disabled:opacity-50 transition-colors"
-                >
-                  Отмена
-                </button>
-                <button 
-                  onClick={handleSell}
-                  disabled={isPendingSell || !sellPrice}
-                  className="flex-1 py-3 rounded-lg font-black uppercase tracking-widest text-xs bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 transition-colors shadow-[0_0_15px_rgba(37,99,235,0.4)]"
-                >
-                  {isPendingSell ? 'Загрузка...' : 'Подтвердить'}
-                </button>
-              </div>
-            </div>
-          ) : renameMode ? (
-            <div className="flex flex-col gap-4 animate-in fade-in duration-300">
-              <h3 className="text-sm font-black text-white uppercase tracking-widest text-center">Изменить Имя</h3>
-              <p className="text-xs text-gray-400 text-center -mt-2">Каждое имя уникально во всей игре</p>
-              
-              <div className="bg-black/50 p-4 rounded-xl border border-gray-800">
-                <label className="text-xs text-gray-400 font-bold uppercase tracking-widest">Новое Имя</label>
-                <div className="flex items-center gap-2 mt-2">
-                  <input 
-                    type="text" 
-                    maxLength={25}
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="Например: Cyber Striker"
-                    className="flex-1 w-0 bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-orbitron focus:border-neon-pink outline-none transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-yellow-900/20 border border-yellow-500/30 p-4 rounded-xl flex flex-col gap-2">
-                <div className="flex justify-between text-xs text-yellow-400 font-bold uppercase tracking-widest">
-                  <span>Стоимость услуги:</span>
-                  <span>1000 FC</span>
-                </div>
-                <p className="text-[10px] text-yellow-500/70">
-                  Новое имя должно быть уникальным и не содержать нецензурную лексику. Реальные имена мировых звезд (Messi, Ronaldo) защищены лицензией FIFPro и запрещены.
-                </p>
-              </div>
-
-              <div className="flex gap-3 mt-2">
-                <button 
-                  onClick={() => { setRenameMode(false); setNewName(player.name); }}
-                  disabled={isPendingRename}
-                  className="flex-1 py-3 rounded-lg font-bold uppercase tracking-widest text-xs bg-gray-800 text-white hover:bg-gray-700 disabled:opacity-50 transition-colors"
-                >
-                  Отмена
-                </button>
-                <button 
-                  onClick={handleRename}
-                  disabled={isPendingRename || !newName || newName === player.name}
-                  className="flex-1 py-3 rounded-lg font-black uppercase tracking-widest text-xs bg-yellow-600 text-black hover:bg-yellow-500 disabled:opacity-50 transition-colors shadow-[0_0_15px_rgba(202,138,4,0.4)]"
-                >
-                  {isPendingRename ? 'Загрузка...' : 'Подтвердить'}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-5">
-              {/* Error banner */}
+        {/* ── Scrollable Content ───────────────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar pb-24">
+          {/* Error banner */}
           {errorMsg && (
-            <div className="text-xs text-center font-bold text-neon-pink bg-red-900/20 p-2 rounded border border-neon-pink/30">
+            <div className="mx-4 mt-3 text-xs text-center font-bold text-pink-400 bg-red-900/20 p-2 rounded-xl border border-pink-500/30">
               {errorMsg}
             </div>
           )}
 
-          {/* ── Stats ────────────────────────────────────────────────────── */}
-          <div>
-            <h3 className="text-[10px] uppercase tracking-widest text-gray-500 mb-3 flex items-center gap-2 z-10 relative">
-              <Zap size={12} className="text-neon-pink" /> Detailed Stats
-              <InfoPopover
-                title="Характеристики"
-                content={
-                  <div className="space-y-2">
-                    <p><strong className="text-neon-cyan">PAC:</strong> Скорость игрока. Влияет на перемещение по полю.</p>
-                    <p><strong className="text-neon-pink">SHO:</strong> Удары. Точность и сила ударов по воротам.</p>
-                    <p><strong className="text-yellow-400">PAS:</strong> Пасы. Успешность передач и видение поля.</p>
-                    <p><strong className="text-blue-500">DEF:</strong> Защита. Отбор мяча и перехваты.</p>
-                    <p><strong className="text-green-500">PHY:</strong> Физика. Выносливость и игра корпусом.</p>
-                  </div>
-                }
-              />
-            </h3>
-            
-            <div className="relative -mt-10 mb-[-20px] h-[220px] w-full flex justify-center items-center pointer-events-none">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart 
-                  cx="50%" 
-                  cy="50%" 
-                  outerRadius="65%" 
-                  data={[
-                    { subject: 'PAC', A: stats.pace, fullMark: 100 },
-                    { subject: 'SHO', A: stats.shooting, fullMark: 100 },
-                    { subject: 'PAS', A: stats.passing, fullMark: 100 },
-                    { subject: 'PHY', A: stats.physical, fullMark: 100 },
-                    { subject: 'DEF', A: stats.defending, fullMark: 100 },
-                  ]}
-                >
-                  <PolarGrid stroke="#334155" opacity={0.5} />
-                  <PolarAngleAxis 
-                    dataKey="subject" 
-                    tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} 
+          {/* ── SELL MODE ──────────────────────────────────────────────────── */}
+          {sellMode ? (
+            <div className="p-5 flex flex-col gap-4">
+              <div className="text-center">
+                <h3 className="text-sm font-black text-white uppercase tracking-widest">Выставить на рынок</h3>
+                <p className="text-xs text-gray-500 mt-0.5">NFT-карточка за TON</p>
+              </div>
+              <div className="bg-black/50 p-4 rounded-2xl border border-white/8">
+                <label className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Цена (TON)</label>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xl">💎</span>
+                  <input
+                    type="number" step="0.01" min="0" value={sellPrice}
+                    onChange={e => setSellPrice(e.target.value)}
+                    placeholder="Например: 1.5"
+                    className="flex-1 bg-black/60 border border-white/10 rounded-xl px-3 py-2.5 text-white font-orbitron text-lg focus:border-cyan-500/50 outline-none transition-all"
                   />
-                  <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
-                  <Radar
-                    name="Player Stats"
-                    dataKey="A"
-                    stroke="#00f0ff"
-                    strokeWidth={2}
-                    fill="#00f0ff"
-                    fillOpacity={0.4}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-            
-            <div className="flex flex-col gap-3 relative z-10">
-              {(Object.keys(statLabels) as Array<keyof PlayerStats>).map(key => (
-                <div key={key} className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-gray-300 w-12 uppercase tracking-wider">{statLabels[key]}</span>
-                  <div className="flex-1 h-1.5 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
-                    <div
-                      className={`h-full ${statColors[key]} transition-all duration-1000`}
-                      style={{ width: `${Math.min(100, Math.max(0, stats[key]))}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-black text-white w-6 text-right">{stats[key]}</span>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Traits ───────────────────────────────────────────────────── */}
-          <div>
-            <h3 className="text-[10px] uppercase tracking-widest text-gray-500 mb-3 border-t border-gray-800 pt-4 flex items-center gap-2">
-              <Crosshair size={12} className="text-purple-400" /> Special Traits
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {player.traits && player.traits.length > 0 ? (
-                player.traits.map(trait => (
-                  <span key={trait} className="px-2 py-1 text-[10px] font-black uppercase tracking-widest bg-purple-900/40 text-purple-300 border border-purple-500/50 rounded-md shadow-[0_0_10px_rgba(168,85,247,0.2)]">
-                    {trait}
-                  </span>
-                ))
-              ) : (
-                <span className="text-xs text-gray-600 italic">No special traits</span>
-              )}
-            </div>
-          </div>
-
-          {/* ── Heal Section (FC, Medical Center discount) ───────────────── */}
-          {(player.stamina < 100 || player.is_injured) && (
-            <div className="border-t border-gray-800 pt-4">
-              <h3 className="text-[10px] uppercase tracking-widest text-gray-500 mb-3 flex items-center justify-between">
-                <span>Медпункт (Lv {medicalLevel})</span>
-                <span className="text-yellow-400 font-mono">
-                  {isLoadingData ? '...' : `${fancoins.toLocaleString()} FC`}
-                </span>
-              </h3>
-
-              <div className="flex items-center justify-between bg-black/50 p-3 rounded-xl border border-gray-800">
-                <div className="flex flex-col gap-1">
-                  {/* Stamina bar */}
-                  <div className="flex items-center gap-2">
-                    <div className="w-28 h-1.5 bg-gray-800 rounded-full overflow-hidden border border-gray-700">
-                      <div
-                        className="h-full bg-orange-500 transition-all"
-                        style={{ width: `${player.stamina}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-mono text-orange-400">{player.stamina}/100</span>
-                  </div>
-                  {/* Discount note */}
-                  {medicalLevel > 1 && (
-                    <span className="text-[9px] text-emerald-500 font-mono">
-                      −{Math.min(medicalLevel * 5, 50)}% скидка Медпункта
-                    </span>
-                  )}
-                </div>
-
-                <button
-                  id={`heal-btn-${player.id}`}
-                  onClick={handleHeal}
-                  disabled={!canAffordHeal || isHealing || isLoadingData}
-                  className={`
-                    px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider
-                    transition-all duration-200 border flex flex-col items-center
-                    ${isHealing
-                      ? 'bg-transparent text-neon-green border-neon-green/50 opacity-50'
-                      : canAffordHeal
-                      ? 'bg-neon-green/10 text-neon-green border-neon-green hover:bg-neon-green hover:text-black shadow-[0_0_10px_rgba(57,255,20,0.3)] active:scale-95'
-                      : 'bg-gray-800 text-gray-500 border-gray-700 cursor-not-allowed'
-                    }
-                  `}
-                >
-                  <span>{isHealing ? '...' : 'Heal'}</span>
-                  <span className="text-[8px] font-mono opacity-75">{isLoadingData ? '...' : cost === 0 ? 'Free' : `${cost} SP`}</span>
+              </div>
+              <div className="bg-red-900/15 border border-red-500/25 p-3 rounded-2xl text-xs text-red-400">
+                <div className="flex justify-between font-bold mb-1"><span>Налог:</span><span>{stadiumLevel * 250} FC</span></div>
+                <p className="text-[9px] text-red-500/70">Уровень стадиона {stadiumLevel} × 250 FC — сжигается навсегда</p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setSellMode(false)} className="flex-1 py-3 rounded-xl font-bold text-xs uppercase text-gray-400 bg-gray-800/60 hover:bg-gray-700/60 transition-all border border-white/6">
+                  Отмена
+                </button>
+                <button onClick={handleSell} disabled={isPendingSell || !sellPrice}
+                  className="flex-1 py-3 rounded-xl font-black text-xs uppercase text-white bg-blue-600/80 hover:bg-blue-500 disabled:opacity-50 transition-all shadow-[0_0_16px_rgba(37,99,235,0.3)] border border-blue-500/40">
+                  {isPendingSell ? '...' : 'Подтвердить'}
                 </button>
               </div>
             </div>
-          )}
 
+          /* ── RENAME MODE ───────────────────────────────────────────────── */
+          ) : renameMode ? (
+            <div className="p-5 flex flex-col gap-4">
+              <div className="text-center">
+                <h3 className="text-sm font-black text-white uppercase tracking-widest">Изменить Имя</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Уникальное имя во всей игре</p>
+              </div>
+              <div className="bg-black/50 p-4 rounded-2xl border border-white/8">
+                <label className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Новое имя</label>
+                <input
+                  type="text" maxLength={25} value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  placeholder="Cyber Striker"
+                  className="w-full mt-2 bg-black/60 border border-white/10 rounded-xl px-3 py-2.5 text-white font-orbitron focus:border-pink-500/50 outline-none transition-all"
+                />
+              </div>
+              <div className="bg-yellow-900/15 border border-yellow-500/25 p-3 rounded-2xl text-xs">
+                <div className="flex justify-between font-bold text-yellow-400 mb-1"><span>Стоимость:</span><span>1000 FC</span></div>
+                <p className="text-[9px] text-yellow-600">Имена реальных звёзд (Messi, Ronaldo) защищены лицензией FIFPro.</p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => { setRenameMode(false); setNewName(player.name); }}
+                  className="flex-1 py-3 rounded-xl font-bold text-xs uppercase text-gray-400 bg-gray-800/60 hover:bg-gray-700/60 transition-all border border-white/6">
+                  Отмена
+                </button>
+                <button onClick={handleRename} disabled={isPendingRename || !newName || newName === player.name}
+                  className="flex-1 py-3 rounded-xl font-black text-xs uppercase text-black bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 transition-all shadow-[0_0_16px_rgba(234,179,8,0.3)]">
+                  {isPendingRename ? '...' : 'Подтвердить'}
+                </button>
+              </div>
             </div>
-          )}
 
-          {/* ── Footer Actions ─────────────────────────────────────────────── */}
-          <div className="border-t border-gray-800 pt-4 flex flex-col gap-3">
+          /* ── TAB CONTENT ───────────────────────────────────────────────── */
+          ) : (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.18 }}
+              >
+                {/* ════════════════ GENERAL TAB ════════════════ */}
+                {activeTab === 'general' && (
+                  <div className="p-4 flex flex-col gap-4">
+
+                    {/* OVR Role Grid */}
+                    <div className="bg-black/40 border border-white/6 rounded-2xl p-3">
+                      <p className="text-[8px] text-gray-600 uppercase tracking-widest font-bold mb-2">Role Rating</p>
+                      <div className="flex items-center justify-between">
+                        <div className="text-center">
+                          <div className="text-2xl font-black font-orbitron text-white">{player.ovr}</div>
+                          <div className="text-[8px] text-gray-600 uppercase tracking-wider">OVR</div>
+                        </div>
+                        <div className="h-10 w-px bg-white/8" />
+                        <div className="text-center">
+                          <div className="text-2xl font-black font-orbitron text-cyan-400">{roleOvr}</div>
+                          <div className="text-[8px] text-gray-600 uppercase tracking-wider">{player.position} Role</div>
+                        </div>
+                        <div className="h-10 w-px bg-white/8" />
+                        <div className="text-center">
+                          <div className={`text-2xl font-black font-orbitron ${grade.color}`}>{grade.label}</div>
+                          <div className="text-[8px] text-gray-600 uppercase tracking-wider">Grade</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Radar Chart */}
+                    <div className="h-[180px] w-full pointer-events-none">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart cx="50%" cy="50%" outerRadius="68%"
+                          data={[
+                            { subject: 'PAC', A: stats.pace,      fullMark: 100 },
+                            { subject: 'SHO', A: stats.shooting,  fullMark: 100 },
+                            { subject: 'PAS', A: stats.passing,   fullMark: 100 },
+                            { subject: 'PHY', A: stats.physical,  fullMark: 100 },
+                            { subject: 'DEF', A: stats.defending, fullMark: 100 },
+                          ]}
+                        >
+                          <PolarGrid stroke="#1e293b" opacity={0.8} />
+                          <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }} />
+                          <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
+                          <Radar name="Stats" dataKey="A" stroke="#00f0ff" strokeWidth={2} fill="#00f0ff" fillOpacity={0.15} />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Stat Bars */}
+                    <div className="flex flex-col gap-2">
+                      {STAT_CONFIG.map(cfg => (
+                        <div key={cfg.key} className="flex items-center gap-2">
+                          <span className={`text-[10px] font-bold font-orbitron w-8 ${cfg.color}`}>{cfg.label}</span>
+                          <div className="flex-1 h-1.5 bg-gray-900 rounded-full overflow-hidden border border-white/5">
+                            <div
+                              className={`h-full rounded-full transition-all duration-700 ${cfg.bar}`}
+                              style={{ width: `${Math.min(100, Math.max(0, stats[cfg.key]))}%` }}
+                            />
+                          </div>
+                          <span className={`text-xs font-black font-orbitron w-6 text-right ${cfg.color}`}>{stats[cfg.key]}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Heal Section */}
+                    {(player.stamina < 100 || player.is_injured) && (
+                      <div className="bg-black/40 border border-emerald-800/30 rounded-2xl p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[9px] text-gray-600 uppercase tracking-widest font-bold">Медпункт (Lv {medicalLevel})</span>
+                          <span className="text-[9px] text-emerald-400 font-mono">{sweatPoints} SP</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <div className="flex-1 h-1 bg-gray-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-orange-400 rounded-full transition-all" style={{ width: `${player.stamina}%` }} />
+                              </div>
+                              <span className="text-[9px] font-mono text-orange-400">{player.stamina}%</span>
+                            </div>
+                            {medicalLevel > 1 && (
+                              <span className="text-[8px] text-emerald-500 font-mono">−{Math.min(medicalLevel * 5, 50)}% скидка</span>
+                            )}
+                          </div>
+                          <button
+                            id={`heal-btn-${player.id}`}
+                            onClick={handleHeal}
+                            disabled={!canAffordHeal || isHealing || isLoadingData}
+                            className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border ${
+                              isHealing ? 'bg-transparent text-emerald-400 border-emerald-400/40 opacity-50'
+                                : canAffordHeal ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/40 hover:bg-emerald-400 hover:text-black active:scale-95 shadow-[0_0_10px_rgba(52,211,153,0.2)]'
+                                : 'bg-gray-800/50 text-gray-600 border-gray-700/30 cursor-not-allowed'
+                            }`}
+                          >
+                            <span>{isHealing ? '...' : 'HEAL'}</span>
+                            <span className="text-[7px] opacity-75">{healCost === 0 ? 'Free' : `${healCost} SP`}</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ════════════════ PROGRESSION TAB ════════════════ */}
+                {activeTab === 'progression' && (
+                  <div className="p-4 flex flex-col gap-4">
+                    <div className="bg-black/40 border border-white/6 rounded-2xl p-3">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-[8px] text-gray-600 uppercase tracking-widest font-bold">OVR History</p>
+                        <span className="text-[9px] text-cyan-400 font-mono font-bold">
+                          {chartData.length} snapshots
+                        </span>
+                      </div>
+
+                      {chartData.length < 2 ? (
+                        <div className="h-32 flex flex-col items-center justify-center gap-2">
+                          <TrendingUp size={28} className="text-gray-700" />
+                          <p className="text-[10px] text-gray-600 text-center">
+                            Прогресс появится после первой тренировки
+                          </p>
+                          <p className="text-[9px] text-gray-700 font-mono">Current OVR: {player.ovr}</p>
+                        </div>
+                      ) : (
+                        <div className="h-[160px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={chartPoints} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.5} />
+                              <XAxis dataKey="label" tick={{ fill: '#475569', fontSize: 8 }} tickLine={false} axisLine={false} />
+                              <YAxis domain={['auto', 'auto']} tick={{ fill: '#475569', fontSize: 9 }} tickLine={false} axisLine={false} />
+                              <Tooltip content={<OvrTooltip />} />
+                              <Line
+                                type="monotone" dataKey="ovr"
+                                stroke="#00f0ff" strokeWidth={2} dot={false}
+                                activeDot={{ r: 3, fill: '#00f0ff', strokeWidth: 0 }}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Stats over time summary */}
+                    {chartData.length >= 2 && (
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: 'Start OVR', val: chartData[0].ovr,    color: 'text-gray-400' },
+                          { label: 'Peak OVR',  val: Math.max(...chartData.map(d => d.ovr)), color: 'text-yellow-400' },
+                          { label: 'Growth',    val: `+${chartData[chartData.length - 1].ovr - chartData[0].ovr}`, color: 'text-emerald-400' },
+                        ].map(({ label, val, color }) => (
+                          <div key={label} className="bg-black/40 border border-white/6 rounded-xl p-2 text-center">
+                            <div className={`text-base font-black font-orbitron ${color}`}>{val}</div>
+                            <div className="text-[7px] text-gray-600 uppercase tracking-wider mt-0.5">{label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Potential gauge */}
+                    <div className="bg-black/40 border border-white/6 rounded-2xl p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[8px] text-gray-600 uppercase tracking-widest font-bold">Potential Headroom</span>
+                        <span className="text-[9px] font-mono text-pink-400">
+                          {Math.max(0, player.potential_limit - player.ovr)} OVR left
+                        </span>
+                      </div>
+                      <div className="h-2 bg-gray-900 rounded-full overflow-hidden border border-white/5">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-pink-500 to-violet-500 transition-all duration-700"
+                          style={{ width: `${Math.min(100, (player.ovr / (player.potential_limit || 99)) * 100)}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between mt-1">
+                        <span className="text-[8px] text-gray-700 font-mono">{player.ovr}</span>
+                        <span className="text-[8px] text-gray-700 font-mono">{player.potential_limit}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ════════════════ DETAILS TAB ════════════════ */}
+                {activeTab === 'details' && (
+                  <div className="p-4 flex flex-col gap-4">
+
+                    {/* Player card info */}
+                    <div className="bg-black/40 border border-white/6 rounded-2xl p-3 grid grid-cols-2 gap-3">
+                      {[
+                        { label: 'Position',  val: player.position },
+                        { label: 'Age',       val: `${player.age} years` },
+                        { label: 'Seasons',   val: player.seasons_played ?? 0 },
+                        { label: 'Status',    val: player.lineup_status || '—' },
+                        { label: 'OVR',       val: player.ovr },
+                        { label: 'Potential', val: player.potential_limit },
+                      ].map(({ label, val }) => (
+                        <div key={label}>
+                          <div className="text-[7px] text-gray-600 uppercase tracking-widest font-bold">{label}</div>
+                          <div className="text-xs font-black font-orbitron text-white mt-0.5 capitalize">{val}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Traits */}
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Crosshair size={10} className="text-violet-400" />
+                        <span className="text-[8px] text-gray-600 uppercase tracking-widest font-bold">Special Traits</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {player.traits && player.traits.length > 0 ? (
+                          player.traits.map(trait => (
+                            <span key={trait}
+                              className="px-2 py-1 text-[9px] font-black uppercase tracking-wider bg-violet-900/30 text-violet-300 border border-violet-500/40 rounded-lg shadow-[0_0_8px_rgba(168,85,247,0.15)]">
+                              {trait}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-gray-600 italic">No special traits</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Perks */}
+                    {player.perks && player.perks.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <Zap size={10} className="text-yellow-400" />
+                          <span className="text-[8px] text-gray-600 uppercase tracking-widest font-bold">Perks</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {player.perks.map(perk => (
+                            <span key={perk}
+                              className="px-2 py-1 text-[9px] font-black uppercase tracking-wider bg-yellow-900/30 text-yellow-400 border border-yellow-700/40 rounded-lg">
+                              {perk}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Age curve info */}
+                    <div className="bg-black/40 border border-white/6 rounded-2xl p-3">
+                      <p className="text-[8px] text-gray-600 uppercase tracking-widest font-bold mb-2">Age Curve</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {[
+                          { range: '≤ 30', label: 'Peak', color: 'text-emerald-400 border-emerald-700/40 bg-emerald-900/20' },
+                          { range: '31-34', label: 'Decay', color: 'text-orange-400 border-orange-700/40 bg-orange-900/20' },
+                          { range: '≥ 35', label: 'Veteran', color: 'text-violet-400 border-violet-700/40 bg-violet-900/20' },
+                        ].map(({ range, label, color }) => (
+                          <span key={range}
+                            className={`px-2 py-1 text-[8px] font-bold rounded-lg border ${color} ${player.age <= 30 && label === 'Peak' ? 'ring-1 ring-emerald-400/40' : player.age >= 35 && label === 'Veteran' ? 'ring-1 ring-violet-400/40' : player.age >= 31 && label === 'Decay' ? 'ring-1 ring-orange-400/40' : ''}`}>
+                            {range}: {label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          )}
+        </div>
+
+        {/* ── Floating Action Bar ──────────────────────────────────────────── */}
+        {!sellMode && !renameMode && (
+          <div className="flex-shrink-0 absolute bottom-0 left-0 right-0 px-4 pb-4 pt-3 bg-gradient-to-t from-[#0a0e1a] via-[#0a0e1a]/95 to-transparent">
             {player.is_for_sale ? (
-              <div className="w-full py-3 bg-gray-900 border border-gray-700 rounded-xl text-center text-xs font-bold text-gray-500 uppercase tracking-widest">
-                Игрок выставлен на рынок
+              <div className="w-full py-3 bg-gray-900/80 border border-gray-700/40 rounded-2xl text-center text-xs font-bold text-gray-500 uppercase tracking-widest">
+                Выставлен на рынок
               </div>
             ) : player.is_retired ? (
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => setSellMode(true)}
-                  className="flex-1 py-3 rounded-xl bg-blue-900/30 border border-blue-500/50 text-blue-400 font-black text-xs uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-[0_0_10px_rgba(59,130,246,0.1)]"
-                >
-                  Продать на рынке (TON)
+              <div className="flex gap-2">
+                <button onClick={() => setSellMode(true)}
+                  className="flex-1 py-3 rounded-2xl bg-blue-600/20 border border-blue-500/40 text-blue-400 font-black text-xs uppercase tracking-wider hover:bg-blue-600 hover:text-white transition-all">
+                  Продать (TON)
                 </button>
-                <button 
-                  onClick={handleRetire}
-                  disabled={isPendingRetire}
-                  className="flex-1 py-3 rounded-xl bg-purple-900/30 border border-purple-500/50 text-purple-400 font-black text-xs uppercase tracking-widest hover:bg-purple-600 hover:text-white transition-all shadow-[0_0_10px_rgba(168,85,247,0.1)]"
-                >
-                  {isPendingRetire ? 'Применение...' : 'Превратить в Тренера'}
+                <button onClick={handleRetire} disabled={isPendingRetire}
+                  className="flex-1 py-3 rounded-2xl bg-violet-600/20 border border-violet-500/40 text-violet-400 font-black text-xs uppercase tracking-wider hover:bg-violet-600 hover:text-white disabled:opacity-50 transition-all">
+                  {isPendingRetire ? '...' : 'В Тренеры'}
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col gap-3">
-                <div className="flex gap-3">
-                  <button 
-                    onClick={() => setSellMode(true)}
-                    className="flex-1 py-3 rounded-xl bg-blue-900/30 border border-blue-500/50 text-blue-400 font-black text-xs uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-[0_0_10px_rgba(59,130,246,0.1)]"
-                  >
-                    На рынок (TON)
-                  </button>
-                  <button 
-                    onClick={handleQuickSell}
-                    disabled={isPendingQuickSell || player.lineup_status === 'starting'}
-                    className="flex-1 py-3 rounded-xl bg-orange-900/30 border border-orange-500/50 text-orange-400 font-black text-xs uppercase tracking-widest hover:bg-orange-600 hover:text-white transition-all shadow-[0_0_10px_rgba(249,115,22,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={player.lineup_status === 'starting' ? 'Сначала переведите игрока в запас' : ''}
-                  >
-                    {isPendingQuickSell ? 'Продажа...' : `Системе (${Math.max(100, (player.ovr - 40) * 100)} FC)`}
-                  </button>
-                </div>
+              <div className="flex gap-2">
+                <button onClick={() => setSellMode(true)}
+                  className="flex-1 py-2.5 rounded-2xl bg-blue-600/15 border border-blue-500/30 text-blue-400 font-black text-[9px] uppercase tracking-wider hover:bg-blue-600 hover:text-white transition-all">
+                  TON
+                </button>
+                <button onClick={handleQuickSell}
+                  disabled={isPendingQuickSell || player.lineup_status === 'starting'}
+                  className="flex-1 py-2.5 rounded-2xl bg-orange-600/15 border border-orange-500/30 text-orange-400 font-black text-[9px] uppercase tracking-wider hover:bg-orange-600 hover:text-white disabled:opacity-40 transition-all"
+                  title={player.lineup_status === 'starting' ? 'Переведите в запас' : ''}>
+                  {isPendingQuickSell ? '...' : `${Math.max(100, (player.ovr - 40) * 100)} FC`}
+                </button>
                 <Link
                   href={`/base?playerId=${player.id}`}
                   onClick={onClose}
-                  className="w-full py-3 rounded-xl bg-neon-cyan/20 border border-neon-cyan/50 text-neon-cyan font-black text-xs uppercase tracking-widest hover:bg-neon-cyan hover:text-black flex items-center justify-center transition-all shadow-[0_0_10px_rgba(0,255,255,0.2)]"
+                  className="flex-1 py-2.5 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 font-black text-[9px] uppercase tracking-wider hover:bg-cyan-500 hover:text-black flex items-center justify-center transition-all shadow-[0_0_12px_rgba(0,240,255,0.1)]"
                 >
-                  Тренировать
+                  Train
                 </Link>
               </div>
             )}
           </div>
-
-        </div>
+        )}
       </motion.div>
     </div>
   );

@@ -59,7 +59,7 @@ export async function GET(req: Request) {
     // 2. Fetch all players (active and coaches) belonging to this team. STRICT FILTER APPLIED.
     const { data: players, error: playersError } = await supabaseAdmin
       .from('players')
-      .select('id, name, age, ovr, is_nft_coach, traits, position, stats, stamina, lineup_status, lineup_slot, injury_matches_left, is_for_sale, is_retired, seasons_played')
+      .select('id, name, age, ovr, is_nft_coach, traits, position, stats, stamina, lineup_status, lineup_slot, injury_matches_left, is_for_sale, is_retired, seasons_played, is_injured, potential_limit, progression_history, perks')
       .eq('team_id', team.id);
 
     if (playersError) {
@@ -68,10 +68,13 @@ export async function GET(req: Request) {
 
     const safePlayers = (players || []).map(p => ({
       ...p,
-      age: p.age ?? 18,
-      is_for_sale: p.is_for_sale ?? false,
-      is_retired: p.is_retired ?? false,
-      seasons_played: p.seasons_played ?? 0
+      age:             p.age             ?? 18,
+      is_for_sale:     p.is_for_sale     ?? false,
+      is_retired:      p.is_retired      ?? false,
+      is_injured:      p.is_injured      ?? false,
+      seasons_played:  p.seasons_played  ?? 0,
+      potential_limit: p.potential_limit ?? 80,
+      progression_history: p.progression_history ?? [],
     }));
 
     return NextResponse.json({
