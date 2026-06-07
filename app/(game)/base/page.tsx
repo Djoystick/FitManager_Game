@@ -353,8 +353,8 @@ export default function BaseDashboard() {
                 <Dumbbell className="text-cyan-400" size={16} />
               </div>
               <div>
-                <h1 className="text-sm font-black font-orbitron text-white uppercase tracking-widest">Structures</h1>
-                <p className="text-[8px] text-cyan-400/60 uppercase tracking-wider">Club Base</p>
+                <h1 className="text-sm font-black font-orbitron text-white uppercase tracking-widest">{t.base_structures || 'Structures'}</h1>
+                <p className="text-[8px] text-cyan-400/60 uppercase tracking-wider">{t.base_club_base || 'Club Base'}</p>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
@@ -388,9 +388,9 @@ export default function BaseDashboard() {
       <div className="flex-shrink-0 py-2">
         <SubNavTabs
           tabs={[
-            { id: 'training',  label: 'TRAINING' },
-            { id: 'club',      label: 'CLUB'     },
-            { id: 'stadium',   label: 'STADIUM'  },
+            { id: 'training',  label: t.base_tab_training || 'TRAINING' },
+            { id: 'club',      label: t.base_tab_club || 'CLUB' },
+            { id: 'stadium',   label: t.base_tab_stadium || 'STADIUM' },
           ]}
           active={activeTab}
           onChange={(id) => setActiveTab(id as TabId)}

@@ -12,6 +12,8 @@ import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, PolarRadiusAxis,
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
+import { LanguageContext } from '@/components/LanguageContext';
+import { dict } from '@/lib/dictionaries';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -148,6 +150,9 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
   const [isPendingRename,      startTransitionRename]   = React.useTransition();
   const [isPendingRetire,      startTransitionRetire]   = React.useTransition();
   const [isPendingQuickSell,   startTransitionQuickSell] = React.useTransition();
+
+  const { language } = React.useContext(LanguageContext);
+  const t = dict[language as keyof typeof dict];
 
   const stats = player.stats ?? { pace: 50, shooting: 50, passing: 50, defending: 50, physical: 50 };
 
@@ -318,7 +323,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
 
                     {/* Decay warning */}
                     {player.age >= 31 && !player.is_retired && (
-                      <span className="text-[7px] text-red-500 uppercase tracking-widest bg-red-900/20 px-1 py-0.5 rounded border border-red-800/40">Decay</span>
+                      <span className="text-[7px] text-red-500 uppercase tracking-widest bg-red-900/20 px-1 py-0.5 rounded border border-red-800/40">{t?.prof_decay || 'Decay'}</span>
                     )}
 
                     {/* Grade */}
@@ -366,17 +371,18 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
           {/* Tab bar */}
           {!sellMode && !renameMode && (
             <div className="flex gap-1 mt-4 bg-black/40 p-1 rounded-xl border border-white/5">
-              {TABS.map(t => (
+              {TABS.map(tab => (
                 <button
-                  key={t.id}
-                  onClick={() => setActiveTab(t.id)}
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
                   className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
-                    activeTab === t.id
+                    activeTab === tab.id
                       ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_8px_rgba(0,240,255,0.15)]'
                       : 'text-gray-600 hover:text-gray-400'
                   }`}
                 >
-                  {t.icon}{t.label}
+                  {tab.icon}
+                  {tab.id === 'general' ? (t?.prof_general || 'GENERAL') : tab.id === 'progression' ? (t?.prof_progress || 'PROGRESS') : (t?.prof_details || 'DETAILS')}
                 </button>
               ))}
             </div>
@@ -396,11 +402,11 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
           {sellMode ? (
             <div className="p-5 flex flex-col gap-4">
               <div className="text-center">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">Выставить на рынок</h3>
-                <p className="text-xs text-gray-500 mt-0.5">NFT-карточка за TON</p>
+                <h3 className="text-sm font-black text-white uppercase tracking-widest">{t?.prof_sell_market || 'List on Market'}</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{t?.prof_nft_ton || 'NFT card for TON'}</p>
               </div>
               <div className="bg-black/50 p-4 rounded-2xl border border-white/8">
-                <label className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Цена (TON)</label>
+                <label className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">{t?.prof_price_ton || 'Price (TON)'}</label>
                 <div className="flex items-center gap-2 mt-2">
                   <span className="text-xl">💎</span>
                   <input
@@ -412,7 +418,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                 </div>
               </div>
               <div className="bg-red-900/15 border border-red-500/25 p-3 rounded-2xl text-xs text-red-400">
-                <div className="flex justify-between font-bold mb-1"><span>Налог:</span><span>{stadiumLevel * 250} FC</span></div>
+                <div className="flex justify-between font-bold mb-1"><span>{t?.prof_tax || 'Tax:'}</span><span>{stadiumLevel * 250} FC</span></div>
                 <p className="text-[9px] text-red-500/70">Уровень стадиона {stadiumLevel} × 250 FC — сжигается навсегда</p>
               </div>
               <div className="flex gap-3">
@@ -421,7 +427,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                 </button>
                 <button onClick={handleSell} disabled={isPendingSell || !sellPrice}
                   className="flex-1 py-3 rounded-xl font-black text-xs uppercase text-white bg-blue-600/80 hover:bg-blue-500 disabled:opacity-50 transition-all shadow-[0_0_16px_rgba(37,99,235,0.3)] border border-blue-500/40">
-                  {isPendingSell ? '...' : 'Подтвердить'}
+                  {isPendingSell ? '...' : t?.prof_confirm || 'Confirm'}
                 </button>
               </div>
             </div>
@@ -430,11 +436,11 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
           ) : renameMode ? (
             <div className="p-5 flex flex-col gap-4">
               <div className="text-center">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">Изменить Имя</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Уникальное имя во всей игре</p>
+                <h3 className="text-sm font-black text-white uppercase tracking-widest">{t?.prof_rename || 'Change Name'}</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{t?.prof_unique_name || 'Unique name in game'}</p>
               </div>
               <div className="bg-black/50 p-4 rounded-2xl border border-white/8">
-                <label className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Новое имя</label>
+                <label className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">{t?.prof_new_name || 'New Name'}</label>
                 <input
                   type="text" maxLength={25} value={newName}
                   onChange={e => setNewName(e.target.value)}
@@ -443,8 +449,8 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                 />
               </div>
               <div className="bg-yellow-900/15 border border-yellow-500/25 p-3 rounded-2xl text-xs">
-                <div className="flex justify-between font-bold text-yellow-400 mb-1"><span>Стоимость:</span><span>1000 FC</span></div>
-                <p className="text-[9px] text-yellow-600">Имена реальных звёзд (Messi, Ronaldo) защищены лицензией FIFPro.</p>
+                <div className="flex justify-between font-bold text-yellow-400 mb-1"><span>{t?.prof_cost || 'Cost:'}</span><span>1000 FC</span></div>
+                <p className="text-[9px] text-yellow-600">{t?.prof_licence || 'Real star names are protected by FIFPro.'}</p>
               </div>
               <div className="flex gap-3">
                 <button onClick={() => { setRenameMode(false); setNewName(player.name); }}
@@ -453,7 +459,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                 </button>
                 <button onClick={handleRename} disabled={isPendingRename || !newName || newName === player.name}
                   className="flex-1 py-3 rounded-xl font-black text-xs uppercase text-black bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 transition-all shadow-[0_0_16px_rgba(234,179,8,0.3)]">
-                  {isPendingRename ? '...' : 'Подтвердить'}
+                  {isPendingRename ? '...' : t?.prof_confirm || 'Confirm'}
                 </button>
               </div>
             </div>
@@ -474,7 +480,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
 
                     {/* OVR Role Grid */}
                     <div className="bg-black/40 border border-white/6 rounded-2xl p-3">
-                      <p className="text-[8px] text-gray-600 uppercase tracking-widest font-bold mb-2">Role Rating</p>
+                      <p className="text-[8px] text-gray-600 uppercase tracking-widest font-bold mb-2">{t?.prof_role_rating || 'Role Rating'}</p>
                       <div className="flex items-center justify-between">
                         <div className="text-center">
                           <div className="text-2xl font-black font-orbitron text-white">{player.ovr}</div>
@@ -572,7 +578,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                   <div className="p-4 flex flex-col gap-4">
                     <div className="bg-black/40 border border-white/6 rounded-2xl p-3">
                       <div className="flex items-center justify-between mb-3">
-                        <p className="text-[8px] text-gray-600 uppercase tracking-widest font-bold">OVR History</p>
+                        <p className="text-[8px] text-gray-600 uppercase tracking-widest font-bold">{t?.prof_ovr_history || 'OVR History'}</p>
                         <span className="text-[9px] text-cyan-400 font-mono font-bold">
                           {chartData.length} snapshots
                         </span>
@@ -624,7 +630,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                     {/* Potential gauge */}
                     <div className="bg-black/40 border border-white/6 rounded-2xl p-3">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-[8px] text-gray-600 uppercase tracking-widest font-bold">Potential Headroom</span>
+                        <span className="text-[8px] text-gray-600 uppercase tracking-widest font-bold">{t?.prof_pot_headroom || 'Potential Headroom'}</span>
                         <span className="text-[9px] font-mono text-pink-400">
                           {Math.max(0, player.potential_limit - player.ovr)} OVR left
                         </span>
@@ -668,7 +674,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                     <div>
                       <div className="flex items-center gap-1.5 mb-2">
                         <Crosshair size={10} className="text-violet-400" />
-                        <span className="text-[8px] text-gray-600 uppercase tracking-widest font-bold">Special Traits</span>
+                        <span className="text-[8px] text-gray-600 uppercase tracking-widest font-bold">{t?.prof_traits || 'Special Traits'}</span>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {player.traits && player.traits.length > 0 ? (
@@ -679,7 +685,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                             </span>
                           ))
                         ) : (
-                          <span className="text-xs text-gray-600 italic">No special traits</span>
+                          <span className="text-xs text-gray-600 italic">{t?.prof_no_traits || 'No special traits'}</span>
                         )}
                       </div>
                     </div>
@@ -689,7 +695,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                       <div>
                         <div className="flex items-center gap-1.5 mb-2">
                           <Zap size={10} className="text-yellow-400" />
-                          <span className="text-[8px] text-gray-600 uppercase tracking-widest font-bold">Perks</span>
+                          <span className="text-[8px] text-gray-600 uppercase tracking-widest font-bold">{t?.prof_perks || 'Perks'}</span>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {player.perks.map(perk => (
@@ -704,12 +710,12 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
 
                     {/* Age curve info */}
                     <div className="bg-black/40 border border-white/6 rounded-2xl p-3">
-                      <p className="text-[8px] text-gray-600 uppercase tracking-widest font-bold mb-2">Age Curve</p>
+                      <p className="text-[8px] text-gray-600 uppercase tracking-widest font-bold mb-2">{t?.prof_age_curve || 'Age Curve'}</p>
                       <div className="flex gap-2 flex-wrap">
                         {[
-                          { range: '≤ 30', label: 'Peak', color: 'text-emerald-400 border-emerald-700/40 bg-emerald-900/20' },
-                          { range: '31-34', label: 'Decay', color: 'text-orange-400 border-orange-700/40 bg-orange-900/20' },
-                          { range: '≥ 35', label: 'Veteran', color: 'text-violet-400 border-violet-700/40 bg-violet-900/20' },
+                          { range: '≤ 30', label: t?.prof_peak || 'Peak', color: 'text-emerald-400 border-emerald-700/40 bg-emerald-900/20' },
+                          { range: '31-34', label: t?.prof_decay || 'Decay', color: 'text-orange-400 border-orange-700/40 bg-orange-900/20' },
+                          { range: '≥ 35', label: t?.prof_veteran || 'Veteran', color: 'text-violet-400 border-violet-700/40 bg-violet-900/20' },
                         ].map(({ range, label, color }) => (
                           <span key={range}
                             className={`px-2 py-1 text-[8px] font-bold rounded-lg border ${color} ${player.age <= 30 && label === 'Peak' ? 'ring-1 ring-emerald-400/40' : player.age >= 35 && label === 'Veteran' ? 'ring-1 ring-violet-400/40' : player.age >= 31 && label === 'Decay' ? 'ring-1 ring-orange-400/40' : ''}`}>
@@ -740,7 +746,7 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                 </button>
                 <button onClick={handleRetire} disabled={isPendingRetire}
                   className="flex-1 py-3 rounded-2xl bg-violet-600/20 border border-violet-500/40 text-violet-400 font-black text-xs uppercase tracking-wider hover:bg-violet-600 hover:text-white disabled:opacity-50 transition-all">
-                  {isPendingRetire ? '...' : 'В Тренеры'}
+                  {isPendingRetire ? '...' : t?.prof_to_coach || 'To Coach'}
                 </button>
               </div>
             ) : (
