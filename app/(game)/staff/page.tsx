@@ -4,9 +4,11 @@ import { useContext, useEffect, useState } from 'react';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import { SubNavTabs } from '@/components/ui/SubNavTabs';
 import { getStaffAction, fireStaffAction, hireStaffAction, type StaffMember } from '@/app/actions/staffActions';
+import { getClubInfrastructureData } from '@/app/actions/trainingActions';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserX, UserPlus, ChevronRight } from 'lucide-react';
+import { UserX, UserPlus, ChevronRight, Lock, Building2 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STAFF PAGE — Coaches & Scouts management
@@ -160,6 +162,17 @@ export default function StaffPage() {
   const [staff,        setStaff]        = useState<StaffMember[]>([]);
   const [isLoading,    setIsLoading]    = useState(true);
   const [isHiring,     setIsHiring]     = useState(false);
+  const [academyLevel, setAcademyLevel] = useState<number>(1);
+
+  // Fetch academy infrastructure level to determine lock state
+  useEffect(() => {
+    if (!isAuthenticated || !userId) return;
+    getClubInfrastructureData(userId).then(res => {
+      if (res.success && res.data) setAcademyLevel(res.data.academy_level ?? 1);
+    });
+  }, [isAuthenticated, userId]);
+
+  const academyLocked = deptTab === 'academy' && academyLevel < 2;
 
   const loadStaff = async () => {
     if (!isAuthenticated) return;
@@ -260,8 +273,80 @@ export default function StaffPage() {
         />
       </div>
 
-      {/* Staff list */}
+      {/* Staff list + Academy lock gate */}
       <div className="flex-1 overflow-y-auto custom-scrollbar pb-28 px-3 flex flex-col gap-3 relative z-10">
+
+        {/* ── Academy Lock Overlay ─────────────────────────────────────── */}
+        <AnimatePresence>
+          {academyLocked && (
+            <motion.div
+              key="academy-lock"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-5 px-6 pb-28"
+            >
+              {/* Glassmorphism backdrop */}
+              <div className="absolute inset-0 bg-[#05060f]/88 backdrop-blur-md" />
+
+              {/* Lock card */}
+              <div className="relative z-10 flex flex-col items-center gap-5 text-center">
+                {/* Icon */}
+                <div className="w-20 h-20 rounded-3xl flex items-center justify-center
+                                bg-gradient-to-br from-violet-900/60 to-black/60
+                                border-2 border-violet-500/30
+                                shadow-[0_0_40px_rgba(147,51,234,0.25)]">
+                  <Lock className="text-violet-400" size={32} />
+                </div>
+
+                {/* Text */}
+                <div>
+                  <h2 className="text-sm font-black font-orbitron text-white uppercase tracking-widest mb-2">
+                    Academy Locked
+                  </h2>
+                  <p className="text-[9px] text-gray-500 uppercase tracking-wider max-w-[220px] leading-relaxed">
+                    Upgrade your Academy to Level 2 to unlock Academy Coaches and Academy Scouts
+                  </p>
+                </div>
+
+                {/* Level progress pips */}
+                <div className="flex items-center gap-2 px-4 py-2 rounded-xl
+                                bg-violet-500/10 border border-violet-500/20">
+                  <div className="flex gap-1.5">
+                    {[1, 2].map(i => (
+                      <div
+                        key={i}
+                        className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${
+                          i <= academyLevel
+                            ? 'bg-violet-400 border-violet-400 shadow-[0_0_8px_rgba(147,51,234,0.7)]'
+                            : 'bg-white/5 border-white/20'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-[9px] text-violet-400 font-bold font-mono">
+                    Level {academyLevel} / 2 required
+                  </span>
+                </div>
+
+                {/* CTA */}
+                <Link
+                  href="/base"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl
+                             bg-violet-500/20 border border-violet-500/40 text-violet-300
+                             text-[10px] font-black uppercase tracking-wider
+                             hover:bg-violet-500/30 transition-all active:scale-95
+                             shadow-[0_0_16px_rgba(147,51,234,0.15)]"
+                >
+                  <Building2 size={12} />
+                  Upgrade Academy
+                </Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Staff list (rendered behind lock when locked) */}
         {isLoading ? (
           <div className="flex items-center justify-center h-40">
             <div className="flex gap-1.5">
@@ -279,9 +364,10 @@ export default function StaffPage() {
             <p className="text-gray-600 text-xs uppercase tracking-widest font-bold">No staff in this department</p>
             <button
               onClick={handleHire}
+              disabled={academyLocked}
               className="px-4 py-2 bg-cyan-500/15 border border-cyan-500/40 text-cyan-300
                          rounded-xl text-[10px] font-black uppercase tracking-wider
-                         hover:bg-cyan-500/25 transition-colors"
+                         hover:bg-cyan-500/25 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               Hire Now
             </button>

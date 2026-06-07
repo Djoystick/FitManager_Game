@@ -48,6 +48,11 @@ export interface ClubInfrastructure {
   academy_level: number;
   scout_level: number;
   fancoins: number;
+  // Ticket pricing (persisted in infrastructure table via migration 00044)
+  ticket_price_league:   number;
+  ticket_price_intcup:   number;
+  ticket_price_natcup:   number;
+  ticket_price_friendly: number;
 }
 
 export interface PlayerForTraining {
@@ -491,7 +496,7 @@ export async function getClubInfrastructureData(
 
     let { data: infra } = await supabaseAdmin
       .from('infrastructure')
-      .select('stadium_level, medical_center_level, academy_level, scout_level')
+      .select('stadium_level, medical_center_level, academy_level, scout_level, ticket_price_league, ticket_price_intcup, ticket_price_natcup, ticket_price_friendly')
       .eq('team_id', team.id)
       .maybeSingle();
 
@@ -500,21 +505,26 @@ export async function getClubInfrastructureData(
       const { data: newInfra } = await supabaseAdmin
         .from('infrastructure')
         .insert({ team_id: team.id })
-        .select('stadium_level, medical_center_level, academy_level, scout_level')
+        .select('stadium_level, medical_center_level, academy_level, scout_level, ticket_price_league, ticket_price_intcup, ticket_price_natcup, ticket_price_friendly')
         .single();
       infra = newInfra;
     }
 
     if (!infra) return { success: false, error: 'Infrastructure not found.' };
 
+    const infraRow = infra as Record<string, unknown>;
     return {
       success: true,
       data: {
-        stadium_level: infra.stadium_level      ?? 1,
-        medical_level: infra.medical_center_level ?? 1,
-        academy_level: infra.academy_level      ?? 1,
-        scout_level:   infra.scout_level         ?? 1,
-        fancoins:      user.balance_fancoins     ?? 0,
+        stadium_level:          (infra.stadium_level          as number) ?? 1,
+        medical_level:          (infra.medical_center_level   as number) ?? 1,
+        academy_level:          (infra.academy_level          as number) ?? 1,
+        scout_level:            (infra.scout_level            as number) ?? 1,
+        fancoins:               (user.balance_fancoins                   ) ?? 0,
+        ticket_price_league:    (infraRow.ticket_price_league   as number) ?? 20,
+        ticket_price_intcup:    (infraRow.ticket_price_intcup   as number) ?? 30,
+        ticket_price_natcup:    (infraRow.ticket_price_natcup   as number) ?? 25,
+        ticket_price_friendly:  (infraRow.ticket_price_friendly as number) ?? 10,
       },
     };
   } catch (err: any) {
@@ -573,5 +583,49 @@ export async function getTrainingCampData(
   } catch (err: any) {
     console.error('[getTrainingCampData] Error:', err);
     return { success: false, error: err.message ?? 'Failed to fetch training camp data.' };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTION: saveTicketPricesAction
+//
+// Persists the four ticket price values (league, intcup, natcup, friendly)
+// into the team's infrastructure row.  Prices are clamped 0–999 FC.
+// The match engine reads these in V4 to calculate matchday revenue.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function saveTicketPricesAction(prices: {
+  league:   number;
+  intcup:   number;
+  natcup:   number;
+  friendly: number;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const userId = await getAuthUserId();
+    if (!userId) return { success: false, error: 'Unauthorized: Valid Telegram session required.' };
+
+    const { data: team, error: teamErr } = await supabaseAdmin
+      .from('teams').select('id').eq('user_id', userId).single();
+    if (teamErr || !team) return { success: false, error: 'Team not found.' };
+
+    const clamp = (v: number) => Math.max(0, Math.min(999, Math.round(v)));
+
+    const { error: updateErr } = await supabaseAdmin
+      .from('infrastructure')
+      .update({
+        ticket_price_league:   clamp(prices.league),
+        ticket_price_intcup:   clamp(prices.intcup),
+        ticket_price_natcup:   clamp(prices.natcup),
+        ticket_price_friendly: clamp(prices.friendly),
+      })
+      .eq('team_id', team.id);
+
+    if (updateErr) throw updateErr;
+
+    revalidatePath('/base');
+    return { success: true };
+  } catch (err: any) {
+    console.error('[saveTicketPricesAction] error:', err);
+    return { success: false, error: err.message ?? 'Failed to save ticket prices.' };
   }
 }

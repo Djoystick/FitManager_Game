@@ -7,7 +7,7 @@ import { swapPlayers, updatePlayers, updateTeamFormation } from '@/app/actions/l
 import { healAllPlayers } from '@/app/actions/baseActions';
 import toast from 'react-hot-toast';
 import { CyberLoader } from '@/components/ui/CyberLoader';
-import { Shirt, X, RefreshCw, User, Eye, EyeOff, Zap, Lock } from 'lucide-react';
+import { Shirt, X, RefreshCw, User, Eye, EyeOff, Zap, Lock, Building2, Shuffle, Users, Wallet } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlayerProfileModal } from '@/components/PlayerProfileModal';
 import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
@@ -190,22 +190,19 @@ export default function LineupPage() {
     return '';
   };
 
-  // Render helper: get all slot indices for a formation in order (FWD→MID/CAM/CDM→DEF→GK)
+  // Render helper: get all slot indices for a formation in order (FWD→CAM→MID→CDM→DEF→GK)
+  // Bug-fix: previously 4-1-4-1 never rendered its CDM line because the
+  // CDM/MID branching swallowed the CDM row when CAM was absent.
+  // New logic treats every midfield layer (CAM, MID, CDM) as independent.
   const getFormationLines = (formation: string): number[][] => {
     const layout = FORMATIONS[formation] || FORMATIONS['4-4-2'];
     const lines: number[][] = [];
-    if (layout.FWD.length > 0) lines.push(layout.FWD);
-    if (layout.CAM && layout.CAM.length > 0) lines.push(layout.CAM);
-    if (layout.CDM) {
-      // For 4-2-3-1: CDM below CAM
-      const midLine = layout.MID.length > 0 ? layout.MID : layout.CDM;
-      if (layout.CAM) lines.push(layout.CDM); // CDM as separate line
-      else lines.push(midLine);
-    } else if (layout.MID.length > 0) {
-      lines.push(layout.MID);
-    }
-    if (layout.DEF.length > 0) lines.push(layout.DEF);
-    if (layout.GK.length > 0) lines.push(layout.GK);
+    if (layout.FWD.length > 0) lines.push(layout.FWD);               // Forwards
+    if (layout.CAM && layout.CAM.length > 0) lines.push(layout.CAM); // Attacking mid
+    if (layout.MID.length > 0) lines.push(layout.MID);               // Central mid
+    if (layout.CDM && layout.CDM.length > 0) lines.push(layout.CDM); // Defensive mid
+    if (layout.DEF.length > 0) lines.push(layout.DEF);               // Defenders
+    if (layout.GK.length > 0)  lines.push(layout.GK);                // Goalkeeper
     return lines;
   };
 
@@ -652,24 +649,29 @@ export default function LineupPage() {
             <StatCard label="Formation" value={currentFormation} accent="violet" />
           </div>
 
-          {/* Action grid */}
+          {/* Management — Web3 gradient cards */}
           <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold px-0.5">Management</div>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: 'Structures', href: '/base',    emoji: '🏗️' },
-              { label: 'Transfers',  href: '/market',  emoji: '🔄' },
-              { label: 'Staff',      href: '/staff',   emoji: '👔' },
-              { label: 'Finances',   href: '/bank',    emoji: '💰' },
-            ].map(({ label, href, emoji }) => (
-              <Link key={href} href={href}
-                className="glass-card p-3 flex items-center gap-2
-                           hover:border-cyan-500/30 transition-all group">
-                <span className="text-base">{emoji}</span>
-                <div>
-                  <div className="text-[8px] text-gray-600 uppercase tracking-widest">Go to</div>
-                  <div className="text-xs font-black text-white group-hover:text-cyan-300 uppercase tracking-wide transition-colors">{label}</div>
-                </div>
-              </Link>
+          <div className="grid grid-cols-2 gap-2.5">
+            {([
+              { label: 'Structures', sub: 'Club & Stadium',   href: '/base',   bg: 'from-teal-950 to-cyan-950',    border: 'border-teal-700/30',    hb: 'hover:border-teal-400/60',    glow: 'hover:shadow-[0_0_20px_rgba(20,184,166,0.18)]',  accent: 'text-teal-400',   Icon: Building2 },
+              { label: 'Transfers',  sub: 'Buy & Sell',       href: '/market', bg: 'from-violet-950 to-purple-950', border: 'border-violet-700/30',  hb: 'hover:border-violet-400/60',  glow: 'hover:shadow-[0_0_20px_rgba(139,92,246,0.18)]',  accent: 'text-violet-400', Icon: Shuffle   },
+              { label: 'Staff',      sub: 'Coaches & Scouts', href: '/staff',  bg: 'from-emerald-950 to-green-950', border: 'border-emerald-700/30', hb: 'hover:border-emerald-400/60', glow: 'hover:shadow-[0_0_20px_rgba(52,211,153,0.18)]',   accent: 'text-emerald-400', Icon: Users    },
+              { label: 'Finances',   sub: 'FanCoins & W2E',   href: '/bank',   bg: 'from-yellow-950 to-amber-950',  border: 'border-yellow-700/30',  hb: 'hover:border-yellow-400/60',  glow: 'hover:shadow-[0_0_20px_rgba(234,179,8,0.18)]',   accent: 'text-yellow-400', Icon: Wallet   },
+            ]).map(({ label, sub, href, bg, border, hb, glow, accent, Icon }) => (
+              <motion.div key={href} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+                <Link
+                  href={href}
+                  className={`flex flex-col gap-2.5 p-3 rounded-2xl overflow-hidden bg-gradient-to-br ${bg} border ${border} ${hb} ${glow} transition-all duration-300 block`}
+                >
+                  <div className={`w-8 h-8 rounded-xl bg-black/50 border border-white/10 flex items-center justify-center ${accent}`}>
+                    <Icon size={16} />
+                  </div>
+                  <div>
+                    <div className="text-[7px] text-gray-600 uppercase tracking-widest font-bold leading-none mb-0.5">{sub}</div>
+                    <div className={`text-[11px] font-black uppercase tracking-wide leading-tight ${accent}`}>{label}</div>
+                  </div>
+                </Link>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -678,24 +680,51 @@ export default function LineupPage() {
       {/* ── PLAYERS Tab ──────────────────────────────────────────────── */}
       {primaryTab === 'players' && (
         <div className="flex flex-col flex-1 overflow-hidden">
+          {/* Sub-nav with live counts */}
           <div className="flex-shrink-0 pb-2">
             <SubNavTabs
               tabs={[
-                { id: 'squad',   label: 'SQUAD'   },
-                { id: 'academy', label: 'ACADEMY' },
+                { id: 'squad',   label: `SQUAD (${activePlayers.filter(p => p.age >= 18).length})` },
+                { id: 'academy', label: `ACADEMY (${activePlayers.filter(p => p.age < 18).length})` },
               ]}
               active={playersSubTab}
               onChange={(id) => setPlayersSubTab(id as 'squad' | 'academy')}
               accent="cyan"
             />
           </div>
+
+          {/* 26-player hard cap warning */}
+          {activePlayers.length > 26 && (
+            <div className="flex-shrink-0 mx-3 mb-2 px-3 py-2 rounded-xl
+                            bg-red-500/10 border border-red-500/40
+                            flex items-center gap-2.5
+                            shadow-[0_0_16px_rgba(239,68,68,0.12)]">
+              <span className="text-lg flex-shrink-0">⚠️</span>
+              <div className="min-w-0">
+                <div className="text-[9px] font-black text-red-400 uppercase tracking-widest">Squad cap exceeded</div>
+                <div className="text-[8px] text-red-400/70">
+                  Max 26 players · Release {activePlayers.length - 26} player{activePlayers.length - 26 > 1 ? 's' : ''} via Transfers
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex-1 overflow-y-auto custom-scrollbar pb-28 relative z-10">
-            <div className="glass-card mx-3 overflow-hidden">
-              {players.length === 0 ? (
-                <div className="py-12 text-center text-gray-700 text-xs uppercase tracking-widest">No players</div>
-              ) : (
-                players
-                  .filter(() => playersSubTab === 'squad') // Academy filter placeholder
+            {playersSubTab === 'academy' && activePlayers.filter(p => p.age < 18).length === 0 ? (
+              /* Academy empty state */
+              <div className="flex flex-col items-center justify-center gap-3 py-16 px-6 text-center">
+                <div className="w-14 h-14 rounded-2xl glass-card flex items-center justify-center text-2xl">🎓</div>
+                <div>
+                  <div className="text-[10px] font-black text-white uppercase tracking-widest mb-1">No Academy Players</div>
+                  <div className="text-[8px] text-gray-600 uppercase tracking-wider max-w-[180px] mx-auto">
+                    Players under 18 appear here after signing youth talent
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="glass-card mx-3 overflow-hidden">
+                {activePlayers
+                  .filter(p => playersSubTab === 'squad' ? p.age >= 18 : p.age < 18)
                   .sort((a, b) => b.ovr - a.ovr)
                   .map(player => (
                     <PlayerListRow
@@ -713,8 +742,9 @@ export default function LineupPage() {
                       isSelected={profilePlayer?.id === player.id}
                     />
                   ))
-              )}
-            </div>
+                }
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1122,78 +1152,74 @@ export default function LineupPage() {
         )}
       </AnimatePresence>
 
-      {/* Legend Modal */}
+      {/* Legend Modal — compact to prevent overflow on small TMA screens */}
       {showLegend && (
         <div
           className="fixed inset-0 z-[100] flex items-end justify-center p-0 bg-black/70 backdrop-blur-sm pointer-events-auto"
           onClick={() => setShowLegend(false)}
         >
           <div
-            className="w-full max-w-[480px] max-h-[90vh] overflow-y-auto custom-scrollbar glass-card-violet rounded-b-none p-6 relative"
+            className="w-full max-w-[480px] max-h-[72vh] overflow-y-auto custom-scrollbar glass-card-violet rounded-b-none p-4 relative"
             onClick={e => e.stopPropagation()}
           >
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent" />
-            <div className="flex justify-center mb-3">
+            <div className="flex justify-center mb-2">
               <div className="w-10 h-1 rounded-full bg-white/15" />
             </div>
             <button
               onClick={() => setShowLegend(false)}
-              className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-gray-400 hover:text-white text-xs"
+              className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-gray-400 hover:text-white text-xs"
             >
               ✕
             </button>
-            <h3 className="text-white font-bold text-sm mb-4 uppercase tracking-wider flex items-center gap-2 font-orbitron">
+            <h3 className="text-white font-bold text-xs mb-2.5 uppercase tracking-wider flex items-center gap-2 font-orbitron">
               <span className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
               Синергия (Match Engine)
             </h3>
-            
-            <div className="space-y-4 text-sm text-gray-300">
-              <p className="border-b border-gray-800 pb-3">
-                <span className="text-neon-cyan font-bold block mb-1">Как это работает:</span>
+
+            <div className="space-y-2.5 text-xs text-gray-300">
+              <p className="border-b border-gray-800 pb-2">
+                <span className="text-neon-cyan font-bold block mb-0.5">Как это работает:</span>
                 Связки стилей дают <strong className="text-neon-green">+10%</strong> к статам в дуэлях. Конфликты (два Лидера) забирают <strong className="text-red-500">-15%</strong>.
               </p>
 
               <div>
-                <span className="text-gray-400 block mb-2">Классы стилей (Трейты):</span>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-teal-900/80 border-teal-500 text-teal-400 text-[7px] font-black">SN</span><span className="text-[10px] text-gray-300">Sniper</span></div>
-                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-blue-900/80 border-blue-500 text-blue-400 text-[7px] font-black">PM</span><span className="text-[10px] text-gray-300">Playmaker</span></div>
-                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-purple-900/80 border-purple-500 text-purple-400 text-[7px] font-black">WL</span><span className="text-[10px] text-gray-300">Wall</span></div>
-                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-orange-900/80 border-orange-500 text-orange-400 text-[7px] font-black">SP</span><span className="text-[10px] text-gray-300">Speedster</span></div>
-                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-indigo-900/80 border-indigo-500 text-indigo-400 text-[7px] font-black">AN</span><span className="text-[10px] text-gray-300">Anchor</span></div>
-                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-pink-900/80 border-pink-500 text-pink-400 text-[7px] font-black">PO</span><span className="text-[10px] text-gray-300">Poacher</span></div>
-                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-yellow-900/80 border-yellow-500 text-yellow-400 text-[7px] font-black">EN</span><span className="text-[10px] text-gray-300">Engine</span></div>
-                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-red-900/80 border-red-500 text-red-400 text-[7px] font-black">LD</span><span className="text-[10px] text-gray-300">Leader</span></div>
+                <span className="text-gray-400 block mb-1.5">Классы стилей (Трейты):</span>
+                <div className="flex flex-wrap gap-1.5 mb-2.5">
+                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-teal-900/80 border-teal-500 text-teal-400 text-[7px] font-black">SN</span><span className="text-[9px] text-gray-300">Sniper</span></div>
+                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-blue-900/80 border-blue-500 text-blue-400 text-[7px] font-black">PM</span><span className="text-[9px] text-gray-300">Playmaker</span></div>
+                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-purple-900/80 border-purple-500 text-purple-400 text-[7px] font-black">WL</span><span className="text-[9px] text-gray-300">Wall</span></div>
+                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-orange-900/80 border-orange-500 text-orange-400 text-[7px] font-black">SP</span><span className="text-[9px] text-gray-300">Speedster</span></div>
+                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-indigo-900/80 border-indigo-500 text-indigo-400 text-[7px] font-black">AN</span><span className="text-[9px] text-gray-300">Anchor</span></div>
+                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-pink-900/80 border-pink-500 text-pink-400 text-[7px] font-black">PO</span><span className="text-[9px] text-gray-300">Poacher</span></div>
+                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-yellow-900/80 border-yellow-500 text-yellow-400 text-[7px] font-black">EN</span><span className="text-[9px] text-gray-300">Engine</span></div>
+                  <div className="flex items-center gap-1"><span className="w-4 h-4 flex items-center justify-center rounded-full border bg-red-900/80 border-red-500 text-red-400 text-[7px] font-black">LD</span><span className="text-[9px] text-gray-300">Leader</span></div>
                 </div>
 
-                <span className="text-gray-400 block mb-2">Комбинации:</span>
-                <ul className="space-y-2">
-                  <li className="flex items-center justify-between bg-gray-900/50 p-2 rounded">
-                    <span>Playmaker + Poacher</span>
-                    <span className="text-neon-green font-bold">+10%</span>
+                <span className="text-gray-400 block mb-1.5">Комбинации:</span>
+                <ul className="space-y-1">
+                  <li className="flex items-center justify-between bg-gray-900/50 px-2 py-1.5 rounded">
+                    <span>Playmaker + Poacher</span><span className="text-neon-green font-bold">+10%</span>
                   </li>
-                  <li className="flex items-center justify-between bg-gray-900/50 p-2 rounded">
-                    <span>Engine + Speedster</span>
-                    <span className="text-neon-green font-bold">+10%</span>
+                  <li className="flex items-center justify-between bg-gray-900/50 px-2 py-1.5 rounded">
+                    <span>Engine + Speedster</span><span className="text-neon-green font-bold">+10%</span>
                   </li>
-                  <li className="flex items-center justify-between bg-gray-900/50 p-2 rounded">
-                    <span>Anchor + Wall</span>
-                    <span className="text-neon-green font-bold">+10%</span>
+                  <li className="flex items-center justify-between bg-gray-900/50 px-2 py-1.5 rounded">
+                    <span>Anchor + Wall</span><span className="text-neon-green font-bold">+10%</span>
                   </li>
-                  <li className="flex items-center justify-between bg-red-900/20 p-2 rounded mt-2 border border-red-900/50">
-                    <span>Leader + Leader</span>
-                    <span className="text-red-500 font-bold">-15%</span>
+                  <li className="flex items-center justify-between bg-red-900/20 px-2 py-1.5 rounded border border-red-900/50">
+                    <span>Leader + Leader</span><span className="text-red-500 font-bold">-15%</span>
                   </li>
                 </ul>
               </div>
-              
-              <div className="mt-4 pt-3 border-t border-gray-800">
-                <span className="text-gray-400 block mb-2">Связи на поле (Линии):</span>
-                <div className="flex items-center gap-3 mb-2">
+
+              <div className="pt-2 border-t border-gray-800">
+                <span className="text-gray-400 block mb-1.5">Связи на поле (Линии):</span>
+                <div className="flex items-center gap-3 mb-1.5">
                   <div className="w-8 h-1 bg-[#39ff14] shadow-[0_0_5px_#39ff14]"></div>
                   <span>Отличная (Матчи + Стиль)</span>
                 </div>
-                <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-center gap-3 mb-1.5">
                   <div className="w-8 h-1 bg-yellow-500"></div>
                   <span>Базовая (Позиции)</span>
                 </div>

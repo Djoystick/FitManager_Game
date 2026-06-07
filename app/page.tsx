@@ -12,7 +12,8 @@ import { CyberLoader } from '@/components/ui/CyberLoader';
 import {
   Users, Activity, ShoppingCart, Trophy, ChevronRight,
   Zap, User, TrendingUp, MessageSquare, Globe,
-  Shield, Calendar, ArrowRight, Swords,
+  Shield, Calendar, ArrowRight, Swords, X,
+  Dumbbell, Newspaper, Medal, Radio,
 } from 'lucide-react';
 import { UnseenMatchesModal } from '@/components/UnseenMatchesModal';
 import { NextMatchCountdown } from '@/components/dashboard/NextMatchCountdown';
@@ -21,16 +22,18 @@ import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MatchReport, MatchReportModal } from '@/components/MatchReportModal';
 import { OpponentScoutModal } from '@/components/OpponentScoutModal';
+import { FitnessSyncWidget } from '@/components/FitnessSyncWidget';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HOME DASHBOARD — Cyberpunk Command Center
 // Layout:
 //   1. Franchise Card       — team name + date + OVR bar
-//   2. Calendar Card        — next 3 upcoming matches
-//   3. Financial Row        — Bank Balance + Yearly Profit
-//   4. Action Grid          — Standings · WOOF · Messages
-//   5. Match History        — horizontal snap carousel (recent results)
-//   6. PROCEED TO MATCH     — large neon CTA button
+//   2. Single Countdown     — Transfer Window OR Next Match (never both)
+//   3. Calendar Card        — next 3 upcoming matches (expanded when countdown absent)
+//   4. Financial Row        — Bank Balance + Yearly Profit
+//   5. Action Grid          — Standings Modal · Social Feed Modal · Fitness Sync Modal
+//   6. Match History        — horizontal snap carousel (recent results, expanded)
+//   7. PROCEED TO MATCH     — large neon CTA button
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -53,6 +56,291 @@ function getTodayLabel(): string {
   return new Date().toLocaleDateString('en-GB', {
     weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
   }).toUpperCase();
+}
+
+// ── Modal Backdrop ─────────────────────────────────────────────────────────
+
+function ModalBackdrop({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-[200] flex items-end justify-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        {/* Backdrop */}
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+        {/* Sheet */}
+        <motion.div
+          className="relative w-full max-w-[480px] rounded-t-3xl overflow-hidden z-10"
+          style={{
+            background: 'linear-gradient(180deg, rgba(10,11,25,0.98) 0%, rgba(5,6,15,1) 100%)',
+            border: '1px solid rgba(0,240,255,0.15)',
+            borderBottom: 'none',
+            boxShadow: '0 -20px 60px rgba(0,0,0,0.8), 0 -2px 0 rgba(0,240,255,0.2)',
+          }}
+          initial={{ y: '100%' }}
+          animate={{ y: 0 }}
+          exit={{ y: '100%' }}
+          transition={{ type: 'spring', stiffness: 380, damping: 38 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Top neon line */}
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent" />
+          {children}
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+// ── Standings Modal ────────────────────────────────────────────────────────
+
+function StandingsModal({
+  standings,
+  userTeamId,
+  onClose,
+}: {
+  standings: any[];
+  userTeamId: string | null;
+  onClose: () => void;
+}) {
+  const top3 = standings.slice(0, 3);
+  const userEntry = standings.find((s: any) => s.team_id === userTeamId);
+  const userRank = userEntry ? standings.indexOf(userEntry) + 1 : null;
+
+  const medalColors = [
+    'text-yellow-400 bg-yellow-500/15 border-yellow-500/40',
+    'text-gray-300 bg-gray-500/15 border-gray-500/40',
+    'text-orange-400 bg-orange-500/15 border-orange-500/40',
+  ];
+
+  return (
+    <ModalBackdrop onClose={onClose}>
+      {/* Handle */}
+      <div className="flex justify-center pt-3 pb-1">
+        <div className="w-10 h-1 rounded-full bg-white/20" />
+      </div>
+
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 pb-3 pt-2">
+        <div className="flex items-center gap-2">
+          <Trophy size={16} className="text-violet-400" />
+          <span className="text-[11px] font-black font-orbitron uppercase tracking-widest text-white">
+            League Standings
+          </span>
+        </div>
+        <button
+          onClick={onClose}
+          className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center
+                     hover:bg-white/10 transition-colors active:scale-90"
+        >
+          <X size={13} className="text-gray-400" />
+        </button>
+      </div>
+
+      <div className="px-5 pb-6 flex flex-col gap-3">
+        {/* Top 3 */}
+        {standings.length === 0 ? (
+          <div className="text-center py-8 text-gray-600 text-sm font-bold uppercase tracking-wider">
+            No standings data yet
+          </div>
+        ) : (
+          <>
+            {top3.map((entry: any, i: number) => (
+              <motion.div
+                key={entry.team_id || i}
+                className={`flex items-center gap-3 p-3 rounded-xl border
+                            ${entry.team_id === userTeamId
+                              ? 'bg-cyan-500/10 border-cyan-500/30'
+                              : 'bg-white/[0.03] border-white/[0.06]'}`}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.07 }}
+              >
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black border ${medalColors[i]}`}>
+                  {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[11px] font-black text-white uppercase truncate">
+                    {entry.team_name || 'Unknown'}
+                    {entry.team_id === userTeamId && (
+                      <span className="ml-1.5 text-[8px] text-cyan-400 font-bold bg-cyan-500/15 px-1.5 py-0.5 rounded-full">YOU</span>
+                    )}
+                  </div>
+                  <div className="text-[9px] text-gray-600 font-mono mt-0.5">
+                    {entry.wins ?? 0}W · {entry.draws ?? 0}D · {entry.losses ?? 0}L
+                  </div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <div className="text-base font-black text-white font-orbitron">{entry.points ?? 0}</div>
+                  <div className="text-[8px] text-gray-600 uppercase tracking-wider">pts</div>
+                </div>
+              </motion.div>
+            ))}
+
+            {/* User position if outside top 3 */}
+            {userEntry && userRank && userRank > 3 && (
+              <>
+                <div className="flex items-center gap-2 my-1">
+                  <div className="flex-1 h-px bg-white/5" />
+                  <span className="text-[8px] text-gray-700 uppercase tracking-wider font-bold">Your Position</span>
+                  <div className="flex-1 h-px bg-white/5" />
+                </div>
+                <motion.div
+                  className="flex items-center gap-3 p-3 rounded-xl border bg-cyan-500/10 border-cyan-500/30"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.25 }}
+                >
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black bg-cyan-500/15 border border-cyan-500/40 text-cyan-300">
+                    #{userRank}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] font-black text-cyan-300 uppercase truncate">
+                      {userEntry.team_name || 'Your Team'}
+                      <span className="ml-1.5 text-[8px] text-cyan-400 font-bold bg-cyan-500/15 px-1.5 py-0.5 rounded-full">YOU</span>
+                    </div>
+                    <div className="text-[9px] text-gray-600 font-mono mt-0.5">
+                      {userEntry.wins ?? 0}W · {userEntry.draws ?? 0}D · {userEntry.losses ?? 0}L
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-base font-black text-cyan-300 font-orbitron">{userEntry.points ?? 0}</div>
+                    <div className="text-[8px] text-gray-600 uppercase tracking-wider">pts</div>
+                  </div>
+                </motion.div>
+              </>
+            )}
+
+            {/* Full standings link */}
+            <Link
+              href="/league"
+              onClick={onClose}
+              className="flex items-center justify-center gap-1.5 mt-1 py-2.5 rounded-xl
+                         border border-violet-500/25 bg-violet-500/10
+                         text-[10px] font-black uppercase tracking-widest text-violet-300
+                         hover:bg-violet-500/20 transition-colors active:scale-95"
+            >
+              Full Standings <ChevronRight size={11} />
+            </Link>
+          </>
+        )}
+      </div>
+    </ModalBackdrop>
+  );
+}
+
+// ── Fitness Sync Modal ─────────────────────────────────────────────────────
+
+function FitnessSyncModal({ onClose }: { onClose: () => void }) {
+  return (
+    <ModalBackdrop onClose={onClose}>
+      {/* Handle */}
+      <div className="flex justify-center pt-3 pb-1">
+        <div className="w-10 h-1 rounded-full bg-white/20" />
+      </div>
+
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 pb-3 pt-2">
+        <div className="flex items-center gap-2">
+          <Dumbbell size={16} className="text-emerald-400" />
+          <span className="text-[11px] font-black font-orbitron uppercase tracking-widest text-white">
+            Fitness Sync
+          </span>
+        </div>
+        <button
+          onClick={onClose}
+          className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center
+                     hover:bg-white/10 transition-colors active:scale-90"
+        >
+          <X size={13} className="text-gray-400" />
+        </button>
+      </div>
+
+      <div className="px-5 pb-6">
+        <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold mb-4">
+          Sync your real-world steps to boost your squad's stamina
+        </p>
+        <FitnessSyncWidget />
+      </div>
+    </ModalBackdrop>
+  );
+}
+
+// ── Social Feed Modal ──────────────────────────────────────────────────────
+
+const MOCK_FEED = [
+  { id: 1, emoji: '⚽', team: 'IRON WOLVES FC', action: 'crushed their rivals 4-1 in Round 7', time: '2m ago', color: 'text-emerald-400' },
+  { id: 2, emoji: '🔥', team: 'NEON DRAGONS', action: 'are on a 5-match winning streak!', time: '15m ago', color: 'text-orange-400' },
+  { id: 3, emoji: '📢', team: 'LEAGUE HQ', action: 'Transfer window closes in 18 hours', time: '32m ago', color: 'text-violet-400' },
+  { id: 4, emoji: '🏆', team: 'CYBER SQUAD', action: 'signed a new 88 OVR striker from the market', time: '1h ago', color: 'text-cyan-400' },
+  { id: 5, emoji: '💥', team: 'GHOST FC', action: 'suffered a 0-3 defeat to the league leaders', time: '2h ago', color: 'text-red-400' },
+];
+
+function SocialFeedModal({ onClose }: { onClose: () => void }) {
+  return (
+    <ModalBackdrop onClose={onClose}>
+      {/* Handle */}
+      <div className="flex justify-center pt-3 pb-1">
+        <div className="w-10 h-1 rounded-full bg-white/20" />
+      </div>
+
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 pb-3 pt-2">
+        <div className="flex items-center gap-2">
+          <Radio size={16} className="text-cyan-400 animate-pulse" />
+          <span className="text-[11px] font-black font-orbitron uppercase tracking-widest text-white">
+            Social Feed
+          </span>
+          <span className="text-[7px] font-bold bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+            LIVE
+          </span>
+        </div>
+        <button
+          onClick={onClose}
+          className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center
+                     hover:bg-white/10 transition-colors active:scale-90"
+        >
+          <X size={13} className="text-gray-400" />
+        </button>
+      </div>
+
+      <div className="px-5 pb-6 flex flex-col gap-2">
+        <p className="text-[9px] text-gray-700 uppercase tracking-wider font-bold mb-1">
+          Latest from your league
+        </p>
+        {MOCK_FEED.map((item, i) => (
+          <motion.div
+            key={item.id}
+            className="flex items-start gap-3 p-3 rounded-xl border border-white/[0.05] bg-white/[0.02]
+                       hover:bg-white/[0.04] transition-colors"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.06 }}
+          >
+            <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-lg
+                            bg-black/40 border border-white/[0.06]">
+              {item.emoji}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] font-black uppercase tracking-wide">
+                <span className={item.color}>{item.team}</span>
+                <span className="text-gray-400 font-normal ml-1">{item.action}</span>
+              </div>
+              <div className="text-[8px] text-gray-700 mt-0.5 font-mono">{item.time}</div>
+            </div>
+          </motion.div>
+        ))}
+
+        <div className="mt-2 text-center text-[8px] text-gray-700 font-bold uppercase tracking-wider">
+          Full social feed coming soon · WOOF 🐾
+        </div>
+      </div>
+    </ModalBackdrop>
+  );
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -197,6 +485,15 @@ export default function DashboardPage() {
   const [managerLevel,       setManagerLevel]        = useState<number>(1);
   const [unseenMessageCount, setUnseenMessageCount]  = useState<number>(0);
 
+  // Standings state (fetched on modal open)
+  const [standingsData,     setStandingsData]        = useState<any[]>([]);
+  const [standingsLoading,  setStandingsLoading]     = useState(false);
+
+  // Modal visibility state
+  const [showStandingsModal, setShowStandingsModal]  = useState(false);
+  const [showFitnessModal,   setShowFitnessModal]    = useState(false);
+  const [showSocialModal,    setShowSocialModal]     = useState(false);
+
   // ── Data fetching ────────────────────────────────────────────────────────
 
   const fetchUserData = useCallback(async (id: string) => {
@@ -258,7 +555,7 @@ export default function DashboardPage() {
             .then(d => setRecentMatches(d.matches || []))
             .catch(() => {});
 
-          fetch(`/api/matches/upcoming?teamId=${teamJson.team.id}&limit=3`)
+          fetch(`/api/matches/upcoming?teamId=${teamJson.team.id}&limit=5`)
             .then(r => r.ok ? r.json() : { matches: [] })
             .then(d => setUpcomingMatches(d.matches || []))
             .catch(() => {});
@@ -270,6 +567,7 @@ export default function DashboardPage() {
       if (leagueRes.ok) {
         const lJson = await leagueRes.json();
         if (lJson.league_instance?.tier_level) setLeagueTier(lJson.league_instance.tier_level);
+        if (lJson.standings) setStandingsData(lJson.standings);
       }
     } catch {
       setHasTeam(true);
@@ -331,6 +629,23 @@ export default function DashboardPage() {
     }
   }, [hasTeam, userId]);
 
+  // Open standings modal — refresh standings data
+  const handleOpenStandings = useCallback(async () => {
+    setShowStandingsModal(true);
+    if (standingsData.length === 0 && userId) {
+      setStandingsLoading(true);
+      try {
+        const res = await fetch(`/api/league/standings?userId=${userId}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.standings) setStandingsData(json.standings);
+        }
+      } finally {
+        setStandingsLoading(false);
+      }
+    }
+  }, [userId, standingsData.length]);
+
   // ── Guards ───────────────────────────────────────────────────────────────
   if (isAuthLoading || isDataLoading || hasTeam === null) {
     return <CyberLoader fullScreen text={t.loading} />;
@@ -372,6 +687,14 @@ export default function DashboardPage() {
     return { str, positive: n >= 0 };
   };
   const profit = formatProfit(yearlyProfit);
+
+  // ── Countdown logic ───────────────────────────────────────────────────────
+  // Show Transfer Window countdown ONLY when in filling/offseason state
+  // Show Next Match countdown ONLY when transfer window has closed (active season)
+  const isTransferWindowActive =
+    instanceStatus === 'filling' &&
+    instanceCreatedAt &&
+    (new Date(instanceCreatedAt).getTime() + 24 * 60 * 60 * 1000) > Date.now();
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -423,8 +746,9 @@ export default function DashboardPage() {
 
       {/* ═══════════════════════════════════════════════════════════════════════
           SECTION 1 — FRANCHISE COMMAND CARD
+          Pulled up: pt-2 (tight) right under the global header
       ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="px-3 pt-3 pb-0 flex-shrink-0 relative z-10">
+      <div className="px-3 pt-2 pb-0 flex-shrink-0 relative z-10">
         <motion.div
           className="glass-card-violet relative overflow-hidden p-3"
           initial={{ opacity: 0, y: -10 }}
@@ -521,42 +845,94 @@ export default function DashboardPage() {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          SECTION 2 — CALENDAR CARD (Next 3 Matches)
+          SECTION 2 — SINGLE COUNTDOWN
+          Logic: Show Transfer Window if active, ELSE show Next Match countdown.
+          Never both at the same time.
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <div className="px-3 mt-2 flex-shrink-0 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.05 }}
+        >
+          {isTransferWindowActive ? (
+            /* Transfer Window is open — show offseason card only */
+            <OffseasonCard
+              lastSeasonResult={lastSeasonResult}
+              instanceCreatedAt={instanceCreatedAt}
+              language={language}
+            />
+          ) : nextMatch ? (
+            /* Transfer window closed + we have a next match — show the CTA button */
+            <motion.button
+              onClick={() => {
+                const isHome = nextMatch.home_team?.name === teamName || nextMatch.home_team_name === teamName;
+                const opponentId   = isHome ? nextMatch.away_team?.id : nextMatch.home_team?.id;
+                const opponentName = isHome
+                  ? (nextMatch.away_team?.name || nextMatch.away_team_name)
+                  : (nextMatch.home_team?.name || nextMatch.home_team_name);
+                if (opponentId) {
+                  setSelectedOpponentId(opponentId);
+                  setSelectedOpponentName(opponentName);
+                }
+              }}
+              className="w-full relative overflow-hidden rounded-2xl py-4 flex flex-col items-center justify-center gap-1
+                         transition-all duration-300 active:scale-[0.98] group"
+              style={{
+                background: 'linear-gradient(135deg, rgba(0,240,255,0.12) 0%, rgba(147,51,234,0.15) 100%)',
+                border: '1px solid rgba(0,240,255,0.35)',
+                boxShadow: '0 0 30px rgba(0,240,255,0.15), inset 0 0 30px rgba(147,51,234,0.05)',
+              }}
+              whileTap={{ scale: 0.97 }}
+            >
+              <div className="absolute top-0 left-0 right-0 h-px"
+                   style={{ background: 'linear-gradient(90deg, transparent, rgba(0,240,255,0.8), rgba(147,51,234,0.8), transparent)' }} />
+              <div className="absolute inset-0 pointer-events-none"
+                   style={{ background: 'radial-gradient(ellipse 60% 60% at 50% 50%, rgba(0,240,255,0.05) 0%, transparent 70%)' }} />
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-1
+                              bg-cyan-500/15 border border-cyan-400/30
+                              group-hover:bg-cyan-500/25 group-hover:border-cyan-400/50
+                              transition-all duration-200">
+                <Swords size={20} className="text-cyan-300 drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]" />
+              </div>
+              <span className="text-xs font-black font-orbitron uppercase tracking-widest text-white"
+                    style={{ textShadow: '0 0 20px rgba(0,240,255,0.6)' }}>
+                PROCEED TO NEXT MATCH
+              </span>
+              {nextOpponent && (
+                <span className="text-[9px] text-cyan-400/70 uppercase tracking-wider font-bold">
+                  vs {nextOpponent} · R{nextMatch.round_number}
+                </span>
+              )}
+            </motion.button>
+          ) : (
+            /* No next match data — show generic next-hour countdown */
+            <NextMatchCountdown language={language} />
+          )}
+        </motion.div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          SECTION 3 — UPCOMING FIXTURES (no header link, expanded to 5 rows)
       ═══════════════════════════════════════════════════════════════════════ */}
       <div className="px-3 mt-2 flex-shrink-0 relative z-10">
         <motion.div
           className="glass-card overflow-hidden"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.05 }}
+          transition={{ duration: 0.35, delay: 0.08 }}
         >
-          {/* Card header */}
-          <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.05]">
-            <div className="flex items-center gap-2">
-              <Calendar size={12} className="text-cyan-400" />
-              <span className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">
-                Upcoming Fixtures
-              </span>
-            </div>
-            <Link href="/league"
-              className="text-[8px] text-violet-400 font-bold flex items-center gap-0.5 hover:text-violet-300 transition-colors">
-              League <ChevronRight size={9} />
-            </Link>
+          {/* Card header — no "League >" link */}
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.05]">
+            <Calendar size={12} className="text-cyan-400" />
+            <span className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">
+              Upcoming Fixtures
+            </span>
           </div>
 
-          {/* Next match countdown component (existing logic) */}
-          {instanceStatus === 'filling' && instanceCreatedAt &&
-           (new Date(instanceCreatedAt).getTime() + 24 * 60 * 60 * 1000) > Date.now() ? (
-            <div className="px-3 py-2">
-              <OffseasonCard
-                lastSeasonResult={lastSeasonResult}
-                instanceCreatedAt={instanceCreatedAt}
-                language={language}
-              />
-            </div>
-          ) : upcomingMatches.length > 0 ? (
+          {upcomingMatches.length > 0 ? (
             <div>
-              {upcomingMatches.slice(0, 3).map((m, i) => (
+              {upcomingMatches.slice(0, 5).map((m, i) => (
                 <CalendarMatchRow
                   key={m.id || i}
                   match={m}
@@ -577,16 +953,15 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : (
-            // Fallback: show the countdown component
-            <div className="px-3 py-2">
-              <NextMatchCountdown language={language} />
+            <div className="px-3 py-4 text-center">
+              <p className="text-gray-600 text-[10px] font-bold uppercase tracking-wider">No upcoming fixtures</p>
             </div>
           )}
         </motion.div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          SECTION 3 — FINANCIAL ROW
+          SECTION 4 — FINANCIAL ROW
       ═══════════════════════════════════════════════════════════════════════ */}
       <div className="px-3 mt-2 flex-shrink-0 relative z-10">
         <motion.div
@@ -632,7 +1007,8 @@ export default function DashboardPage() {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          SECTION 4 — ACTION GRID (Standings · WOOF · Messages)
+          SECTION 5 — ACTION GRID (Standings Modal · Social Feed Modal · Fitness Sync Modal)
+          These buttons now open modals instead of navigating away.
       ═══════════════════════════════════════════════════════════════════════ */}
       <div className="px-3 mt-2 flex-shrink-0 relative z-10">
         <motion.div
@@ -641,13 +1017,15 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.15 }}
         >
-          {/* Standings */}
-          <Link href="/league"
+          {/* Standings — opens modal */}
+          <button
+            onClick={handleOpenStandings}
             className="relative overflow-hidden rounded-2xl border border-violet-500/25
                        bg-gradient-to-br from-violet-900/20 to-black/40
                        p-3 flex flex-col items-center justify-center gap-1.5
                        hover:border-violet-500/50 hover:scale-[1.03]
-                       transition-all duration-200 active:scale-95 group">
+                       transition-all duration-200 active:scale-95 group"
+          >
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/40 to-transparent" />
             <div className="w-8 h-8 rounded-xl flex items-center justify-center
                             bg-violet-500/15 border border-violet-500/30
@@ -655,66 +1033,59 @@ export default function DashboardPage() {
               <Trophy size={16} className="text-violet-400" />
             </div>
             <span className="text-[8px] font-black uppercase tracking-widest text-violet-300">STANDINGS</span>
-          </Link>
+          </button>
 
-          {/* WOOF Social */}
-          <Link href="/league"
+          {/* WOOF / Social Feed — opens social feed modal */}
+          <button
+            onClick={() => setShowSocialModal(true)}
             className="relative overflow-hidden rounded-2xl border border-cyan-500/25
                        bg-gradient-to-br from-cyan-900/20 to-black/40
                        p-3 flex flex-col items-center justify-center gap-1.5
                        hover:border-cyan-500/50 hover:scale-[1.03]
-                       transition-all duration-200 active:scale-95 group">
+                       transition-all duration-200 active:scale-95 group"
+          >
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
             <div className="w-8 h-8 rounded-xl flex items-center justify-center
                             bg-cyan-500/15 border border-cyan-500/30
                             group-hover:bg-cyan-500/25 transition-colors">
-              <Globe size={16} className="text-cyan-400" />
+              <Radio size={16} className="text-cyan-400" />
             </div>
             <span className="text-[8px] font-black uppercase tracking-widest text-cyan-300">WOOF 🐾</span>
-          </Link>
+          </button>
 
-          {/* Messages */}
+          {/* FITNESS SYNC — opens fitness sync modal */}
           <button
             className="relative overflow-hidden rounded-2xl border border-emerald-500/25
                        bg-gradient-to-br from-emerald-900/20 to-black/40
                        p-3 flex flex-col items-center justify-center gap-1.5
                        hover:border-emerald-500/50 hover:scale-[1.03]
                        transition-all duration-200 active:scale-95 group"
-            onClick={() => router.push('/profile')}
+            onClick={() => setShowFitnessModal(true)}
           >
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent" />
             <div className="w-8 h-8 rounded-xl flex items-center justify-center relative
                             bg-emerald-500/15 border border-emerald-500/30
                             group-hover:bg-emerald-500/25 transition-colors">
-              <MessageSquare size={16} className="text-emerald-400" />
-              {unseenMessageCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 flex items-center justify-center
-                                 text-[7px] font-black text-white shadow-[0_0_6px_rgba(239,68,68,0.6)]">
-                  {unseenMessageCount}
-                </span>
-              )}
+              <Dumbbell size={16} className="text-emerald-400" />
             </div>
-            <span className="text-[8px] font-black uppercase tracking-widest text-emerald-300">MESSAGES</span>
+            <span className="text-[8px] font-black uppercase tracking-widest text-emerald-300">FITNESS</span>
           </button>
         </motion.div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          SECTION 5 — MATCH HISTORY (horizontal snap carousel)
+          SECTION 6 — MATCH HISTORY (horizontal snap carousel, no "All >" link)
+          Expanded to show more cards when the second countdown is gone.
       ═══════════════════════════════════════════════════════════════════════ */}
       <div className="mt-2 flex-shrink-0 relative z-10">
-        <div className="px-3 flex items-center justify-between mb-1.5">
+        <div className="px-3 mb-1.5">
           <p className="text-[9px] font-bold text-gray-600 uppercase tracking-[0.2em]">
             {t.match_journal}
           </p>
-          <Link href="/league"
-            className="text-[9px] text-violet-400 font-bold flex items-center gap-0.5 hover:text-violet-300 transition-colors">
-            All <ChevronRight size={10} />
-          </Link>
         </div>
 
         {recentMatches.length > 0 ? (
-          <div className="snap-row px-3 pb-2">
+          <div className="snap-row px-3 pb-3">
             {recentMatches.map((m, i) => (
               <MatchCard
                 key={m.id || i}
@@ -735,7 +1106,7 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center text-center px-6 py-6">
+          <div className="flex flex-col items-center justify-center text-center px-6 py-8 mb-2">
             <div className="w-10 h-10 rounded-full glass-card flex items-center justify-center mb-2">
               <Zap className="w-5 h-5 text-gray-700" />
             </div>
@@ -745,72 +1116,8 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          SECTION 6 — PROCEED TO NEXT MATCH (large neon CTA)
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="px-3 mt-2 pb-28 flex-shrink-0 relative z-10">
-        {nextMatch ? (
-          <motion.button
-            onClick={() => {
-              const isHome = nextMatch.home_team?.name === teamName || nextMatch.home_team_name === teamName;
-              const opponentId   = isHome ? nextMatch.away_team?.id : nextMatch.home_team?.id;
-              const opponentName = isHome
-                ? (nextMatch.away_team?.name || nextMatch.away_team_name)
-                : (nextMatch.home_team?.name || nextMatch.home_team_name);
-              if (opponentId) {
-                setSelectedOpponentId(opponentId);
-                setSelectedOpponentName(opponentName);
-              }
-            }}
-            className="w-full relative overflow-hidden rounded-2xl py-4 flex flex-col items-center justify-center gap-1
-                       transition-all duration-300 active:scale-[0.98] group"
-            style={{
-              background: 'linear-gradient(135deg, rgba(0,240,255,0.12) 0%, rgba(147,51,234,0.15) 100%)',
-              border: '1px solid rgba(0,240,255,0.35)',
-              boxShadow: '0 0 30px rgba(0,240,255,0.15), inset 0 0 30px rgba(147,51,234,0.05)',
-            }}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            whileTap={{ scale: 0.97 }}
-          >
-            {/* Animated top border */}
-            <div className="absolute top-0 left-0 right-0 h-px"
-                 style={{ background: 'linear-gradient(90deg, transparent, rgba(0,240,255,0.8), rgba(147,51,234,0.8), transparent)' }} />
-
-            {/* Ambient glow blob */}
-            <div className="absolute inset-0 pointer-events-none"
-                 style={{ background: 'radial-gradient(ellipse 60% 60% at 50% 50%, rgba(0,240,255,0.05) 0%, transparent 70%)' }} />
-
-            {/* Icon */}
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-1
-                            bg-cyan-500/15 border border-cyan-400/30
-                            group-hover:bg-cyan-500/25 group-hover:border-cyan-400/50
-                            transition-all duration-200">
-              <Swords size={20} className="text-cyan-300 drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]" />
-            </div>
-
-            <span className="text-xs font-black font-orbitron uppercase tracking-widest text-white"
-                  style={{ textShadow: '0 0 20px rgba(0,240,255,0.6)' }}>
-              PROCEED TO NEXT MATCH
-            </span>
-            {nextOpponent && (
-              <span className="text-[9px] text-cyan-400/70 uppercase tracking-wider font-bold">
-                vs {nextOpponent} · R{nextMatch.round_number}
-              </span>
-            )}
-          </motion.button>
-        ) : (
-          // No upcoming match — show the standard countdown component
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <NextMatchCountdown language={language} />
-          </motion.div>
-        )}
-      </div>
+      {/* Bottom padding for tab bar */}
+      <div className="pb-28 flex-shrink-0" />
 
       {/* ── Match Report Modal ─────────────────────────────────────────────── */}
       {selectedMatch && teamId && (
@@ -829,6 +1136,25 @@ export default function DashboardPage() {
           opponentTeamName={selectedOpponentName || 'Unknown Opponent'}
           onClose={() => { setSelectedOpponentId(null); setSelectedOpponentName(null); }}
         />
+      )}
+
+      {/* ── Standings Modal ────────────────────────────────────────────────── */}
+      {showStandingsModal && (
+        <StandingsModal
+          standings={standingsLoading ? [] : standingsData}
+          userTeamId={teamId}
+          onClose={() => setShowStandingsModal(false)}
+        />
+      )}
+
+      {/* ── Fitness Sync Modal ─────────────────────────────────────────────── */}
+      {showFitnessModal && (
+        <FitnessSyncModal onClose={() => setShowFitnessModal(false)} />
+      )}
+
+      {/* ── Social Feed Modal ──────────────────────────────────────────────── */}
+      {showSocialModal && (
+        <SocialFeedModal onClose={() => setShowSocialModal(false)} />
       )}
     </div>
   );

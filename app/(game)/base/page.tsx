@@ -24,6 +24,7 @@ import {
   getTrainingCampData,
   upgradeBuildingAction,
   batchTrainPlayerAction,
+  saveTicketPricesAction,
   type ClubInfrastructure,
   type TrainingCampData,
   type PlayerForTraining,
@@ -455,7 +456,7 @@ function InfrastructureTab({
   const powerPct   = Math.round((totalLevel / totalMax) * 100);
 
   return (
-    <div className="px-3 py-4 flex flex-col gap-4">
+    <div className="px-3 py-3 flex flex-col gap-3">
 
       {/* ── Club Power Panel ──────────────────────────────────────────────── */}
       <div className="relative overflow-hidden rounded-2xl border border-yellow-500/25
@@ -857,8 +858,9 @@ function TrainingTab({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// StadiumTab — Stadium sub-facilities + ticket pricing
-// Shows pitch, lighting, seating, services levels (from migration 00044)
+// StadiumTab — Stadium sub-facilities + ticket pricing (fully wired to Supabase)
+// Prices hydrated from ClubInfrastructure; saved via saveTicketPricesAction.
+// Sub-facility upgrade UI is a placeholder (V4 roadmap).
 // ─────────────────────────────────────────────────────────────────────────────
 
 function StadiumTab({
@@ -872,6 +874,50 @@ function StadiumTab({
 }) {
   const stadiumLevel = infra?.stadium_level ?? 1;
   const capacity     = stadiumLevel * 5000;
+
+  // ── Ticket price local state — hydrated from DB infra row ──────────────────
+  const [priceLeague,    setPriceLeague]    = useState(infra?.ticket_price_league   ?? 20);
+  const [priceIntcup,    setPriceIntcup]    = useState(infra?.ticket_price_intcup   ?? 30);
+  const [priceNatcup,    setPriceNatcup]    = useState(infra?.ticket_price_natcup   ?? 25);
+  const [priceFriendly,  setPriceFriendly]  = useState(infra?.ticket_price_friendly ?? 10);
+  const [isSavingPrices, setIsSavingPrices] = useState(false);
+
+  // Re-sync state when infra prop loads (first render may have null)
+  useEffect(() => {
+    if (!infra) return;
+    setPriceLeague(infra.ticket_price_league   ?? 20);
+    setPriceIntcup(infra.ticket_price_intcup   ?? 30);
+    setPriceNatcup(infra.ticket_price_natcup   ?? 25);
+    setPriceFriendly(infra.ticket_price_friendly ?? 10);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [infra?.ticket_price_league, infra?.ticket_price_intcup,
+      infra?.ticket_price_natcup, infra?.ticket_price_friendly]);
+
+  const handleSavePrices = async () => {
+    setIsSavingPrices(true);
+    try {
+      const res = await saveTicketPricesAction({
+        league:   priceLeague,
+        intcup:   priceIntcup,
+        natcup:   priceNatcup,
+        friendly: priceFriendly,
+      });
+      if (res.success) {
+        toast.success('Ticket prices saved ✅');
+      } else {
+        toast.error(res.error ?? 'Failed to save prices');
+      }
+    } finally {
+      setIsSavingPrices(false);
+    }
+  };
+
+  const TICKET_ROWS = [
+    { label: 'League',   accentColor: 'text-cyan-400',    val: priceLeague,   set: setPriceLeague   },
+    { label: 'Int. Cup', accentColor: 'text-violet-400',  val: priceIntcup,   set: setPriceIntcup   },
+    { label: 'Nat. Cup', accentColor: 'text-emerald-400', val: priceNatcup,   set: setPriceNatcup   },
+    { label: 'Friendly', accentColor: 'text-gray-400',    val: priceFriendly, set: setPriceFriendly },
+  ];
 
   return (
     <div className="p-3 flex flex-col gap-3">
@@ -907,14 +953,14 @@ function StadiumTab({
         </button>
       </div>
 
-      {/* Sub-facility cards */}
+      {/* Sub-facility cards (upgrades coming in V4) */}
       <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold px-1">Facilities</div>
 
       {[
-        { label: 'Pitch Quality',    key: 'pitch',     emoji: '🟩', desc: 'Affects player performance'      },
-        { label: 'Lighting System',  key: 'lighting',  emoji: '💡', desc: 'Enables evening match scheduling' },
-        { label: 'Seating & VIP',    key: 'seating',   emoji: '💺', desc: 'Increases ticket revenue'        },
-        { label: 'Fan Services',     key: 'services',  emoji: '🍔', desc: 'Boosts atmosphere & merch sales' },
+        { label: 'Pitch Quality',   emoji: '🟩', desc: 'Affects player performance'       },
+        { label: 'Lighting System', emoji: '💡', desc: 'Enables evening match scheduling'  },
+        { label: 'Seating & VIP',   emoji: '💺', desc: 'Increases ticket revenue'          },
+        { label: 'Fan Services',    emoji: '🍔', desc: 'Boosts atmosphere & merch sales'  },
       ].map(({ label, emoji, desc }) => (
         <div key={label} className="glass-card p-3 flex items-center gap-3">
           <span className="text-xl flex-shrink-0">{emoji}</span>
@@ -924,48 +970,52 @@ function StadiumTab({
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[8px] text-gray-600 uppercase tracking-wider">LVL 1</span>
-            <button
-              className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10
-                         text-gray-600 text-[8px] font-bold uppercase tracking-wider
-                         hover:border-cyan-500/30 hover:text-cyan-400 transition-all"
-            >
+            <button className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10
+                               text-gray-600 text-[8px] font-bold uppercase tracking-wider
+                               hover:border-cyan-500/30 hover:text-cyan-400 transition-all">
               ↑ Soon
             </button>
           </div>
         </div>
       ))}
 
-      {/* Ticket pricing — references new DB columns */}
+      {/* Ticket Pricing — fully wired, prices stored in infrastructure table */}
       <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold px-1 mt-1">Ticket Pricing</div>
-      <div className="glass-card p-3 grid grid-cols-2 gap-3">
-        {[
-          { label: 'League',     color: 'text-cyan-400'    },
-          { label: 'Int. Cup',   color: 'text-violet-400'  },
-          { label: 'Nat. Cup',   color: 'text-emerald-400' },
-          { label: 'Friendly',   color: 'text-gray-400'    },
-        ].map(({ label, color }) => (
-          <div key={label} className="flex flex-col gap-1">
-            <div className="text-[7px] text-gray-600 uppercase tracking-wider font-bold">{label}</div>
-            <input
-              type="number"
-              defaultValue={20}
-              min={0}
-              max={999}
-              className="w-full bg-black/50 border border-white/10 text-white px-2 py-1.5
-                         rounded-lg text-[10px] font-mono font-bold focus:border-cyan-500/40 outline-none
-                         [appearance:textfield]"
-              placeholder="FC"
-            />
-          </div>
-        ))}
+      <div className="glass-card p-3 flex flex-col gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
+          {TICKET_ROWS.map(({ label, accentColor, val, set }) => (
+            <div key={label} className="flex flex-col gap-1">
+              <div className={`text-[7px] uppercase tracking-wider font-bold ${accentColor}`}>{label}</div>
+              <input
+                type="number"
+                value={val}
+                onChange={e => set(Math.max(0, Math.min(999, parseInt(e.target.value, 10) || 0)))}
+                min={0}
+                max={999}
+                className="w-full bg-black/50 border border-white/10 text-white px-2 py-1.5
+                           rounded-lg text-[10px] font-mono font-bold
+                           focus:border-cyan-500/40 focus:outline-none
+                           focus:shadow-[0_0_8px_rgba(0,240,255,0.12)]
+                           [appearance:textfield] transition-all"
+                placeholder="FC"
+              />
+            </div>
+          ))}
+        </div>
+
+        <button
+          id="stadium-save-prices-btn"
+          onClick={handleSavePrices}
+          disabled={isSavingPrices || isPending}
+          className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all
+            ${isSavingPrices || isPending
+              ? 'bg-gray-800/50 text-gray-500 cursor-wait'
+              : 'bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/25 active:scale-95 shadow-[0_0_12px_rgba(0,240,255,0.08)]'
+            }`}
+        >
+          {isSavingPrices ? 'Saving...' : '💾 Save Ticket Prices'}
+        </button>
       </div>
-      <button
-        disabled
-        className="w-full py-2 rounded-xl text-[9px] font-black uppercase tracking-wider
-                   bg-gray-800/50 text-gray-600 border border-gray-700/30 cursor-not-allowed"
-      >
-        Save Prices — Coming Soon
-      </button>
     </div>
   );
 }
