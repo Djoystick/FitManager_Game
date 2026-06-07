@@ -225,7 +225,7 @@ export function GlobalHeader() {
 
           {/* Bottom sheet */}
           <div
-            className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-[85] rounded-t-3xl"
+            className="fixed bottom-0 inset-x-0 mx-auto w-full max-w-[480px] z-[85] rounded-t-3xl"
             style={{
               background: 'rgba(5,6,15,0.97)',
               backdropFilter: 'blur(24px)',
@@ -293,8 +293,8 @@ export function GlobalHeader() {
           {/* Slide-up keyframe (CSS-only, no framer-motion dep required here) */}
           <style>{`
             @keyframes globalHeaderSheetUp {
-              from { transform: translateX(-50%) translateY(100%); opacity: 0; }
-              to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
+              from { transform: translateY(100%); opacity: 0; }
+              to   { transform: translateY(0);    opacity: 1; }
             }
           `}</style>
         </>
