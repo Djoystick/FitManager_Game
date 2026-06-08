@@ -5,9 +5,10 @@ import { cookies } from 'next/headers';
 
 export async function GET(req: Request) {
   try {
-    const { searchParams, origin } = new URL(req.url);
-    const code = searchParams.get('code');
-    const errorParam = searchParams.get('error');
+    const url = new URL(req.url);
+    const origin = url.origin;
+    const code = url.searchParams.get('code');
+    const errorParam = url.searchParams.get('error');
 
     if (errorParam) {
       console.error('Google Auth Error from redirect:', errorParam);
@@ -26,7 +27,7 @@ export async function GET(req: Request) {
       return NextResponse.redirect(`${origin}?error=unauthorized_in_game`);
     }
 
-    const oauth2Client = getGoogleOAuthClient();
+    const oauth2Client = getGoogleOAuthClient(origin);
 
     // Exchange auth code for access & refresh tokens
     const { tokens } = await oauth2Client.getToken(code);

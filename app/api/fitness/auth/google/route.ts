@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getGoogleOAuthClient } from '@/lib/googleFitness';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const oauth2Client = getGoogleOAuthClient();
+    const { origin } = new URL(req.url);
+    const oauth2Client = getGoogleOAuthClient(origin);
 
     // Generate a secure auth URL
     const url = oauth2Client.generateAuthUrl({
