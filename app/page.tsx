@@ -141,7 +141,7 @@ function StandingsModal({
         </button>
       </div>
 
-      <div className="px-5 pb-6 flex flex-col gap-3">
+      <div className="px-5 pb-24 flex flex-col gap-3">
         {/* Top 3 */}
         {standings.length === 0 ? (
           <div className="text-center py-8 text-gray-600 text-sm font-bold uppercase tracking-wider">
@@ -260,7 +260,7 @@ function FitnessSyncModal({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      <div className="px-5 pb-6">
+      <div className="px-5 pb-24">
         <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold mb-4">
           Sync your real-world steps to boost your squad's stamina
         </p>
@@ -308,7 +308,7 @@ function SocialFeedModal({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      <div className="px-5 pb-6 flex flex-col gap-2">
+      <div className="px-5 pb-24 flex flex-col gap-2">
         <p className="text-[9px] text-gray-700 uppercase tracking-wider font-bold mb-1">
           Latest from your league
         </p>
