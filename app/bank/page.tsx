@@ -68,7 +68,7 @@ export default async function BankPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-80px)] flex flex-col bg-space-dark">
+    <div className="h-full flex flex-col bg-space-dark overflow-y-auto custom-scrollbar pb-[90px]">
       {/* Page Header */}
       <div className="shrink-0 px-4 pt-4 pb-2 flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl bg-neon-green/10 border border-neon-green/20 flex items-center justify-center">

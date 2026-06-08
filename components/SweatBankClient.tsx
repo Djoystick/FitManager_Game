@@ -15,6 +15,7 @@ import {
   type ConvertSpResult,
 } from '@/app/actions/economyActions';
 import { dict } from '@/lib/dictionaries';
+import { FitnessSyncWidget } from '@/components/FitnessSyncWidget';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants & Helpers
@@ -239,53 +240,7 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
             Источник данных
           </p>
 
-          {/* Google Health */}
-          <div className="flex items-center justify-between px-3 py-2.5 rounded-xl
-                          bg-gradient-to-r from-[#4285f4]/8 to-transparent
-                          border border-[#4285f4]/20">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-white/5 border border-[#4285f4]/30
-                              flex items-center justify-center text-base">
-                🏃
-              </div>
-              <div>
-                <div className="text-[11px] font-bold text-white">Google Health</div>
-                <div className="text-[9px] text-gray-600 font-mono uppercase tracking-wider">Не подключён</div>
-              </div>
-            </div>
-            <button disabled
-              className="px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider
-                         bg-[#4285f4]/10 border border-[#4285f4]/25 text-[#4285f4]/60
-                         cursor-not-allowed opacity-60">
-              Скоро
-            </button>
-          </div>
-
-          {/* Apple Health */}
-          <div className="flex items-center justify-between px-3 py-2.5 rounded-xl
-                          bg-gradient-to-r from-rose-500/8 to-transparent
-                          border border-rose-500/20">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-white/5 border border-rose-500/30
-                              flex items-center justify-center text-base">
-                🍎
-              </div>
-              <div>
-                <div className="text-[11px] font-bold text-white">Apple Health</div>
-                <div className="text-[9px] text-gray-600 font-mono uppercase tracking-wider">Не подключён</div>
-              </div>
-            </div>
-            <button disabled
-              className="px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider
-                         bg-rose-500/10 border border-rose-500/25 text-rose-400/60
-                         cursor-not-allowed opacity-60">
-              Скоро
-            </button>
-          </div>
-
-          <p className="text-[8px] text-gray-700 text-center uppercase tracking-widest mt-0.5">
-            Подключение к трекеру откроет автоматическую синхронизацию шагов
-          </p>
+          <FitnessSyncWidget />
         </div>
       </section>
 

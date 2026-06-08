@@ -22,7 +22,6 @@ import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MatchReport, MatchReportModal } from '@/components/MatchReportModal';
 import { OpponentScoutModal } from '@/components/OpponentScoutModal';
-import { FitnessSyncWidget } from '@/components/FitnessSyncWidget';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HOME DASHBOARD — Cyberpunk Command Center
@@ -233,42 +232,6 @@ function StandingsModal({
   );
 }
 
-// ── Fitness Sync Modal ─────────────────────────────────────────────────────
-
-function FitnessSyncModal({ onClose }: { onClose: () => void }) {
-  return (
-    <ModalBackdrop onClose={onClose}>
-      {/* Handle */}
-      <div className="flex justify-center pt-3 pb-1">
-        <div className="w-10 h-1 rounded-full bg-white/20" />
-      </div>
-
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 pb-3 pt-2">
-        <div className="flex items-center gap-2">
-          <Dumbbell size={16} className="text-emerald-400" />
-          <span className="text-[11px] font-black font-orbitron uppercase tracking-widest text-white">
-            Fitness Sync
-          </span>
-        </div>
-        <button
-          onClick={onClose}
-          className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center
-                     hover:bg-white/10 transition-colors active:scale-90"
-        >
-          <X size={13} className="text-gray-400" />
-        </button>
-      </div>
-
-      <div className="px-5 pb-24">
-        <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold mb-4">
-          Sync your real-world steps to boost your squad's stamina
-        </p>
-        <FitnessSyncWidget />
-      </div>
-    </ModalBackdrop>
-  );
-}
 
 // ── Social Feed Modal ──────────────────────────────────────────────────────
 
@@ -491,7 +454,6 @@ export default function DashboardPage() {
 
   // Modal visibility state
   const [showStandingsModal, setShowStandingsModal]  = useState(false);
-  const [showFitnessModal,   setShowFitnessModal]    = useState(false);
   const [showSocialModal,    setShowSocialModal]     = useState(false);
 
   // ── Data fetching ────────────────────────────────────────────────────────
@@ -700,7 +662,7 @@ export default function DashboardPage() {
   return (
     <div
       className="h-full flex flex-col overflow-y-auto custom-scrollbar text-white relative"
-      style={{ ...paddingStyle, background: '#05060f' }}
+      style={{ paddingBottom: '90px', background: '#05060f' }}
     >
       {/* ── Background decorations ─────────────────────────────────────────── */}
       <div className="fixed inset-0 pointer-events-none bg-grid-cyan opacity-100" />
@@ -1053,14 +1015,14 @@ export default function DashboardPage() {
             <span className="text-[8px] font-black uppercase tracking-widest text-cyan-300">WOOF 🐾</span>
           </button>
 
-          {/* FITNESS SYNC — opens fitness sync modal */}
-          <button
+          {/* FITNESS HUB — navigates to bank page */}
+          <Link
+            href="/bank"
             className="relative overflow-hidden rounded-2xl border border-emerald-500/25
                        bg-gradient-to-br from-emerald-900/20 to-black/40
                        p-3 flex flex-col items-center justify-center gap-1.5
                        hover:border-emerald-500/50 hover:scale-[1.03]
                        transition-all duration-200 active:scale-95 group"
-            onClick={() => setShowFitnessModal(true)}
           >
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent" />
             <div className="w-8 h-8 rounded-xl flex items-center justify-center relative
@@ -1068,8 +1030,8 @@ export default function DashboardPage() {
                             group-hover:bg-emerald-500/25 transition-colors">
               <Dumbbell size={16} className="text-emerald-400" />
             </div>
-            <span className="text-[8px] font-black uppercase tracking-widest text-emerald-300">{t.home_fitness || 'FITNESS'}</span>
-          </button>
+            <span className="text-[8px] font-black uppercase tracking-widest text-emerald-300 text-center">ФИТНЕС ЦЕНТР</span>
+          </Link>
         </motion.div>
       </div>
 
@@ -1147,10 +1109,7 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* ── Fitness Sync Modal ─────────────────────────────────────────────── */}
-      {showFitnessModal && (
-        <FitnessSyncModal onClose={() => setShowFitnessModal(false)} />
-      )}
+
 
       {/* ── Social Feed Modal ──────────────────────────────────────────────── */}
       {showSocialModal && (
