@@ -19,7 +19,6 @@ import { FitnessSyncWidget } from '@/components/FitnessSyncWidget';
 // Constants & Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DAILY_STEP_CAP = 20_000;
 
 // Profile labels moved inside component to support translations
 
@@ -124,7 +123,6 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
   }, [spInputs, sweatPoints]);
 
   const profileMeta = PROFILE_LABELS[profile];
-  const stepPct = Math.min((dailySteps / DAILY_STEP_CAP) * 100, 100);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
