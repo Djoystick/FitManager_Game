@@ -35,7 +35,8 @@ export async function POST(req: Request) {
     }
 
     // 2. Init Google Auth
-    const oauth2Client = getGoogleOAuthClient();
+    const { origin } = new URL(req.url);
+    const oauth2Client = getGoogleOAuthClient(origin);
     oauth2Client.setCredentials({ refresh_token: user.google_refresh_token });
     
     const fitness = google.fitness({ version: 'v1', auth: oauth2Client });
