@@ -16,14 +16,16 @@ export function FitnessSyncWidget() {
   const [syncState, setSyncState] = useState<'idle' | 'loading' | 'success'>('idle');
   const [dailySteps, setDailySteps] = useState(0);
   const [limitReached, setLimitReached] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   
   const MAX_STEPS = 20000;
 
   useEffect(() => {
     const fetchState = async () => {
       if (!userId) return;
-      const { data } = await supabase.from('users').select('daily_steps_logged, last_sync_date').eq('id', userId).single();
+      const { data } = await supabase.from('users').select('daily_steps_logged, last_sync_date, google_refresh_token').eq('id', userId).single();
       if (data) {
+        setIsConnected(!!data.google_refresh_token);
         const tzDate = new Date().toISOString().split('T')[0];
         if (data.last_sync_date === tzDate) {
            setDailySteps(data.daily_steps_logged || 0);
@@ -38,19 +40,19 @@ export function FitnessSyncWidget() {
   }, [userId, isAuthenticated]);
 
   const handleSync = async () => {
-    const steps = parseInt(stepsInput, 10);
-    if (!userId || isNaN(steps) || steps <= 0 || limitReached) return;
+    if (!userId || limitReached) return;
 
     setIsSyncing(true);
     setSyncState('loading');
 
     const tzDate = new Date().toISOString().split('T')[0];
+    const tzOffset = new Date().getTimezoneOffset();
 
     try {
       const res = await fetch('/api/fitness/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, steps, timezoneDate: tzDate })
+        body: JSON.stringify({ timezoneDate: tzDate, timezoneOffsetMins: tzOffset })
       });
       const data = await res.json();
       
@@ -58,13 +60,15 @@ export function FitnessSyncWidget() {
         setDailySteps(data.daily_steps_logged);
         setLimitReached(data.limit_reached);
         setSyncState('success');
-        setStepsInput('');
         
-        if (data.earned_tp > 0) {
+        if (data.earned_sp > 0) {
           window.dispatchEvent(new Event('balanceUpdated'));
         }
 
         setTimeout(() => setSyncState('idle'), 2000);
+      } else if (res.status === 403 && data.not_connected) {
+        setIsConnected(false);
+        setSyncState('idle');
       } else {
         setSyncState('idle');
       }
@@ -74,6 +78,10 @@ export function FitnessSyncWidget() {
     } finally {
       setIsSyncing(false);
     }
+  };
+
+  const handleConnect = () => {
+    window.location.href = '/api/fitness/auth/google';
   };
 
   const progressPercent = Math.min(100, (dailySteps / MAX_STEPS) * 100);
@@ -120,28 +128,18 @@ export function FitnessSyncWidget() {
         </div>
       </div>
 
-      {/* Terminal Input */}
-      <div className="relative z-10 bg-black/80 border border-gray-700 rounded-lg p-1 flex items-center shadow-inner group focus-within:border-neon-cyan transition-colors">
-        <div className="px-3 text-neon-cyan font-mono text-sm opacity-50 select-none">{'>'}</div>
-        <input 
-          type="number" 
-          value={stepsInput}
-          onChange={(e) => setStepsInput(e.target.value)}
-          placeholder="ENTER_STEPS..."
-          disabled={limitReached || isSyncing}
-          className="bg-transparent text-white font-mono placeholder-gray-600 focus:outline-none w-full py-3"
-        />
-        {stepsInput && !isSyncing && !limitReached && (
-           <div className="pr-4 text-[10px] text-gray-500 font-bold tracking-widest whitespace-nowrap">
-             ≈ {Math.floor(parseInt(stepsInput, 10) / 100) || 0} TP
-           </div>
-        )}
-      </div>
-
-      {/* Action Button */}
+      {/* Sync Button / Connect Button */}
+      {!isConnected ? (
+        <button 
+          onClick={handleConnect}
+          className="relative z-10 w-full py-4 rounded-lg font-bold uppercase tracking-widest transition-all duration-300 overflow-hidden bg-neon-cyan/20 border border-neon-cyan text-neon-cyan hover:bg-neon-cyan hover:text-black shadow-[0_0_15px_rgba(0,240,255,0.4)]"
+        >
+          CONNECT GOOGLE FIT
+        </button>
+      ) : (
       <button 
         onClick={handleSync}
-        disabled={isSyncing || limitReached || !stepsInput}
+        disabled={isSyncing || limitReached}
         className={`relative z-10 w-full py-4 rounded-lg font-bold uppercase tracking-widest transition-all duration-300 overflow-hidden ${buttonClass}`}
       >
         {syncState === 'loading' ? (
@@ -154,9 +152,10 @@ export function FitnessSyncWidget() {
         ) : limitReached ? (
           <span>LIMIT_REACHED</span>
         ) : (
-          <span>INITIATE_SYNC</span>
+          <span>SYNC GOOGLE FIT</span>
         )}
       </button>
+      )}
     </div>
   );
 }
