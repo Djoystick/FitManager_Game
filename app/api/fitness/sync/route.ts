@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     // 1. Get user data
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('google_refresh_token, daily_steps_logged, sweat_points')
+      .select('google_refresh_token, daily_steps, sweat_points, last_step_sync')
       .eq('id', userId)
       .single();
 
@@ -97,12 +97,10 @@ export async function POST(req: Request) {
     // To know if it's from yesterday, we can't easily tell unless we query the DB's current tracked date.
     // Actually, the simplest way is to fetch the current tracked date from `users.last_step_date` (assuming it exists).
     
-    // Let's query last_step_date
-    const { data: dateData } = await supabase.from('users').select('last_step_date').eq('id', userId).single();
     let delta = totalStepsToday;
     
-    if (dateData?.last_step_date === timezoneDate) {
-       delta = totalStepsToday - (user.daily_steps_logged || 0);
+    if (user.last_step_sync === timezoneDate) {
+       delta = totalStepsToday - (user.daily_steps || 0);
     }
     
     if (delta <= 0) {
@@ -110,8 +108,8 @@ export async function POST(req: Request) {
         success: true,
         earned_sp: 0,
         balance_sp: user.sweat_points,
-        daily_steps_logged: user.daily_steps_logged,
-        limit_reached: user.daily_steps_logged >= 20000,
+        daily_steps_logged: user.daily_steps,
+        limit_reached: user.daily_steps >= 20000,
         message: 'No new steps'
       });
     }
@@ -122,9 +120,8 @@ export async function POST(req: Request) {
     
     // 7. Call the sync_daily_steps RPC
     const { data: rpcResult, error: rpcError } = await supabase.rpc('sync_daily_steps', {
-      u_id:         userId,
-      steps_to_add: delta,
-      today_date:   timezoneDate, 
+      p_user_id:      userId,
+      p_steps_to_add: delta,
     });
 
     if (rpcError) {
@@ -132,27 +129,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Failed to sync steps' }, { status: 500 });
     }
     
+    // rpcResult is an object like { total_sp, sp_gained, added_steps, daily_steps }
+    const spRewarded = rpcResult?.sp_gained || 0;
+
     // Log sync for audit
     await supabase.from('fitness_sync_logs').insert({
        user_id: userId,
        steps_synced: delta,
-       sp_rewarded: rpcResult,
+       sp_rewarded: spRewarded,
        velocity_steps_per_min: 0 // placeholder
     });
 
     // 8. Fetch updated state
     const { data: updatedUser } = await supabase
       .from('users')
-      .select('sweat_points, daily_steps_logged')
+      .select('sweat_points, daily_steps')
       .eq('id', userId)
       .single();
 
     return NextResponse.json({
       success:            true,
-      earned_sp:          rpcResult,
+      earned_sp:          spRewarded,
       balance_sp:         updatedUser?.sweat_points || user.sweat_points,
-      daily_steps_logged: updatedUser?.daily_steps_logged || user.daily_steps_logged,
-      limit_reached:      (updatedUser?.daily_steps_logged || 0) >= 20000,
+      daily_steps_logged: updatedUser?.daily_steps || user.daily_steps || 0,
+      limit_reached:      (updatedUser?.daily_steps || 0) >= 20000,
       google_fit_synced:  true
     });
 
