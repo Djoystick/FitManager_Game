@@ -61,7 +61,7 @@ export async function POST(req: Request) {
       userId: 'me',
       requestBody: {
         aggregateBy: [{
-          dataTypeName: 'com.google.step_count.delta'
+          dataSourceId: 'derived:com.google.step_count.delta:com.google.android.gms:estimated_steps'
         }],
         bucketByTime: { durationMillis: endTimeMillis - startTimeMillis },
         startTimeMillis,
@@ -70,12 +70,19 @@ export async function POST(req: Request) {
     } as any);
 
     let totalStepsToday = 0;
-    const bucket = response.data.bucket?.[0];
-    if (bucket && bucket.dataset && bucket.dataset[0].point && bucket.dataset[0].point.length > 0) {
-       const point = bucket.dataset[0].point[0];
-       if (point.value && point.value.length > 0) {
-         totalStepsToday = point.value[0].intVal || 0;
-       }
+    const buckets = response.data.bucket || [];
+    for (const bucket of buckets) {
+      if (bucket.dataset) {
+        for (const dataset of bucket.dataset) {
+          if (dataset.point) {
+            for (const point of dataset.point) {
+              if (point.value && point.value.length > 0) {
+                totalStepsToday += point.value[0].intVal || 0;
+              }
+            }
+          }
+        }
+      }
     }
 
     // 5. Calculate Delta

@@ -82,12 +82,7 @@ export default async function BankPage() {
             {t.bank_subtitle}
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-1.5 bg-neon-green/10 border border-neon-green/20 rounded-full px-3 py-1">
-          <Droplets className="text-neon-green w-3 h-3" />
-          <span className="text-xs font-black text-neon-green font-orbitron">
-            {userData.sweat_points.toLocaleString()} SP
-          </span>
-        </div>
+
       </div>
 
       {/* Main Client Component */}

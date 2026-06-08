@@ -7,11 +7,9 @@ import { useState, useTransition, useCallback, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { Footprints, Zap, ArrowRightLeft, Flame, Dumbbell, CircleDot } from 'lucide-react';
 import {
-  syncStepsAction,
   convertSweatPointsAction,
   type ManagerProfileType,
   type CurrencyType,
-  type SyncStepsResult,
   type ConvertSpResult,
 } from '@/app/actions/economyActions';
 import { dict } from '@/lib/dictionaries';
@@ -73,15 +71,7 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
   const { step, isDone, nextStep, skipTutorial } = useTutorial();
   const t = dict[language as keyof typeof dict];
 
-  const [dailySteps, setDailySteps] = useState(() => {
-    // Check locally if the date has changed since the server rendered
-    const today = new Date().toISOString().split('T')[0];
-    const syncDate = initialData.last_step_sync;
-    if (syncDate !== today) {
-      return 0;
-    }
-    return initialData.daily_steps;
-  });
+
   const [sweatPoints, setSweatPoints] = useState(initialData.sweat_points);
   const [coinBalances, setCoinBalances] = useState({
     cardio:   initialData.cardio_coin,
@@ -90,24 +80,6 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
     strength: initialData.strength_coin,
   });
   const profile = initialData.manager_profile;
-
-  // Sync date check on mount (in case client is kept open across midnight)
-  useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    if (initialData.last_step_sync !== today && dailySteps !== 0) {
-      setDailySteps(0);
-    }
-    
-    // Interval to check every minute
-    const interval = setInterval(() => {
-      const currentToday = new Date().toISOString().split('T')[0];
-      if (initialData.last_step_sync !== currentToday) {
-        setDailySteps(0);
-      }
-    }, 60000);
-    
-    return () => clearInterval(interval);
-  }, [initialData.last_step_sync, dailySteps]);
 
   const PROFILE_LABELS: Record<ManagerProfileType, { label: string; emoji: string; color: string }> = {
     runner:      { label: t.profile_runner, emoji: '🏃', color: 'text-neon-green' },
@@ -121,24 +93,7 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
     cardio: '', fitness: '', ball: '', strength: '',
   });
 
-  const [isSyncing, startSyncTransition] = useTransition();
   const [isConverting, startConvertTransition] = useTransition();
-
-  // ── Step Sync ──────────────────────────────────────────────────────────────
-
-  const handleSyncSteps = useCallback((amount: number) => {
-    startSyncTransition(async () => {
-      const res = await syncStepsAction(amount);
-      if (res.success && res.data) {
-        const d = res.data as SyncStepsResult;
-        setDailySteps(d.daily_steps);
-        setSweatPoints(d.total_sp);
-        toast.success(t.toast_sync_success.replace('{sp}', d.sp_gained.toString()).replace('{steps}', d.added_steps.toString()));
-      } else {
-        toast.error(res.error ?? t.toast_sync_error);
-      }
-    });
-  }, []);
 
   // ── Conversion ─────────────────────────────────────────────────────────────
 
@@ -192,57 +147,8 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
 
       {/* Header Tabs */}
 
-      {/* ── BLOCK 1: Pedometer ─────────────────────────────────────────────── */}
-      <section className="bg-black/40 border border-gray-800 rounded-2xl p-4 flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <Footprints className="text-neon-green w-5 h-5" />
-          <h2 className="text-sm font-black uppercase tracking-widest text-neon-green drop-shadow-[0_0_5px_rgba(57,255,20,0.5)]">
-            {t.pedometer}
-          </h2>
-        </div>
-
-        {/* Step progress bar */}
-        <div className="flex flex-col gap-1">
-          <div className="flex justify-between items-end">
-            <span className="text-2xl font-black text-white tabular-nums font-orbitron">
-              {dailySteps.toLocaleString()}
-            </span>
-            <span className="text-xs text-gray-500 font-bold">/ {DAILY_STEP_CAP.toLocaleString()} {t.steps_lower}</span>
-          </div>
-          <div className="h-2.5 rounded-full bg-gray-800 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-neon-green to-cyan-400 transition-all duration-700 ease-out shadow-[0_0_8px_rgba(57,255,20,0.5)]"
-              style={{ width: `${stepPct}%` }}
-            />
-          </div>
-          <div className="flex justify-between text-[10px] text-gray-600 font-bold">
-            <span>0</span>
-            <span className="text-gray-500">{stepPct.toFixed(1)}%</span>
-            <span>20K</span>
-          </div>
-        </div>
-
-        {/* SP Balance */}
-        <div className="flex items-center justify-between bg-neon-green/5 border border-neon-green/20 rounded-xl px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <Zap className="text-neon-green w-4 h-4" />
-            <span className="text-xs uppercase tracking-widest font-bold text-gray-400">Sweat Points</span>
-          </div>
-          <span className="text-xl font-black text-neon-green font-orbitron drop-shadow-[0_0_8px_rgba(57,255,20,0.6)]">
-            {sweatPoints.toLocaleString()}
-          </span>
-        </div>
-
-        {/* Fitness Tracker Connection Widget */}
-        <div className="flex flex-col gap-2">
-          <p className="text-[9px] uppercase tracking-widest text-gray-600 font-bold flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-700" />
-            Источник данных
-          </p>
-
-          <FitnessSyncWidget />
-        </div>
-      </section>
+      {/* ── BLOCK 1: Step Sync ─────────────────────────────────────────────── */}
+      <FitnessSyncWidget />
 
       {/* ── BLOCK 2: Manager Profile ────────────────────────────────────────── */}
       <section className="bg-black/40 border border-gray-800 rounded-2xl p-4 flex flex-col gap-3">
