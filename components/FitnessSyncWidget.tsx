@@ -5,18 +5,20 @@ import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
 import { supabase } from '@/lib/supabase';
+import { Activity, RefreshCw, Unlink, CheckCircle2, AlertCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export function FitnessSyncWidget() {
   const { userId, isAuthenticated } = useContext(TelegramAuthContext);
   const { language } = useContext(LanguageContext);
   const t = dict[language as keyof typeof dict];
   
-  const [stepsInput, setStepsInput] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncState, setSyncState] = useState<'idle' | 'loading' | 'success'>('idle');
   const [dailySteps, setDailySteps] = useState(0);
   const [limitReached, setLimitReached] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [isUnlinking, setIsUnlinking] = useState(false);
   
   const MAX_STEPS = 20000;
 
@@ -63,20 +65,44 @@ export function FitnessSyncWidget() {
         
         if (data.earned_sp > 0) {
           window.dispatchEvent(new Event('balanceUpdated'));
+          toast.success(`+${data.earned_sp} SP earned from steps!`, { icon: '🏃' });
+        } else {
+          toast.success('Steps synchronized successfully!');
         }
 
-        setTimeout(() => setSyncState('idle'), 2000);
+        setTimeout(() => setSyncState('idle'), 2500);
       } else if (res.status === 403 && data.not_connected) {
         setIsConnected(false);
         setSyncState('idle');
+        toast.error('Google Fit disconnected');
       } else {
         setSyncState('idle');
+        toast.error(data.error || 'Failed to sync steps');
       }
     } catch (e) {
       console.error(e);
       setSyncState('idle');
+      toast.error('Network error during sync');
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleUnlink = async () => {
+    if (!confirm('Are you sure you want to disconnect Google Fit? You will stop receiving steps.')) return;
+    setIsUnlinking(true);
+    try {
+      const res = await fetch('/api/fitness/unlink', { method: 'POST' });
+      if (res.ok) {
+        setIsConnected(false);
+        toast.success('Google Fit disconnected');
+      } else {
+        toast.error('Failed to unlink');
+      }
+    } catch (e) {
+      toast.error('Error during unlink');
+    } finally {
+      setIsUnlinking(false);
     }
   };
 
@@ -85,77 +111,91 @@ export function FitnessSyncWidget() {
   };
 
   const progressPercent = Math.min(100, (dailySteps / MAX_STEPS) * 100);
-  const isWarning = progressPercent >= 80;
-  const isDanger = progressPercent >= 100;
-  
-  const barColor = isDanger 
-    ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]' 
-    : isWarning 
-      ? 'bg-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.8)]' 
-      : 'bg-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.8)]';
 
-  const buttonClass = syncState === 'success' 
-    ? 'bg-neon-green text-black shadow-[0_0_20px_rgba(57,255,20,0.8)] border-transparent'
-    : syncState === 'loading'
-      ? 'bg-transparent border border-neon-cyan text-neon-cyan'
-      : limitReached
-        ? 'bg-gray-800 text-gray-500 border-gray-700 cursor-not-allowed'
-        : 'bg-neon-pink/10 border border-neon-pink text-neon-pink hover:bg-neon-pink hover:text-white shadow-[0_0_15px_rgba(255,0,60,0.4)] hover:shadow-[0_0_25px_rgba(255,0,60,0.8)]';
+  if (!isConnected) {
+    return (
+      <div className="w-full bg-gradient-to-r from-gray-900 to-black rounded-xl border border-gray-800 p-4 flex items-center justify-between shadow-lg">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/30">
+            <Activity className="w-6 h-6 text-blue-400" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold text-white uppercase tracking-wider">Google Fit</span>
+            <span className="text-[10px] text-gray-400">Track real-world steps</span>
+          </div>
+        </div>
+        <button 
+          onClick={handleConnect}
+          className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/40 text-blue-400 hover:text-blue-300 border border-blue-500/50 rounded-lg text-xs font-bold uppercase tracking-wider transition-all"
+        >
+          Connect
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full bg-black/60 backdrop-blur-md rounded-2xl border border-neon-cyan/30 p-6 flex flex-col gap-6 relative overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
-      {/* Background glow */}
-      <div className="absolute -top-10 -right-10 w-40 h-40 bg-neon-cyan/10 rounded-full blur-3xl pointer-events-none"></div>
-      
-      <div className="relative z-10 flex flex-col gap-2">
-        <div className="flex justify-between items-end">
-          <h2 className="text-xl font-bold font-orbitron tracking-widest uppercase text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]">Step Sync</h2>
-          <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Daily Limit: 20k</span>
+    <div className="w-full bg-gradient-to-r from-gray-900 to-black rounded-xl border border-neon-cyan/20 p-4 flex flex-col gap-3 shadow-[0_4px_20px_rgba(0,240,255,0.05)]">
+      <div className="flex items-center justify-between">
+        {/* Left Side: Icon + Name */}
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-neon-cyan/10 rounded-lg border border-neon-cyan/30">
+            <Activity className="w-5 h-5 text-neon-cyan" />
+          </div>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-bold text-white uppercase tracking-wider">Google Fit</span>
+              <CheckCircle2 className="w-3 h-3 text-neon-green" />
+            </div>
+            <span className="text-[10px] text-gray-400 font-mono">
+              {dailySteps.toLocaleString()} / {MAX_STEPS.toLocaleString()} steps
+            </span>
+          </div>
         </div>
-        
-        {/* Progress Bar Container */}
-        <div className="w-full h-3 bg-gray-900 rounded-full overflow-hidden border border-gray-800 relative shadow-inner">
-          <div 
-            className={`h-full transition-all duration-1000 ease-out ${barColor}`} 
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-        <div className="flex justify-between text-xs font-mono">
-          <span className={`${isDanger ? 'text-red-400' : isWarning ? 'text-orange-400' : 'text-neon-cyan'}`}>
-            {dailySteps.toLocaleString()} logged
-          </span>
-          <span className="text-gray-500">{(MAX_STEPS - dailySteps).toLocaleString()} remaining</span>
+
+        {/* Right Side: Actions */}
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleSync}
+            disabled={isSyncing || limitReached || syncState === 'success'}
+            className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${
+              syncState === 'success' 
+                ? 'bg-neon-green/20 text-neon-green border border-neon-green'
+                : limitReached
+                  ? 'bg-gray-800 text-gray-500 border border-gray-700 cursor-not-allowed'
+                  : 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/50 hover:bg-neon-cyan/20 active:scale-95'
+            }`}
+          >
+            {syncState === 'loading' ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : syncState === 'success' ? (
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            ) : (
+              <RefreshCw className="w-3.5 h-3.5" />
+            )}
+            <span>{syncState === 'success' ? 'Synced' : limitReached ? 'Max' : 'Sync'}</span>
+          </button>
+          
+          <button 
+            onClick={handleUnlink}
+            disabled={isUnlinking}
+            className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg border border-red-500/30 transition-all group"
+            title="Disconnect Google Fit"
+          >
+            <Unlink className="w-4 h-4 group-hover:scale-110 transition-transform" />
+          </button>
         </div>
       </div>
 
-      {/* Sync Button / Connect Button */}
-      {!isConnected ? (
-        <button 
-          onClick={handleConnect}
-          className="relative z-10 w-full py-4 rounded-lg font-bold uppercase tracking-widest transition-all duration-300 overflow-hidden bg-neon-cyan/20 border border-neon-cyan text-neon-cyan hover:bg-neon-cyan hover:text-black shadow-[0_0_15px_rgba(0,240,255,0.4)]"
-        >
-          CONNECT GOOGLE FIT
-        </button>
-      ) : (
-      <button 
-        onClick={handleSync}
-        disabled={isSyncing || limitReached}
-        className={`relative z-10 w-full py-4 rounded-lg font-bold uppercase tracking-widest transition-all duration-300 overflow-hidden ${buttonClass}`}
-      >
-        {syncState === 'loading' ? (
-          <span className="flex items-center justify-center gap-2">
-            <span className="w-4 h-4 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin"></span>
-            SYNCING_DATA...
-          </span>
-        ) : syncState === 'success' ? (
-          <span className="tracking-widest">DATA_UPLOADED</span>
-        ) : limitReached ? (
-          <span>LIMIT_REACHED</span>
-        ) : (
-          <span>SYNC GOOGLE FIT</span>
-        )}
-      </button>
-      )}
+      {/* Progress Bar */}
+      <div className="w-full h-1.5 bg-gray-900 rounded-full overflow-hidden mt-1">
+        <div 
+          className={`h-full transition-all duration-1000 ease-out ${
+            progressPercent >= 100 ? 'bg-neon-green' : 'bg-neon-cyan shadow-[0_0_8px_rgba(0,240,255,0.5)]'
+          }`}
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
     </div>
   );
 }
