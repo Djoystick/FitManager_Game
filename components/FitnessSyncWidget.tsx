@@ -71,42 +71,42 @@ export function FitnessSyncWidget() {
         
         if (data.earned_sp > 0) {
           window.dispatchEvent(new Event('balanceUpdated'));
-          toast.success(`+${data.earned_sp} SP earned from steps!`, { icon: '🏃' });
+          toast.success(t.toast_sync_success.replace('{sp}', data.earned_sp.toString()).replace('{steps}', (data.earned_sp * 10).toString()), { icon: '🏃' });
         } else {
-          toast.success('Steps synchronized successfully!');
+          toast.success(t.fit_sync_success || 'Steps synchronized successfully!');
         }
 
         setTimeout(() => setSyncState('idle'), 2500);
       } else if (res.status === 403 && data.not_connected) {
         setIsConnected(false);
         setSyncState('idle');
-        toast.error('Google Fit disconnected');
+        toast.error(t.fit_sync_disconnected || 'Google Fit disconnected');
       } else {
         setSyncState('idle');
-        toast.error(data.error || 'Failed to sync steps');
+        toast.error(data.error || t.fit_sync_error || 'Failed to sync steps');
       }
     } catch (e) {
       console.error(e);
       setSyncState('idle');
-      toast.error('Network error during sync');
+      toast.error(t.fit_network_error || 'Network error during sync');
     } finally {
       setIsSyncing(false);
     }
   };
 
   const handleUnlink = async () => {
-    if (!confirm('Are you sure you want to disconnect Google Fit? You will stop receiving steps.')) return;
+    if (!confirm(t.fit_unlink_confirm || 'Are you sure you want to disconnect Google Fit? You will stop receiving steps.')) return;
     setIsUnlinking(true);
     try {
       const res = await fetch('/api/fitness/unlink', { method: 'POST' });
       if (res.ok) {
         setIsConnected(false);
-        toast.success('Google Fit disconnected');
+        toast.success(t.fit_sync_disconnected || 'Google Fit disconnected');
       } else {
-        toast.error('Failed to unlink');
+        toast.error(t.fit_unlink_error || 'Failed to unlink');
       }
     } catch (e) {
-      toast.error('Error during unlink');
+      toast.error(t.fit_unlink_error || 'Error during unlink');
     } finally {
       setIsUnlinking(false);
     }
@@ -127,14 +127,14 @@ export function FitnessSyncWidget() {
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-bold text-white uppercase tracking-wider">Google Fit</span>
-            <span className="text-[10px] text-gray-400">Track real-world steps</span>
+            <span className="text-[10px] text-gray-400">{t.fit_track_steps || 'Track real-world steps'}</span>
           </div>
         </div>
         <button 
           onClick={handleConnect}
           className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/40 text-blue-400 hover:text-blue-300 border border-blue-500/50 rounded-lg text-xs font-bold uppercase tracking-wider transition-all"
         >
-          Connect
+          {t.fit_connect || 'Connect'}
         </button>
       </div>
     );
@@ -154,7 +154,7 @@ export function FitnessSyncWidget() {
               <CheckCircle2 className="w-3 h-3 text-neon-green" />
             </div>
             <span className="text-[10px] text-gray-400 font-mono">
-              {dailySteps.toLocaleString()} / {MAX_STEPS.toLocaleString()} steps
+              {dailySteps.toLocaleString()} / {MAX_STEPS.toLocaleString()} {t.steps_lower || 'steps'}
             </span>
           </div>
         </div>
@@ -179,14 +179,14 @@ export function FitnessSyncWidget() {
             ) : (
               <RefreshCw className="w-3.5 h-3.5" />
             )}
-            <span>{syncState === 'success' ? 'Synced' : limitReached ? 'Max' : 'Sync'}</span>
+            <span>{syncState === 'success' ? (t.fit_synced || 'Synced') : limitReached ? (t.fit_max || 'Max') : (t.fit_sync || 'Sync')}</span>
           </button>
           
           <button 
             onClick={handleUnlink}
             disabled={isUnlinking}
             className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg border border-red-500/30 transition-all group"
-            title="Disconnect Google Fit"
+            title={t.fit_disconnect || "Disconnect Google Fit"}
           >
             <Unlink className="w-4 h-4 group-hover:scale-110 transition-transform" />
           </button>

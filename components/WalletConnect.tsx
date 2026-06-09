@@ -5,10 +5,15 @@ import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import toast from 'react-hot-toast';
 
+import { LanguageContext } from '@/components/LanguageContext';
+import { dict } from '@/lib/dictionaries';
+
 export function WalletConnect({ onSyncSuccess }: { onSyncSuccess?: () => void }) {
   const [tonConnectUI] = useTonConnectUI();
   const wallet = useTonWallet();
   const { isAuthenticated } = useContext(TelegramAuthContext);
+  const { language } = useContext(LanguageContext);
+  const t = dict[language as keyof typeof dict];
   const [isVerifying, setIsVerifying] = useState(false);
   
   // Track if we successfully verified for the current connected wallet
@@ -51,7 +56,7 @@ export function WalletConnect({ onSyncSuccess }: { onSyncSuccess?: () => void })
 
     // Check if the wallet provided a proof
     if (!currentWallet.connectItems?.tonProof || !('proof' in currentWallet.connectItems.tonProof)) {
-      toast.error('Security verification failed: No signature provided.');
+      toast.error(t.wallet_sec_failed || 'Security verification failed: No signature provided.');
       await tonConnectUI.disconnect();
       return;
     }
@@ -59,7 +64,7 @@ export function WalletConnect({ onSyncSuccess }: { onSyncSuccess?: () => void })
     const proof = currentWallet.connectItems.tonProof.proof;
 
     setIsVerifying(true);
-    const loadingToast = toast.loading('Verifying secure connection...');
+    const loadingToast = toast.loading(t.wallet_verifying || 'Verifying secure connection...');
 
     try {
       const res = await fetch('/api/user/wallet/verify', {
@@ -74,11 +79,11 @@ export function WalletConnect({ onSyncSuccess }: { onSyncSuccess?: () => void })
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Verification failed');
+        throw new Error(data.error || t.wallet_verify_failed || 'Verification failed');
       }
 
       verifiedAddress.current = currentWallet.account.address;
-      toast.success('Wallet securely linked!', { id: loadingToast });
+      toast.success(t.wallet_linked || 'Wallet securely linked!', { id: loadingToast });
       
       if (onSyncSuccess) {
         onSyncSuccess();
@@ -86,13 +91,13 @@ export function WalletConnect({ onSyncSuccess }: { onSyncSuccess?: () => void })
 
     } catch (err: any) {
       console.error('Wallet Verification Error:', err);
-      toast.error(err.message || 'Verification failed', { id: loadingToast });
+      toast.error(err.message || t.wallet_verify_failed || 'Verification failed', { id: loadingToast });
       verifiedAddress.current = null;
       await tonConnectUI.disconnect(); // Disconnect if verification fails
     } finally {
       setIsVerifying(false);
     }
-  }, [tonConnectUI, onSyncSuccess]);
+  }, [tonConnectUI, onSyncSuccess, t]);
 
   // Trigger verification when wallet changes
   useEffect(() => {
@@ -102,17 +107,17 @@ export function WalletConnect({ onSyncSuccess }: { onSyncSuccess?: () => void })
   }, [wallet, isAuthenticated, verifyWallet, isVerifying]);
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-2 w-full">
       <TonConnectButton />
       {wallet && verifiedAddress.current === wallet.account.address && (
         <span className="text-[10px] font-bold tracking-widest uppercase text-neon-green/80 flex items-center gap-1 mt-1">
           <div className="w-1.5 h-1.5 rounded-full bg-neon-green animate-pulse" />
-          Securely Linked
+          {t.wallet_linked || 'Securely Linked'}
         </span>
       )}
       {isVerifying && (
         <span className="text-[10px] font-bold tracking-widest uppercase text-yellow-500/80 mt-1">
-          Verifying signature...
+          {t.wallet_verifying || 'Verifying signature...'}
         </span>
       )}
     </div>
