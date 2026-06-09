@@ -331,6 +331,7 @@ export const dict = {
     wallet_verifying: "Verifying secure connection...",
     wallet_linked: "Wallet securely linked!",
     wallet_verify_failed: "Verification failed",
+    wallet_disconnect_confirm: "Are you sure you want to disconnect your wallet?",
 
     prof_tour_sweat_desc: "Here you can sync your real life steps and earn in-game currency!",
     prof_tour_wallet: "💎 Wallet",
@@ -681,6 +682,7 @@ export const dict = {
     wallet_verifying: "Проверка защищенного соединения...",
     wallet_linked: "Кошелек надежно привязан!",
     wallet_verify_failed: "Ошибка верификации",
+    wallet_disconnect_confirm: "Вы уверены, что хотите отключить кошелек?",
 
     prof_tour_sweat_desc: "Здесь ты можешь синхронизировать свои шаги из реальной жизни и получать за них игровую валюту!",
     prof_tour_wallet: "💎 Кошелек",

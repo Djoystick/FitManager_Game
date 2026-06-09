@@ -8,6 +8,8 @@ import toast from 'react-hot-toast';
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
 
+import { Unlink } from 'lucide-react';
+
 export function WalletConnect({ onSyncSuccess }: { onSyncSuccess?: () => void }) {
   const [tonConnectUI] = useTonConnectUI();
   const wallet = useTonWallet();
@@ -106,14 +108,30 @@ export function WalletConnect({ onSyncSuccess }: { onSyncSuccess?: () => void })
     }
   }, [wallet, isAuthenticated, verifyWallet, isVerifying]);
 
+  const handleDisconnect = async () => {
+    if (confirm(t.wallet_disconnect_confirm || 'Are you sure you want to disconnect your wallet?')) {
+      await tonConnectUI.disconnect();
+      verifiedAddress.current = null;
+    }
+  };
+
   return (
     <div className="flex flex-col items-center gap-2 w-full">
       <TonConnectButton />
       {wallet && verifiedAddress.current === wallet.account.address && (
-        <span className="text-[10px] font-bold tracking-widest uppercase text-neon-green/80 flex items-center gap-1 mt-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-neon-green animate-pulse" />
-          {t.wallet_linked || 'Securely Linked'}
-        </span>
+        <div className="flex flex-col items-center gap-2 mt-1">
+          <span className="text-[10px] font-bold tracking-widest uppercase text-neon-green/80 flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-neon-green animate-pulse" />
+            {t.wallet_linked || 'Securely Linked'}
+          </span>
+          <button 
+            onClick={handleDisconnect}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-[9px] uppercase tracking-widest font-bold transition-all"
+          >
+            <Unlink size={10} />
+            {t.wallet_disconnect_btn || 'Disconnect Wallet'}
+          </button>
+        </div>
       )}
       {isVerifying && (
         <span className="text-[10px] font-bold tracking-widest uppercase text-yellow-500/80 mt-1">
