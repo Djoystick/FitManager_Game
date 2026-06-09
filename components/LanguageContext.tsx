@@ -23,15 +23,15 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
         const saved = localStorage.getItem('fitmanager_lang');
         if (saved === 'ru' || saved === 'en') {
           setLanguageState(saved);
+          document.cookie = `fitmanager_lang=${saved}; path=/; max-age=31536000`;
         } else {
           const sdkModule = await import('@twa-dev/sdk');
           const WebApp = sdkModule.default;
           const twaLang = WebApp.initDataUnsafe?.user?.language_code;
-          if (twaLang === 'ru') {
-            setLanguageState('ru');
-          } else {
-            setLanguageState('en');
-          }
+          const langToSet = twaLang === 'ru' ? 'ru' : 'en';
+          setLanguageState(langToSet);
+          localStorage.setItem('fitmanager_lang', langToSet);
+          document.cookie = `fitmanager_lang=${langToSet}; path=/; max-age=31536000`;
         }
       } catch (e) {
         console.warn('LanguageContext init error', e);
@@ -41,8 +41,13 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const setLanguage = (lang: Language) => {
-    setLanguageState(lang);
-    localStorage.setItem('fitmanager_lang', lang);
+    // Only reload if the language actually changes
+    if (lang !== language) {
+      setLanguageState(lang);
+      localStorage.setItem('fitmanager_lang', lang);
+      document.cookie = `fitmanager_lang=${lang}; path=/; max-age=31536000`;
+      window.location.reload();
+    }
   };
 
   return (
