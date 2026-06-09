@@ -1,5 +1,5 @@
 {
-  "url": "http://localhost:3000",
-  "name": "FitManager TMA",
-  "iconUrl": "https://raw.githubusercontent.com/ton-community/tutorials/main/03-client/test/public/tonconnect-manifest.json"
+  "url": "https://fit-manager-game.vercel.app",
+  "name": "FitManager Cyberpunk",
+  "iconUrl": "https://ton.org/download/ton_symbol.png"
 }

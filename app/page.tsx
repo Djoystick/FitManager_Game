@@ -18,6 +18,7 @@ import {
 import { UnseenMatchesModal } from '@/components/UnseenMatchesModal';
 import { NextMatchCountdown } from '@/components/dashboard/NextMatchCountdown';
 import { OffseasonCard } from '@/components/dashboard/OffseasonCard';
+import { SocialFeed } from '@/components/dashboard/SocialFeed';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MatchReport, MatchReportModal } from '@/components/MatchReportModal';
 import { OpponentScoutModal } from '@/components/OpponentScoutModal';
@@ -1077,6 +1078,9 @@ export default function DashboardPage() {
                 })}
               />
             ))}
+            
+            <SocialFeed />
+
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center text-center px-6 py-8 mb-2">

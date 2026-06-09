@@ -19,13 +19,7 @@ import toast from 'react-hot-toast';
 // Used inside the HUB page (league/page.tsx) as the SOCIAL tab sub-section.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FEED_TABS: Array<{ id: SocialCategory; label: string }> = [
-  { id: 'general',   label: 'GENERAL'    },
-  { id: 'transfer',  label: 'TRANSFER'   },
-  { id: 'my_team',   label: 'MY TEAM'    },
-  { id: 'award',     label: 'AWARDS'     },
-  { id: 'interview', label: 'INTERVIEWS' },
-];
+
 
 function timeAgo(dateStr: string): string {
   const secs = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -114,7 +108,6 @@ function PostCard({ post, onLike }: { post: SocialPost; onLike: (id: string) => 
 
 export function HubSocialClient() {
   const { isAuthenticated } = useContext(TelegramAuthContext);
-  const [feedTab,   setFeedTab]   = useState<SocialCategory>('general');
   const [posts,     setPosts]     = useState<SocialPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [draft,     setDraft]     = useState('');
@@ -128,7 +121,7 @@ export function HubSocialClient() {
     setIsLoading(false);
   };
 
-  useEffect(() => { loadFeed(feedTab); }, [feedTab]);
+  useEffect(() => { loadFeed('general'); }, []);
 
   const handleLike = async (id: string) => {
     // Optimistic update
@@ -139,7 +132,7 @@ export function HubSocialClient() {
   const handlePost = () => {
     if (!draft.trim()) return;
     startTransition(async () => {
-      const res = await createSocialPostAction(draft.trim(), feedTab === 'general' ? 'general' : feedTab);
+      const res = await createSocialPostAction(draft.trim(), 'general');
       if (res.success && res.data) {
         setPosts(prev => [res.data!, ...prev]);
         setDraft('');
@@ -153,25 +146,7 @@ export function HubSocialClient() {
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Feed category SubNav */}
-      <div className="flex overflow-x-auto scrollbar-none gap-1 px-3 pb-1">
-        {FEED_TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setFeedTab(tab.id)}
-            className={`
-              flex-shrink-0 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider
-              border transition-all duration-200
-              ${feedTab === tab.id
-                ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300 shadow-[0_0_10px_rgba(0,240,255,0.2)]'
-                : 'border-transparent text-gray-600 hover:text-gray-400'
-              }
-            `}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+
 
       {/* Compose toggle */}
       {isAuthenticated && (
