@@ -83,6 +83,13 @@ export default function LineupPage() {
   const [showLegend, setShowLegend] = useState(false);
   // Primary TEAM tab
   const [primaryTab, setPrimaryTab] = useState<'info' | 'players' | 'lineup'>('info');
+
+  // Force the primary tab to 'lineup' during step 1 so the bench-drawer-handle is visible
+  useEffect(() => {
+    if (!isDone && step === 1 && primaryTab !== 'lineup') {
+      setPrimaryTab('lineup');
+    }
+  }, [step, isDone, primaryTab]);
   const [playersSubTab, setPlayersSubTab] = useState<'squad' | 'academy'>('squad');
 
   const fetchTeamData = async () => {
