@@ -85,43 +85,11 @@ export async function POST(req: Request) {
       }
     }
 
-    // 5. Calculate Delta
-    // If the day changed, daily_steps_logged in DB should ideally be 0, but sync_daily_steps RPC handles the reset based on today_date.
-    // However, if we just send the total delta since we last knew about today.
-    // The RPC expects 'steps_to_add'. We need to be careful if the RPC resets daily_steps_logged when today_date changes.
-    // If the RPC resets it to 0, and we send `totalStepsToday`, then the RPC adds `totalStepsToday` to 0. This works perfectly.
-    // Wait, if it DOESN'T reset it because the day didn't change, we need to send `totalStepsToday - user.daily_steps_logged`.
-    
-    // For safety, let's just use the RPC to add steps, so we calculate delta:
-    // If user.daily_steps_logged is from YESTERDAY, the RPC will reset it internally.
-    // To know if it's from yesterday, we can't easily tell unless we query the DB's current tracked date.
-    // Actually, the simplest way is to fetch the current tracked date from `users.last_step_date` (assuming it exists).
-    
-    let delta = totalStepsToday;
-    
-    if (user.last_step_sync === timezoneDate) {
-       delta = totalStepsToday - (user.daily_steps || 0);
-    }
-    
-    if (delta <= 0) {
-      return NextResponse.json({
-        success: true,
-        earned_sp: 0,
-        balance_sp: user.sweat_points,
-        daily_steps_logged: user.daily_steps,
-        limit_reached: user.daily_steps >= 20000,
-        message: 'No new steps'
-      });
-    }
-
-    // 6. Velocity Anti-Cheat Check
-    // (Optional for MVP: check if delta > physically possible in the elapsed time)
-    // For now, hard cap at 20000 in the RPC prevents infinite farming.
-    
-    // 7. Call the sync_daily_steps RPC
+    // 5. Call the sync_daily_steps RPC with total steps and local date
     const { data: rpcResult, error: rpcError } = await supabase.rpc('sync_daily_steps', {
-      p_user_id:      userId,
-      p_steps_to_add: delta,
+      p_user_id:           userId,
+      p_total_steps_today: totalStepsToday,
+      p_tz_date:           timezoneDate,
     });
 
     if (rpcError) {
@@ -129,30 +97,36 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Failed to sync steps' }, { status: 500 });
     }
     
-    // rpcResult is an object like { total_sp, sp_gained, added_steps, daily_steps }
+    // rpcResult is an object like { added_steps, sp_gained, total_sp, daily_steps }
     const spRewarded = rpcResult?.sp_gained || 0;
+    const addedSteps = rpcResult?.added_steps || 0;
+    const currentDailySteps = rpcResult?.daily_steps || 0;
+
+    if (addedSteps <= 0) {
+      return NextResponse.json({
+        success: true,
+        earned_sp: 0,
+        balance_sp: user.sweat_points,
+        daily_steps_logged: currentDailySteps,
+        limit_reached: currentDailySteps >= 20000,
+        message: 'No new steps'
+      });
+    }
 
     // Log sync for audit
     await supabase.from('fitness_sync_logs').insert({
        user_id: userId,
-       steps_synced: delta,
+       steps_synced: addedSteps,
        sp_rewarded: spRewarded,
        velocity_steps_per_min: 0 // placeholder
     });
 
-    // 8. Fetch updated state
-    const { data: updatedUser } = await supabase
-      .from('users')
-      .select('sweat_points, daily_steps')
-      .eq('id', userId)
-      .single();
-
     return NextResponse.json({
       success:            true,
       earned_sp:          spRewarded,
-      balance_sp:         updatedUser?.sweat_points || user.sweat_points,
-      daily_steps_logged: updatedUser?.daily_steps || user.daily_steps || 0,
-      limit_reached:      (updatedUser?.daily_steps || 0) >= 20000,
+      balance_sp:         rpcResult?.total_sp || user.sweat_points,
+      daily_steps_logged: currentDailySteps,
+      limit_reached:      currentDailySteps >= 20000,
       google_fit_synced:  true
     });
 

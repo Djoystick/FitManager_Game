@@ -28,8 +28,13 @@ export function FitnessSyncWidget() {
       const { data } = await supabase.from('users').select('daily_steps, last_step_sync, google_refresh_token').eq('id', userId).single();
       if (data) {
         setIsConnected(!!data.google_refresh_token);
-        const tzDate = new Date().toISOString().split('T')[0];
-        if (data.last_step_sync === tzDate) {
+        
+        // Get local timezone date string in YYYY-MM-DD
+        const now = new Date();
+        const offsetMs = now.getTimezoneOffset() * 60 * 1000;
+        const localDate = new Date(now.getTime() - offsetMs).toISOString().split('T')[0];
+
+        if (data.last_step_sync === localDate) {
            setDailySteps(data.daily_steps || 0);
            setLimitReached((data.daily_steps || 0) >= MAX_STEPS);
         } else {
@@ -47,14 +52,15 @@ export function FitnessSyncWidget() {
     setIsSyncing(true);
     setSyncState('loading');
 
-    const tzDate = new Date().toISOString().split('T')[0];
-    const tzOffset = new Date().getTimezoneOffset();
+    const now = new Date();
+    const offsetMins = now.getTimezoneOffset();
+    const localDate = new Date(now.getTime() - (offsetMins * 60000)).toISOString().split('T')[0];
 
     try {
       const res = await fetch('/api/fitness/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ timezoneDate: tzDate, timezoneOffsetMins: tzOffset })
+        body: JSON.stringify({ timezoneDate: localDate, timezoneOffsetMins: offsetMins })
       });
       const data = await res.json();
       
