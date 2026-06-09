@@ -570,9 +570,24 @@ export default function LineupPage() {
       {/* Tutorial Spotlight Step 2 */}
       {!isDone && step === 2 && (
         <SpotlightOverlay
-          targetId="tab-base"
+          targetId="tab-info"
+          title="📊 Управление и Статистика"
+          description="Отличная расстановка! Теперь давай посмотрим на общую статистику команды и доступные структуры. Перейди во вкладку INFO."
+          buttonLabel="Понятно →"
+          onNext={() => {
+            nextStep();
+            setPrimaryTab('info');
+          }}
+          onSkip={skipTutorial}
+        />
+      )}
+
+      {/* Tutorial Spotlight Step 3 */}
+      {!isDone && step === 3 && primaryTab === 'info' && (
+        <SpotlightOverlay
+          targetId="card-structures"
           title="🏢 Развитие Базы"
-          description="Команда собрана! Обрати внимание на рейтинги линий. Теперь перейдем на Базу — там можно зарабатывать ресурсы."
+          description="Здесь ты можешь строить и улучшать стадион и тренировочные базы. Давай перейдем в Структуры!"
           buttonLabel="Перейти на Базу →"
           onNext={() => {
             nextStep();
@@ -661,6 +676,7 @@ export default function LineupPage() {
               <motion.div key={href} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
                 <Link
                   href={href}
+                  id={href === '/base' ? 'card-structures' : undefined}
                   className={`flex flex-col gap-2.5 p-3 rounded-2xl overflow-hidden bg-gradient-to-br ${bg} border ${border} ${hb} ${glow} transition-all duration-300 block`}
                 >
                   <div className={`w-8 h-8 rounded-xl bg-black/50 border border-white/10 flex items-center justify-center ${accent}`}>

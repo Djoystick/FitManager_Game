@@ -52,8 +52,8 @@ export function FriendlyMatchCard({ userId, initialMatchesPlayed }: FriendlyMatc
     <div className="glass-card-cyan relative overflow-hidden p-4 mb-4 mt-1 border border-cyan-500/30">
       <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent pointer-events-none" />
       
-      {/* Tutorial Spotlight Step 6 */}
-      {!isDone && step === 6 && (
+      {/* Tutorial Spotlight Step 8 */}
+      {!isDone && step === 8 && (
         <SpotlightOverlay
           targetId="friendly-match-btn"
           title="⚽ Первый Матч"

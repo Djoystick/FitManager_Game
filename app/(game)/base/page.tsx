@@ -328,16 +328,16 @@ export default function BaseDashboard() {
   return (
     <div className="flex flex-col flex-1 h-full overflow-hidden bg-space-dark">
 
-      {/* Tutorial Spotlight Step 3 */}
-      {!isDone && step === 3 && (
+      {/* Tutorial Spotlight Step 4 */}
+      {!isDone && step === 4 && (
         <SpotlightOverlay
-          targetId="tab-bank"
-          title="🏦 Банк и награды"
-          description="Здесь ты улучшаешь здания, чтобы получать бонусы. Давай зайдем в Банк, чтобы забрать заработанные ресурсы!"
-          buttonLabel="Перейти в Банк →"
+          targetId="upgrade-stadium"
+          title="🏟️ Улучшение Стадиона"
+          description="Это твой стадион. За каждый матч он приносит пассивный доход в FanCoins. Давай перейдем в профиль Менеджера, чтобы настроить твою активность!"
+          buttonLabel="В профиль Менеджера →"
           onNext={() => {
             nextStep();
-            router.push('/bank');
+            router.push('/profile');
           }}
           onSkip={skipTutorial}
         />

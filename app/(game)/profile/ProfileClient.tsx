@@ -16,6 +16,9 @@ import {
 import toast from 'react-hot-toast';
 import { useTransition } from 'react';
 import { motion } from 'framer-motion';
+import { useTutorial } from '@/components/providers/TutorialContext';
+import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
+import { useRouter } from 'next/navigation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ProfileClient — MANAGER page with SubNav: GENERAL | AWARDS | RESULTS
@@ -74,6 +77,8 @@ export default function ProfileClient({
   const { userId, isAuthenticated } = useContext(TelegramAuthContext);
   const { language, setLanguage }   = useContext(LanguageContext);
   const t = dict[language as keyof typeof dict];
+  const { step, isDone, nextStep, skipTutorial } = useTutorial();
+  const router = useRouter();
 
   const [activeTab,      setActiveTab]      = useState<ManagerTab>('general');
   const [userData,       setUserData]       = useState<UserData | null>(null);
@@ -161,6 +166,21 @@ export default function ProfileClient({
       {/* Background */}
       <div className="absolute inset-0 pointer-events-none bg-grid-cyan opacity-50" />
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_40%_at_50%_0%,rgba(147,51,234,0.1)_0%,transparent_100%)]" />
+
+      {/* Tutorial Spotlight Step 5 */}
+      {!isDone && step === 5 && (
+        <SpotlightOverlay
+          targetId="link-sweatbank"
+          title="🏃 Sweat Bank"
+          description="Здесь ты можешь синхронизировать свои шаги из реальной жизни и получать за них игровую валюту! Давай перейдем в Банк."
+          buttonLabel="Открыть Банк →"
+          onNext={() => {
+            nextStep();
+            router.push('/bank');
+          }}
+          onSkip={skipTutorial}
+        />
+      )}
 
       {/* ── Hero Card ──────────────────────────────────────────────────── */}
       <div className="flex-shrink-0 p-3 pb-0 relative z-10">
@@ -307,7 +327,7 @@ export default function ProfileClient({
 
             {/* Quick links row */}
             <div className="grid grid-cols-2 gap-2">
-              <Link href="/bank" className="glass-card p-3 flex flex-col gap-1.5 hover:border-yellow-500/30 transition-colors group">
+              <Link href="/bank" id="link-sweatbank" className="glass-card p-3 flex flex-col gap-1.5 hover:border-yellow-500/30 transition-colors group">
                 <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold">Sweat Bank</div>
                 <div className="text-xs font-black text-yellow-400 group-hover:text-yellow-300">{t.mgr_open_vault || 'Open Vault'} →</div>
               </Link>

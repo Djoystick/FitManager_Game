@@ -128,12 +128,12 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-6 relative text-white">
-      {/* Tutorial Spotlight Step 4 */}
-      {!isDone && step === 4 && (
+      {/* Tutorial Spotlight Step 6 */}
+      {!isDone && step === 6 && (
         <SpotlightOverlay
-          targetId="tab-market"
-          title="🛒 Трансферный рынок"
-          description="За SP и FC ты можешь покупать новые карточки или развивать текущих игроков. Пошли на рынок!"
+          targetId="fitness-sync-btn"
+          title="Синхронизация шагов"
+          description="Сначала нажми 'Синхронизировать', чтобы получить Sweat Points (SP) за свои реальные шаги. А после переходи во вкладку Трансферы, чтобы потратить их!"
           buttonLabel="Перейти на Рынок →"
           onNext={() => {
             nextStep();

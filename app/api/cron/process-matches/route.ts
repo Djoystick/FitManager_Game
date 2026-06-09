@@ -65,23 +65,20 @@ export async function GET(req: NextRequest) {
       .limit(1);
 
     if (!unplayedMatches || unplayedMatches.length === 0) {
-      console.log('[process-matches] No unplayed rounds left. Triggering end-of-season (fire-and-forget)...');
-      // ── R1 FIX: Fire-and-forget — do NOT await these fetches. ─────────────
-      // Awaiting them caused Vercel timeout (10s Hobby / 60s Pro) when many
-      // leagues finished simultaneously, creating a permanent soft-lock where
-      // every subsequent cron invocation would hit the same timeout.
-      // The downstream routes are idempotent (CAS guard in end-of-season),
-      // so it is safe to let them run independently in the background.
+      console.log('[process-matches] No unplayed rounds left. Triggering end-of-season...');
       const baseUrl = req.nextUrl.origin;
       const cronHeaders = { 'Authorization': `Bearer ${process.env.CRON_SECRET}` };
 
-      fetch(`${baseUrl}/api/cron/end-of-season`, { headers: cronHeaders })
-        .catch(e => console.error('[process-matches] end-of-season fire-and-forget error:', e));
+      // We MUST await the fetches. In serverless environments like Vercel,
+      // unawaited promises are killed immediately when the response is returned.
+      try {
+        await fetch(`${baseUrl}/api/cron/end-of-season`, { headers: cronHeaders });
+        await fetch(`${baseUrl}/api/cron/league-autofill`, { headers: cronHeaders });
+      } catch (e) {
+        console.error('[process-matches] Async trigger error:', e);
+      }
 
-      fetch(`${baseUrl}/api/cron/league-autofill`, { headers: cronHeaders })
-        .catch(e => console.error('[process-matches] league-autofill fire-and-forget error:', e));
-
-      return NextResponse.json({ success: true, message: 'No unplayed rounds left. End-of-season and autofill triggered (async).' });
+      return NextResponse.json({ success: true, message: 'No unplayed rounds left. End-of-season and autofill triggered.' });
     }
 
     const targetRound = unplayedMatches[0].round_number;

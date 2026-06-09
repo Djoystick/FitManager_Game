@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { SubNavTabs } from '@/components/ui/SubNavTabs';
 import { HubSocialClient } from './HubSocialClient';
+import { FriendlyMatchCard } from './FriendlyMatchCard';
 import { Trophy, Medal, Loader2, TrendingUp, TrendingDown, Users, Globe, BarChart2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
@@ -106,6 +107,7 @@ export function HubTabsWrapper({
         {/* ── COMPETITIONS: Full League Table ─────────────────────── */}
         {activeTab === 'competitions' && (
           <div className="px-3">
+            <FriendlyMatchCard userId={userId} initialMatchesPlayed={friendlyMatchesPlayed} />
             <div className="glass-card overflow-hidden">
               {/* Column headers */}
               <div className="grid grid-cols-[28px_1fr_52px_52px_36px] bg-white/5 border-b border-white/5 px-3 py-2.5">

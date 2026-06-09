@@ -31,10 +31,12 @@ export async function GET(request: Request) {
     console.log('[CRON EndOfSeason] Starting...');
 
     // 1. Find all active instances
+    // We limit this to 3 per run so we don't hit the Vercel 10s Serverless timeout
     const { data: activeInstances } = await supabaseAdmin
       .from('league_instances')
       .select('id, tier_level')
-      .eq('status', 'active');
+      .eq('status', 'active')
+      .limit(3);
 
     if (!activeInstances || activeInstances.length === 0) {
       return NextResponse.json({ message: 'No active instances' });

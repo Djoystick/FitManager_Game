@@ -202,10 +202,10 @@ export default function TransferMarketPage() {
       <div className="fixed inset-0 pointer-events-none bg-grid-cyan opacity-60" />
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_30%_at_50%_0%,rgba(0,240,255,0.07)_0%,transparent_100%)]" />
 
-      {/* Tutorial Spotlight Step 5 */}
-      {!isDone && step === 5 && (
+      {/* Tutorial Spotlight Step 7 */}
+      {!isDone && step === 7 && (
         <SpotlightOverlay
-          targetId="tab-league"
+          targetId="tab-hub"
           title="🏆 Лига"
           description="Команда готова! Давай заглянем в Лигу и сыграем товарищеский матч."
           buttonLabel="Перейти в Лигу →"

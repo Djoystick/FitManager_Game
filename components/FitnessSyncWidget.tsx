@@ -23,13 +23,13 @@ export function FitnessSyncWidget() {
   useEffect(() => {
     const fetchState = async () => {
       if (!userId) return;
-      const { data } = await supabase.from('users').select('daily_steps_logged, last_sync_date, google_refresh_token').eq('id', userId).single();
+      const { data } = await supabase.from('users').select('daily_steps, last_step_sync, google_refresh_token').eq('id', userId).single();
       if (data) {
         setIsConnected(!!data.google_refresh_token);
         const tzDate = new Date().toISOString().split('T')[0];
-        if (data.last_sync_date === tzDate) {
-           setDailySteps(data.daily_steps_logged || 0);
-           setLimitReached((data.daily_steps_logged || 0) >= MAX_STEPS);
+        if (data.last_step_sync === tzDate) {
+           setDailySteps(data.daily_steps || 0);
+           setLimitReached((data.daily_steps || 0) >= MAX_STEPS);
         } else {
            setDailySteps(0);
            setLimitReached(false);

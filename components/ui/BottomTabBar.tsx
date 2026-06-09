@@ -17,9 +17,9 @@ import { Lock } from 'lucide-react';
 // Lock rules (tutorial step):
 //   step === 0         → only HOME is unlocked
 //   step >= 1          → TEAM unlocked
-//   step >= 2          → TEAM + MANAGER unlocked
-//   step >= 3          → + TRANSFERS unlocked
-//   step >= 4          → + HUB unlocked
+//   step >= 5          → + MANAGER unlocked
+//   step >= 7          → + TRANSFERS unlocked
+//   step >= 8          → + HUB unlocked
 //   TUTORIAL_DONE (-1) → all unlocked
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -137,9 +137,9 @@ function isTabLocked(href: string, step: number): boolean {
   if (step === TUTORIAL_DONE) return false;
   if (href === '/') return false;
   if (href === '/lineup' && step >= 1) return false;
-  if (href === '/profile' && step >= 2) return false;
-  if (href === '/market'  && step >= 3) return false;
-  if (href === '/league'  && step >= 4) return false;
+  if (href === '/profile' && step >= 5) return false;
+  if (href === '/market'  && step >= 7) return false;
+  if (href === '/league'  && step >= 8) return false;
   return true;
 }
 

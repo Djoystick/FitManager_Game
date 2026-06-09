@@ -69,6 +69,7 @@ export function SubNavTabs({
         return (
           <motion.button
             key={tab.id}
+            id={`tab-${tab.id}`}
             onClick={() => onChange(tab.id)}
             className={`
               relative flex-1 flex items-center justify-center gap-1.5
