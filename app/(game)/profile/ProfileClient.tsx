@@ -16,8 +16,7 @@ import {
 import toast from 'react-hot-toast';
 import { useTransition } from 'react';
 import { motion } from 'framer-motion';
-import { useTutorial } from '@/components/providers/TutorialContext';
-import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
+import { usePageTour } from '@/components/providers/PageTourProvider';
 import { useRouter } from 'next/navigation';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -77,7 +76,7 @@ export default function ProfileClient({
   const { userId, isAuthenticated } = useContext(TelegramAuthContext);
   const { language, setLanguage }   = useContext(LanguageContext);
   const t = dict[language as keyof typeof dict];
-  const { step, isDone, nextStep, skipTutorial } = useTutorial();
+  const { startTour, hasSeenTour, areAllToursSkipped } = usePageTour();
   const router = useRouter();
 
   const [activeTab,      setActiveTab]      = useState<ManagerTab>('general');
@@ -159,6 +158,38 @@ export default function ProfileClient({
     }
   }, [isAuthenticated, userId]);
 
+  const triggerTour = () => {
+    if (areAllToursSkipped()) return;
+    startTour('profile', [
+      {
+        targetId: 'link-sweatbank',
+        title: '🏃 Sweat Bank',
+        description: 'Здесь ты можешь синхронизировать свои шаги из реальной жизни и получать за них игровую валюту!',
+      },
+      {
+        targetId: 'profile-wallet',
+        title: '💎 Кошелек',
+        description: 'Привяжи свой кошелек, чтобы покупать и продавать игроков в виде NFT.',
+      }
+    ]);
+  };
+
+  useEffect(() => {
+    const handleStartTour = () => triggerTour();
+    window.addEventListener('startPageTour', handleStartTour);
+    
+    // Auto-start if never seen
+    if (!hasSeenTour('profile')) {
+      const timer = setTimeout(triggerTour, 500);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('startPageTour', handleStartTour);
+      };
+    }
+    
+    return () => window.removeEventListener('startPageTour', handleStartTour);
+  }, [hasSeenTour, areAllToursSkipped, startTour]);
+
   const shortenAddress = (a: string) => `${a.slice(0,4)}...${a.slice(-4)}`;
 
   return (
@@ -166,21 +197,6 @@ export default function ProfileClient({
       {/* Background */}
       <div className="absolute inset-0 pointer-events-none bg-grid-cyan opacity-50" />
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_40%_at_50%_0%,rgba(147,51,234,0.1)_0%,transparent_100%)]" />
-
-      {/* Tutorial Spotlight Step 5 */}
-      {!isDone && step === 5 && (
-        <SpotlightOverlay
-          targetId="link-sweatbank"
-          title="🏃 Sweat Bank"
-          description="Здесь ты можешь синхронизировать свои шаги из реальной жизни и получать за них игровую валюту! Давай перейдем в Банк."
-          buttonLabel="Открыть Банк →"
-          onNext={() => {
-            nextStep();
-            router.push('/bank');
-          }}
-          onSkip={skipTutorial}
-        />
-      )}
 
       {/* ── Hero Card ──────────────────────────────────────────────────── */}
       <div className="flex-shrink-0 p-3 pb-0 relative z-10">
@@ -363,6 +379,25 @@ export default function ProfileClient({
                   </button>
                 </div>
               </div>
+              <div className="glass-card p-3 flex flex-col gap-2">
+                <div className="flex items-center gap-1.5 text-[8px] text-gray-500 uppercase tracking-widest font-bold">
+                  <Target size={9} className="text-yellow-400" />Туториалы
+                </div>
+                <div className="flex-1 flex items-center justify-center">
+                  <button onClick={() => {
+                    if (confirm('Сбросить все туториалы навсегда? Вы можете включить их снова, очистив данные приложения.')) {
+                      window.dispatchEvent(new Event('skipAllToursForever'));
+                      toast.success('Туториалы отключены!');
+                    }
+                  }} className="w-full h-6 rounded px-2 bg-yellow-500/10 text-yellow-500 text-[9px] font-bold uppercase transition-all hover:bg-yellow-500/20">
+                    Отключить все
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 flex gap-2 w-full justify-between z-10" id="profile-wallet">
+              <WalletConnect />
             </div>
 
             {/* Admin link */}

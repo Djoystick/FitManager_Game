@@ -10,8 +10,7 @@ import { CyberLoader } from '@/components/ui/CyberLoader';
 import { Shirt, X, RefreshCw, User, Eye, EyeOff, Zap, Lock, Building2, Shuffle, Users, Wallet } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlayerProfileModal } from '@/components/PlayerProfileModal';
-import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
-import { useTutorial } from '@/components/providers/TutorialContext';
+import { usePageTour } from '@/components/providers/PageTourProvider';
 import { InfoPopover } from '@/components/ui/InfoPopover';
 import { ChemistryOverlay } from '@/components/ChemistryOverlay';
 import { LanguageContext } from '@/components/LanguageContext';
@@ -60,9 +59,9 @@ export default function LineupPage() {
   const { language } = useContext(LanguageContext);
   const t = dict[language as keyof typeof dict];
   const router = useRouter();
-  const { step, isDone, nextStep, skipTutorial } = useTutorial();
-  const [team, setTeam] = useState<Team | null>(null);
-  const [players, setPlayers] = useState<Player[]>([]);
+  const { startTour, hasSeenTour, areAllToursSkipped } = usePageTour();
+  const [team, setTeam] = useState<any>(null);
+  const [players, setPlayers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
@@ -83,14 +82,52 @@ export default function LineupPage() {
   const [showLegend, setShowLegend] = useState(false);
   // Primary TEAM tab
   const [primaryTab, setPrimaryTab] = useState<'info' | 'players' | 'lineup'>('info');
-
-  // Force the primary tab to 'lineup' during step 1 so the bench-drawer-handle is visible
-  useEffect(() => {
-    if (!isDone && step === 1 && primaryTab !== 'lineup') {
-      setPrimaryTab('lineup');
-    }
-  }, [step, isDone, primaryTab]);
   const [playersSubTab, setPlayersSubTab] = useState<'squad' | 'academy'>('squad');
+
+  const triggerTour = () => {
+    if (areAllToursSkipped()) return;
+    startTour('lineup', [
+      {
+        targetId: 'tab-lineup',
+        title: 'Твой состав',
+        description: 'Здесь ты управляешь своими основными игроками. Давай перейдем туда!',
+        onNext: () => setPrimaryTab('lineup')
+      },
+      {
+        targetId: 'bench-drawer-handle',
+        title: '🔄 Скамья запасных',
+        description: 'Твои основные игроки устают. Открой скамейку запасных, чтобы выпустить свежих игроков на поле!',
+      },
+      {
+        targetId: 'tab-info',
+        title: '📊 Управление и Статистика',
+        description: 'Отличная расстановка! Теперь давай посмотрим на общую статистику команды и доступные структуры.',
+        onNext: () => setPrimaryTab('info')
+      },
+      {
+        targetId: 'card-structures',
+        title: '🏢 Развитие Базы',
+        description: 'Здесь ты можешь строить и улучшать стадион и тренировочные базы. Нажми сюда, чтобы перейти в Структуры!',
+      }
+    ]);
+  };
+
+  useEffect(() => {
+    const handleStartTour = () => triggerTour();
+    window.addEventListener('startPageTour', handleStartTour);
+    
+    // Auto-start if never seen
+    if (!hasSeenTour('lineup')) {
+      // small delay to let UI mount
+      const timer = setTimeout(triggerTour, 500);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('startPageTour', handleStartTour);
+      };
+    }
+    
+    return () => window.removeEventListener('startPageTour', handleStartTour);
+  }, [hasSeenTour, areAllToursSkipped, startTour]);
 
   const fetchTeamData = async () => {
     if (!userId) return;
@@ -335,7 +372,7 @@ export default function LineupPage() {
     try {
       const res = await updateTeamFormation(team.id, newFormation);
       if (res.success) {
-        setTeam(prev => prev ? { ...prev, formation: newFormation } : prev);
+        setTeam((prev: any) => prev ? { ...prev, formation: newFormation } : prev);
         toast.success('Formation Saved', { position: 'top-center', duration: 1500 });
       } else {
         toast.error(res.error || 'Failed to change formation');
@@ -559,50 +596,6 @@ export default function LineupPage() {
       {/* Background decorations */}
       <div className="absolute inset-0 pointer-events-none bg-grid-violet opacity-30" style={{ backgroundImage: 'linear-gradient(rgba(147,51,234,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(147,51,234,0.05) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_30%_at_50%_0%,rgba(147,51,234,0.08)_0%,transparent_100%)]" />
-
-      {/* Tutorial Spotlight Step 1 */}
-      {!isDone && step === 1 && (
-        <SpotlightOverlay
-          targetId="bench-drawer-handle"
-          title="🔄 Скамья запасных"
-          description="Твои основные игроки устают. Открой скамейку запасных, чтобы выпустить свежих игроков на поле!"
-          buttonLabel="Я понял →"
-          onNext={() => {
-            nextStep();
-          }}
-          onSkip={skipTutorial}
-        />
-      )}
-
-      {/* Tutorial Spotlight Step 2 */}
-      {!isDone && step === 2 && (
-        <SpotlightOverlay
-          targetId="tab-info"
-          title="📊 Управление и Статистика"
-          description="Отличная расстановка! Теперь давай посмотрим на общую статистику команды и доступные структуры. Перейди во вкладку INFO."
-          buttonLabel="Понятно →"
-          onNext={() => {
-            nextStep();
-            setPrimaryTab('info');
-          }}
-          onSkip={skipTutorial}
-        />
-      )}
-
-      {/* Tutorial Spotlight Step 3 */}
-      {!isDone && step === 3 && primaryTab === 'info' && (
-        <SpotlightOverlay
-          targetId="card-structures"
-          title="🏢 Развитие Базы"
-          description="Здесь ты можешь строить и улучшать стадион и тренировочные базы. Давай перейдем в Структуры!"
-          buttonLabel="Перейти на Базу →"
-          onNext={() => {
-            nextStep();
-            router.push('/base');
-          }}
-          onSkip={skipTutorial}
-        />
-      )}
 
       {/* HEADER */}
       <header className="glass-card-violet relative overflow-hidden mx-3 mt-3 mb-1 p-3 flex justify-between items-center shrink-0">

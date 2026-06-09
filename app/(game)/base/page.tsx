@@ -38,8 +38,7 @@ import toast from 'react-hot-toast';
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
 import { ScreenGuide } from '@/components/ui/ScreenGuide';
-import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
-import { useTutorial } from '@/components/providers/TutorialContext';
+import { usePageTour } from '@/components/providers/PageTourProvider';
 import { useRouter } from 'next/navigation';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -231,17 +230,50 @@ export default function BaseDashboard() {
   const { userId, isAuthenticated } = useContext(TelegramAuthContext);
   const { language } = useContext(LanguageContext);
   const t = dict[language as keyof typeof dict];
-  const { step, isDone, nextStep, skipTutorial } = useTutorial();
+  const { startTour, hasSeenTour, areAllToursSkipped } = usePageTour();
   const router = useRouter();
 
   const [activeTab, setActiveTab]           = useState<TabId>('training');
 
-  // Force active tab to "club" on step 4 to render the stadium upgrade button for spotlight
+  const triggerTour = () => {
+    if (areAllToursSkipped()) return;
+    startTour('base', [
+      {
+        targetId: 'tab-training',
+        title: '🏋️ Тренировки',
+        description: 'В этой вкладке ты можешь тренировать характеристики своих игроков за FC.',
+        onNext: () => setActiveTab('training')
+      },
+      {
+        targetId: 'tab-club',
+        title: '🏢 Инфраструктура',
+        description: 'Улучшай Здания клуба, чтобы получать больше преимуществ.',
+        onNext: () => setActiveTab('club')
+      },
+      {
+        targetId: 'upgrade-stadium',
+        title: '🏟️ Улучшение Стадиона',
+        description: 'Это твой стадион. За каждый матч он приносит пассивный доход в FanCoins. Обязательно улучшай его!',
+        onNext: () => setActiveTab('club') // just in case
+      }
+    ]);
+  };
+
   useEffect(() => {
-    if (!isDone && step === 4 && activeTab !== 'club') {
-      setActiveTab('club');
+    const handleStartTour = () => triggerTour();
+    window.addEventListener('startPageTour', handleStartTour);
+    
+    // Auto-start if never seen
+    if (!hasSeenTour('base')) {
+      const timer = setTimeout(triggerTour, 500);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('startPageTour', handleStartTour);
+      };
     }
-  }, [step, isDone, activeTab]);
+    
+    return () => window.removeEventListener('startPageTour', handleStartTour);
+  }, [hasSeenTour, areAllToursSkipped, startTour]);
   const [infra, setInfra]                   = useState<ClubInfrastructure | null>(null);
   const [campData, setCampData]             = useState<TrainingCampData | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerForTraining | null>(null);
@@ -334,21 +366,6 @@ export default function BaseDashboard() {
 
   return (
     <div className="flex flex-col flex-1 h-full overflow-hidden bg-space-dark">
-
-      {/* Tutorial Spotlight Step 4 */}
-      {!isDone && step === 4 && (
-        <SpotlightOverlay
-          targetId="upgrade-stadium"
-          title="🏟️ Улучшение Стадиона"
-          description="Это твой стадион. За каждый матч он приносит пассивный доход в FanCoins. Давай перейдем в профиль Менеджера, чтобы настроить твою активность!"
-          buttonLabel="В профиль Менеджера →"
-          onNext={() => {
-            nextStep();
-            router.push('/profile');
-          }}
-          onSkip={skipTutorial}
-        />
-      )}
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="flex-shrink-0 px-3 pt-3 pb-0">

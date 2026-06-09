@@ -96,6 +96,24 @@ export function TelegramAuthProvider({ children }: { children: ReactNode }) {
     authenticate();
   }, [setLanguage]);
 
+  // Listen for onboarding completion
+  useEffect(() => {
+    if (!userId) return;
+    const handleCompletion = async () => {
+      try {
+        await fetch('/api/user/complete-onboarding', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId })
+        });
+      } catch (e) {
+        console.error('Failed to save onboarding completion', e);
+      }
+    };
+    window.addEventListener('onboardingCompleted', handleCompletion);
+    return () => window.removeEventListener('onboardingCompleted', handleCompletion);
+  }, [userId]);
+
   // ── Loading screen ────────────────────────────────────────────────────────
   if (!isMounted || isLoading) {
     return (

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createStarterFranchise } from '@/app/actions/teamActions';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
-import { useTutorial } from '@/components/providers/TutorialContext';
+
 import { Shield, Sword, Star, ChevronRight, CheckCircle, Zap } from 'lucide-react';
 import Link from 'next/link';
 
@@ -196,7 +196,7 @@ function CaptainCard({
 export default function OnboardingPage() {
   const router = useRouter();
   const { userId } = useContext(TelegramAuthContext);
-  const { nextStep, setUserId } = useTutorial();
+
 
   const [screen,        setScreen]        = useState(0);
   const [teamName,      setTeamName]      = useState('');
@@ -243,11 +243,9 @@ export default function OnboardingPage() {
 
   // ── Start game ─────────────────────────────────────────────────────────────
   const handleStart = useCallback(() => {
-    if (userId) setUserId(userId);
-    nextStep();
     router.push('/');
     router.refresh();
-  }, [userId, nextStep, router, setUserId]);
+  }, [router]);
 
   // ── Default captain fallback (if API failed) ───────────────────────────────
   const displayPlayers = topPlayers.length > 0 ? topPlayers : [

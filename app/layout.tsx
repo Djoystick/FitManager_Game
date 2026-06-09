@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Orbitron, Russo_One, Space_Grotesk } from "next/font/google";
-import BugReportButton from "@/components/BugReportButton";
+import { PageTourProvider } from '@/components/providers/PageTourProvider';
+import FloatingActionButtons from '@/components/FloatingActionButtons';
 import ClientErrorCatcher from "@/components/ClientErrorCatcher";
 import "./globals.css";
 
@@ -52,7 +53,7 @@ export const metadata: Metadata = {
 import { TelegramAuthProvider } from "@/components/providers/TelegramAuthProvider";
 import { TonProvider } from "@/components/TonProvider";
 import { LanguageProvider } from "@/components/LanguageContext";
-import { TutorialProvider } from "@/components/providers/TutorialContext";
+
 import { PaddingProvider } from "@/components/providers/PaddingContext";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { BottomTabBar } from "@/components/ui/BottomTabBar";
@@ -86,53 +87,55 @@ export default function RootLayout({
             <TonProvider>
               {/* ── State providers (order matters: Tutorial depends on Auth) */}
               <PaddingProvider>
-                <TutorialProvider>
-                  <main
-                    role="main"
-                    aria-label="Main Application Content"
-                    className={`
-                      max-w-[480px] w-full mx-auto
-                      h-dvh overflow-hidden
-                      bg-midnight-abyss text-white relative
-                      shadow-2xl border-x border-white/5
-                      flex flex-col
-                    `}
-                  >
-                    {/* Decorative scan line */}
-                    <div className="scan-line" />
 
-                    {/* GlobalHeader is always visible at the top */}
-                    <GlobalHeader />
+                  <PageTourProvider>
+                    <main
+                      role="main"
+                      aria-label="Main Application Content"
+                      className={`
+                        max-w-[480px] w-full mx-auto
+                        h-dvh overflow-hidden
+                        bg-midnight-abyss text-white relative
+                        shadow-2xl border-x border-white/5
+                        flex flex-col
+                      `}
+                    >
+                      {/* Decorative scan line */}
+                      <div className="scan-line" />
 
-                    {/*
-                      ── CONTENT AREA ─────────────────────────────────────
-                      min-h-0 is CRITICAL: without it, flex children ignore
-                      parent's height constraint and overflow-hidden fails.
-                      PageTransitionWrapper handles AnimatePresence routing.
-                      ──────────────────────────────────────────────────── */}
-                    <PageTransitionWrapper>
-                      {children}
-                    </PageTransitionWrapper>
+                      {/* GlobalHeader is always visible at the top */}
+                      <GlobalHeader />
 
-                    {/* BottomTabBar is fixed, not in flow */}
-                    <BottomTabBar />
-                  </main>
+                      {/*
+                        ── CONTENT AREA ─────────────────────────────────────
+                        min-h-0 is CRITICAL: without it, flex children ignore
+                        parent's height constraint and overflow-hidden fails.
+                        PageTransitionWrapper handles AnimatePresence routing.
+                        ──────────────────────────────────────────────────── */}
+                      <PageTransitionWrapper>
+                        {children}
+                      </PageTransitionWrapper>
 
-                  {/* Tutorial tooltip overlay — rendered outside main for z-index */}
-                  <TooltipTour />
+                      {/* BottomTabBar is fixed, not in flow */}
+                      <BottomTabBar />
+                    </main>
 
-                  <AchievementToastProvider />
+                    {/* Tutorial tooltip overlay — rendered outside main for z-index */}
+                    <TooltipTour />
 
-                  <Toaster
-                    position="top-center"
-                    toastOptions={{
-                      className: 'font-sans font-bold shadow-[0_0_15px_rgba(147,51,234,0.4)] bg-[#05060f] text-white border border-violet-500/50',
-                      style: { marginTop: '70px' },
-                    }}
-                  />
-                  <ClientErrorCatcher />
-                  <BugReportButton />
-                </TutorialProvider>
+                    <AchievementToastProvider />
+
+                    <Toaster
+                      position="top-center"
+                      toastOptions={{
+                        className: 'font-sans font-bold shadow-[0_0_15px_rgba(147,51,234,0.4)] bg-[#05060f] text-white border border-violet-500/50',
+                        style: { marginTop: '70px' },
+                      }}
+                    />
+                    <ClientErrorCatcher />
+                    <FloatingActionButtons />
+                  </PageTourProvider>
+
               </PaddingProvider>
             </TonProvider>
           </TelegramAuthProvider>

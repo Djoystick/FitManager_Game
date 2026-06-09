@@ -2,7 +2,7 @@
 
 import { useContext, useEffect, useState, useCallback } from 'react';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
-import { useTutorial } from '@/components/providers/TutorialContext';
+import { usePageTour } from '@/components/providers/PageTourProvider';
 import { usePadding } from '@/components/providers/PaddingContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -18,7 +18,6 @@ import {
 import { UnseenMatchesModal } from '@/components/UnseenMatchesModal';
 import { NextMatchCountdown } from '@/components/dashboard/NextMatchCountdown';
 import { OffseasonCard } from '@/components/dashboard/OffseasonCard';
-import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MatchReport, MatchReportModal } from '@/components/MatchReportModal';
 import { OpponentScoutModal } from '@/components/OpponentScoutModal';
@@ -418,7 +417,7 @@ export default function DashboardPage() {
   const { userId, isAuthenticated, isLoading: isAuthLoading } = useContext(TelegramAuthContext);
   const { language } = useContext(LanguageContext);
   const t = dict[language as keyof typeof dict];
-  const { step, isDone, nextStep, skipTutorial, setUserId: setTutorialUserId } = useTutorial();
+  const { startTour, hasSeenTour, areAllToursSkipped } = usePageTour();
   const router = useRouter();
   const { paddingStyle, setUserId: setPaddingUserId } = usePadding();
 
@@ -542,13 +541,35 @@ export default function DashboardPage() {
     if (isAuthenticated && userId) {
       setTimeout(() => {
         fetchUserData(userId);
-        setTutorialUserId(userId);
         setPaddingUserId(userId);
       }, 0);
     } else if (!isAuthLoading && !isAuthenticated) {
       setTimeout(() => { setIsDataLoading(false); setHasTeam(true); }, 0);
     }
-  }, [isAuthenticated, userId, isAuthLoading, fetchUserData, setTutorialUserId, setPaddingUserId]);
+  }, [isAuthenticated, userId, isAuthLoading, fetchUserData, setPaddingUserId]);
+
+  const triggerTour = () => {
+    if (areAllToursSkipped()) return;
+    startTour('home', [
+      {
+        targetId: 'tab-lineup',
+        title: 'Добро пожаловать, Тренер!',
+        description: 'Твоя команда ждет указаний. Давай перейдем в раздел Состав и расставим игроков по позициям!',
+      }
+    ]);
+  };
+
+  useEffect(() => {
+    const handleStartTour = () => triggerTour();
+    window.addEventListener('startPageTour', handleStartTour);
+    
+    if (!hasSeenTour('home') && !isDataLoading) {
+      const timer = setTimeout(triggerTour, 500);
+      return () => clearTimeout(timer);
+    }
+    
+    return () => window.removeEventListener('startPageTour', handleStartTour);
+  }, [hasSeenTour, areAllToursSkipped, startTour, isDataLoading]);
 
   // Balance event listener
   useEffect(() => {
@@ -629,7 +650,7 @@ export default function DashboardPage() {
     }
   };
 
-  const showSpotlightStep0 = !isDone && step === 0;
+
 
   // Next upcoming match (first one)
   const nextMatch = upcomingMatches[0] ?? null;
@@ -669,17 +690,7 @@ export default function DashboardPage() {
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_40%_at_50%_0%,rgba(147,51,234,0.12)_0%,transparent_100%)]" />
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_60%_30%_at_50%_100%,rgba(0,240,255,0.06)_0%,transparent_100%)]" />
 
-      {/* ── Tutorial ───────────────────────────────────────────────────────── */}
-      {showSpotlightStep0 && (
-        <SpotlightOverlay
-          targetId="tab-lineup"
-          title="Добро пожаловать, Тренер!"
-          description="Твоя команда ждет указаний. Давай перейдем в раздел Состав и расставим игроков по позициям!"
-          buttonLabel="Перейти к составу →"
-          onNext={() => { nextStep(); router.push('/lineup'); }}
-          onSkip={skipTutorial}
-        />
-      )}
+
 
       {/* ── Lobby waiting overlay ──────────────────────────────────────────── */}
       <AnimatePresence>

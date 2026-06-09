@@ -1,7 +1,6 @@
 'use client';
 
-import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
-import { useTutorial } from '@/components/providers/TutorialContext';
+import { usePageTour } from '@/components/providers/PageTourProvider';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition, useCallback, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
@@ -67,7 +66,7 @@ interface SweatBankClientProps {
 
 export function SweatBankClient({ initialData, language }: SweatBankClientProps) {
   const router = useRouter();
-  const { step, isDone, nextStep, skipTutorial } = useTutorial();
+  const { startTour, hasSeenTour, areAllToursSkipped } = usePageTour();
   const t = dict[language as keyof typeof dict];
 
 
@@ -95,6 +94,38 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
   const [isConverting, startConvertTransition] = useTransition();
 
   // ── Conversion ─────────────────────────────────────────────────────────────
+
+  const triggerTour = () => {
+    if (areAllToursSkipped()) return;
+    startTour('bank', [
+      {
+        targetId: 'fitness-sync-btn',
+        title: 'Синхронизация шагов',
+        description: 'Сначала нажми "Синхронизировать", чтобы получить Sweat Points (SP) за свои реальные шаги.',
+      },
+      {
+        targetId: 'bank-exchange-section',
+        title: '💱 Обмен SP',
+        description: 'Здесь ты можешь обменять накопленные SP на разные виды игровых монет. Разные профили имеют разные бонусы обмена!',
+      }
+    ]);
+  };
+
+  useEffect(() => {
+    const handleStartTour = () => triggerTour();
+    window.addEventListener('startPageTour', handleStartTour);
+    
+    // Auto-start if never seen
+    if (!hasSeenTour('bank')) {
+      const timer = setTimeout(triggerTour, 500);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('startPageTour', handleStartTour);
+      };
+    }
+    
+    return () => window.removeEventListener('startPageTour', handleStartTour);
+  }, [hasSeenTour, areAllToursSkipped, startTour]);
 
   const handleConvert = useCallback((currency: CurrencyType) => {
     const raw = spInputs[currency];
@@ -128,21 +159,6 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-6 relative text-white">
-      {/* Tutorial Spotlight Step 6 */}
-      {!isDone && step === 6 && (
-        <SpotlightOverlay
-          targetId="fitness-sync-btn"
-          title="Синхронизация шагов"
-          description="Сначала нажми 'Синхронизировать', чтобы получить Sweat Points (SP) за свои реальные шаги. А после переходи во вкладку Трансферы, чтобы потратить их!"
-          buttonLabel="Перейти на Рынок →"
-          onNext={() => {
-            nextStep();
-            router.push('/market');
-          }}
-          onSkip={skipTutorial}
-        />
-      )}
-
       {/* Header Tabs */}
 
       {/* ── BLOCK 1: Step Sync ─────────────────────────────────────────────── */}
@@ -179,7 +195,7 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
       </section>
 
       {/* ── BLOCK 3: Exchange ───────────────────────────────────────────────── */}
-      <section className="bg-black/40 border border-gray-800 rounded-2xl p-4 flex flex-col gap-3">
+      <section className="bg-black/40 border border-gray-800 rounded-2xl p-4 flex flex-col gap-4" id="bank-exchange-section">
         <div className="flex items-center gap-2">
           <ArrowRightLeft className="text-neon-pink w-5 h-5" />
           <h2 className="text-sm font-black uppercase tracking-widest text-neon-pink drop-shadow-[0_0_5px_rgba(255,0,100,0.5)]">

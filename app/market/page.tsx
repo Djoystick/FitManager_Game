@@ -11,8 +11,7 @@ import { RefreshCw, Filter, ShieldAlert, TrendingUp, TrendingDown, ArrowLeftRigh
 import { ScreenGuide } from '@/components/ui/ScreenGuide';
 import { MarketWallet } from '@/components/market/MarketWallet';
 import { motion } from 'framer-motion';
-import { SpotlightOverlay } from '@/components/onboarding/SpotlightOverlay';
-import { useTutorial } from '@/components/providers/TutorialContext';
+import { usePageTour } from '@/components/providers/PageTourProvider';
 import { useRouter } from 'next/navigation';
 import { SubNavTabs } from '@/components/ui/SubNavTabs';
 interface MarketListing {
@@ -79,10 +78,42 @@ export default function TransferMarketPage() {
   const { userId } = useContext(TelegramAuthContext);
   const { language } = useContext(LanguageContext);
   const t = dict[language as keyof typeof dict];
-  const { step, isDone, nextStep, skipTutorial } = useTutorial();
+  const { startTour, hasSeenTour, areAllToursSkipped } = usePageTour();
   const router = useRouter();
 
   const [activeTab,       setActiveTab]      = useState<'market' | 'my_lots' | 'free_agents'>('market');
+
+  const triggerTour = () => {
+    if (areAllToursSkipped()) return;
+    startTour('market', [
+      {
+        targetId: 'market-filters',
+        title: 'Трансферный Рынок',
+        description: 'Здесь ты можешь покупать и продавать игроков за криптовалюту (TON).',
+      },
+      {
+        targetId: 'market-wallet',
+        title: 'Кошелек',
+        description: 'Твой привязанный кошелек и баланс отображаются здесь. Транзакции происходят напрямую в блокчейне!',
+      }
+    ]);
+  };
+
+  useEffect(() => {
+    const handleStartTour = () => triggerTour();
+    window.addEventListener('startPageTour', handleStartTour);
+    
+    // Auto-start if never seen
+    if (!hasSeenTour('market')) {
+      const timer = setTimeout(triggerTour, 500);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('startPageTour', handleStartTour);
+      };
+    }
+    
+    return () => window.removeEventListener('startPageTour', handleStartTour);
+  }, [hasSeenTour, areAllToursSkipped, startTour]);
   const [listings,        setListings]       = useState<MarketListing[]>([]);
   const [freeAgents,      setFreeAgents]     = useState<any[]>([]);
   const [isLoading,       setIsLoading]      = useState(true);
@@ -202,21 +233,6 @@ export default function TransferMarketPage() {
       <div className="fixed inset-0 pointer-events-none bg-grid-cyan opacity-60" />
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_30%_at_50%_0%,rgba(0,240,255,0.07)_0%,transparent_100%)]" />
 
-      {/* Tutorial Spotlight Step 7 */}
-      {!isDone && step === 7 && (
-        <SpotlightOverlay
-          targetId="tab-hub"
-          title="🏆 Лига"
-          description="Команда готова! Давай заглянем в Лигу и сыграем товарищеский матч."
-          buttonLabel="Перейти в Лигу →"
-          onNext={() => {
-            nextStep();
-            router.push('/league');
-          }}
-          onSkip={skipTutorial}
-        />
-      )}
-
       {/* ── HEADER ───────────────────────────────────────── */}
       <header className="relative z-10 px-3 pt-3 pb-0">
         <div className="glass-card-cyan relative overflow-hidden p-3">
@@ -254,7 +270,9 @@ export default function TransferMarketPage() {
 
       <div className="relative z-10 px-4 flex flex-col gap-3">
         {/* ── WALLET ─────────────────────────────────────────────── */}
-        <MarketWallet balance={tonBalance} userId={userId || ''} language={language} onBalanceUpdate={fetchBalance} />
+        <div id="market-wallet">
+          <MarketWallet balance={tonBalance} userId={userId || ''} language={language} onBalanceUpdate={fetchBalance} />
+        </div>
 
         {/* ── TABS (SubNav) ───────────────────────────────────── */}
         <SubNavTabs
@@ -270,7 +288,7 @@ export default function TransferMarketPage() {
 
         {/* ── FILTERS ────────────────────────────────────────────── */}
         {activeTab === 'market' && (
-          <div className="glass-card p-3 flex flex-col gap-2">
+          <div className="glass-card p-3 flex flex-col gap-2" id="market-filters">
             <div className="flex items-center gap-1.5 text-[9px] text-gray-600 uppercase tracking-widest font-bold">
               <Filter className="w-3 h-3" /> {t.filters}
             </div>

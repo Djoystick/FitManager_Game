@@ -4,26 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useContext } from 'react';
 import { LanguageContext } from '@/components/LanguageContext';
-import { useTutorial, TUTORIAL_DONE } from '@/components/providers/TutorialContext';
-import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { Lock } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BottomTabBar — 5-Tab Cyberpunk Command Dock
 //
 // Tabs: HOME · TEAM · TRANSFERS · MANAGER · HUB
-//
-// Lock rules (tutorial step):
-//   step === 0         → only HOME is unlocked
-//   step >= 1          → TEAM unlocked
-//   step >= 5          → + MANAGER unlocked
-//   step >= 7          → + TRANSFERS unlocked
-//   step >= 8          → + HUB unlocked
-//   TUTORIAL_DONE (-1) → all unlocked
 // ─────────────────────────────────────────────────────────────────────────────
-
-const LOCKED_TOAST_MSG = '🎓 Complete the tutorial first!';
 
 // ── SVG Icons — Modern Cyberpunk Aesthetic ────────────────────────────────────
 
@@ -133,20 +120,9 @@ function HubIcon({ active }: { active: boolean }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function isTabLocked(href: string, step: number): boolean {
-  if (step === TUTORIAL_DONE) return false;
-  if (href === '/') return false;
-  if (href === '/lineup' && step >= 1) return false;
-  if (href === '/profile' && step >= 5) return false;
-  if (href === '/market'  && step >= 7) return false;
-  if (href === '/league'  && step >= 8) return false;
-  return true;
-}
-
 export function BottomTabBar() {
   const pathname = usePathname();
   const { language } = useContext(LanguageContext);
-  const { step } = useTutorial();
 
   // Map sub-pages to their parent tab for active state
   const activeTab = (() => {
@@ -185,35 +161,6 @@ export function BottomTabBar() {
       <div className="flex gap-0 px-1 py-1.5">
         {navItems.map(({ name, href, Icon, id }) => {
           const isActive = activeTab === href;
-          const locked   = isTabLocked(href, step);
-
-          if (locked) {
-            return (
-              <button
-                key={href}
-                id={id}
-                aria-label={`${name} (locked)`}
-                className="flex-1 flex flex-col items-center justify-center gap-0.5 py-1 text-gray-700 transition-colors duration-200"
-                onClick={() => toast(LOCKED_TOAST_MSG, {
-                  icon: '🔒',
-                  duration: 2000,
-                  style: { background: '#05060f', color: '#fff', border: '1px solid rgba(0,240,255,0.2)' },
-                })}
-              >
-                <div className="relative">
-                  <Icon active={false} />
-                  <motion.span
-                    className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-red-500/80 flex items-center justify-center shadow-[0_0_6px_rgba(239,68,68,0.6)]"
-                    animate={{ scale: [1, 1.15, 1] }}
-                    transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-                  >
-                    <Lock size={7} className="text-white" />
-                  </motion.span>
-                </div>
-                <span className="text-[8px] uppercase font-bold tracking-wider opacity-25">{name}</span>
-              </button>
-            );
-          }
 
           return (
             <Link
