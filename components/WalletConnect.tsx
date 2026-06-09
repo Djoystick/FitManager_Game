@@ -31,12 +31,12 @@ export function WalletConnect({ onSyncSuccess }: { onSyncSuccess?: () => void })
             value: { tonProof: data.payload }
           });
         } else {
-          tonConnectUI.setConnectRequestParameters({ state: 'ready', value: null as any });
+          tonConnectUI.setConnectRequestParameters(null);
         }
       } catch (err) {
         console.error("Payload fetch error", err);
-        // Fallback to ready without proof if server is down, though it will fail verification later.
-        tonConnectUI.setConnectRequestParameters({ state: 'ready', value: null as any });
+        // Fallback to ready without proof if server is down
+        tonConnectUI.setConnectRequestParameters(null);
       }
     };
 
