@@ -53,6 +53,7 @@ export const metadata: Metadata = {
 import { TelegramAuthProvider } from "@/components/providers/TelegramAuthProvider";
 import { TonProvider } from "@/components/TonProvider";
 import { LanguageProvider } from "@/components/LanguageContext";
+import Script from "next/script";
 
 import { PaddingProvider } from "@/components/providers/PaddingContext";
 import { GlobalHeader } from "@/components/GlobalHeader";
@@ -81,6 +82,9 @@ export default function RootLayout({
           - Use overflow-x-auto + snap-row on horizontal card carousels
           - Market and League pages are exempt and may scroll vertically
         ─────────────────────────────────────────────────────────────────── */}
+      <head>
+        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
+      </head>
       <body className="h-dvh overflow-hidden flex flex-col font-sans bg-midnight-abyss">
         <LanguageProvider>
           <TelegramAuthProvider>
