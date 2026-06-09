@@ -61,21 +61,13 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Missing account or proof data' }, { status: 400 });
         }
 
-        // 1. Verify the JWT payload
-        const secret = process.env.TELEGRAM_BOT_TOKEN || 'fallback-secret-fitmanager';
-        let decodedPayload: any;
-        try {
-            decodedPayload = jwt.verify(proof.payload, secret);
-        } catch (e) {
+        // 1. Verify the payload matches the server-issued nonce
+        const expectedPayload = cookieStore.get('ton_proof_nonce')?.value;
+        if (!expectedPayload || proof.payload !== expectedPayload) {
             return NextResponse.json({ error: 'Invalid or expired payload' }, { status: 400 });
         }
 
-        // 2. Ensure the payload was issued to the same user
-        if (decodedPayload.userId !== sessionUserId) {
-            return NextResponse.json({ error: 'Payload hijacked or mismatched user' }, { status: 403 });
-        }
-
-        // 3. Verify the signature timestamp (prevent replay if the JWT expiration isn't enough)
+        // 2. Verify the signature timestamp (prevent replay)
         const now = Math.floor(Date.now() / 1000);
         if (now - proof.timestamp > 15 * 60) {
             return NextResponse.json({ error: 'Signature expired' }, { status: 400 });

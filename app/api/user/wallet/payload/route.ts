@@ -14,23 +14,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Generate a short unique nonce
-    const nonce = crypto.randomBytes(16).toString('hex');
+    // Generate a short unique nonce (32 bytes = 64 hex characters, well within 128 bytes limit)
+    const payload = crypto.randomBytes(32).toString('hex');
     
-    // Create the JWT payload
-    const tokenPayload = {
-      nonce,
-      userId,
-    };
+    // Store the nonce in a secure HttpOnly cookie to verify later
+    cookieStore.set('ton_proof_nonce', payload, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 900 // 15 minutes
+    });
 
-    // Use a secure server-side secret (e.g., bot token or dedicated secret)
-    const secret = process.env.TELEGRAM_BOT_TOKEN || 'fallback-secret-fitmanager';
-    
-    // Sign the JWT with a 15-minute expiration
-    const token = jwt.sign(tokenPayload, secret, { expiresIn: '15m' });
-
-    // The token itself will be the payload that the user's wallet will sign
-    return NextResponse.json({ payload: token });
+    return NextResponse.json({ payload });
   } catch (error: any) {
     console.error("Payload generation error:", error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
