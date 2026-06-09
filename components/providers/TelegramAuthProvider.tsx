@@ -48,8 +48,6 @@ export function TelegramAuthProvider({ children }: { children: ReactNode }) {
           const lang = WebApp.initDataUnsafe?.user?.language_code;
           const photoUrl = WebApp.initDataUnsafe?.user?.photo_url;
 
-          if (lang && lang.startsWith('ru')) setLanguage('ru');
-
           if (!initData) {
             // Running outside Telegram (dev/browser). No error — let app handle routing normally.
             console.warn("No Telegram initData. Running outside Telegram.");
