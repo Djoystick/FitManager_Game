@@ -235,6 +235,13 @@ export default function BaseDashboard() {
   const router = useRouter();
 
   const [activeTab, setActiveTab]           = useState<TabId>('training');
+
+  // Force active tab to "club" on step 4 to render the stadium upgrade button for spotlight
+  useEffect(() => {
+    if (!isDone && step === 4 && activeTab !== 'club') {
+      setActiveTab('club');
+    }
+  }, [step, isDone, activeTab]);
   const [infra, setInfra]                   = useState<ClubInfrastructure | null>(null);
   const [campData, setCampData]             = useState<TrainingCampData | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerForTraining | null>(null);

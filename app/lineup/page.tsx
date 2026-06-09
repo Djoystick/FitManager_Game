@@ -680,10 +680,14 @@ export default function LineupPage() {
               { label: t.team_staff || 'STAFF',      sub: t.team_coaches || 'Coaches & Scouts', href: '/staff',  bg: 'from-emerald-950 to-green-950', border: 'border-emerald-700/30', hb: 'hover:border-emerald-400/60', glow: 'hover:shadow-[0_0_20px_rgba(52,211,153,0.18)]',   accent: 'text-emerald-400', Icon: Users    },
               { label: t.team_finances || 'FINANCES',   sub: t.team_fancoins || 'FanCoins & W2E',   href: '/bank',   bg: 'from-yellow-950 to-amber-950',  border: 'border-yellow-700/30',  hb: 'hover:border-yellow-400/60',  glow: 'hover:shadow-[0_0_20px_rgba(234,179,8,0.18)]',   accent: 'text-yellow-400', Icon: Wallet   },
             ]).map(({ label, sub, href, bg, border, hb, glow, accent, Icon }) => (
-              <motion.div key={href} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+              <motion.div 
+                key={href} 
+                whileHover={{ scale: 1.02 }} 
+                whileTap={{ scale: 0.97 }}
+                id={href === '/base' ? 'card-structures' : undefined}
+              >
                 <Link
                   href={href}
-                  id={href === '/base' ? 'card-structures' : undefined}
                   className={`flex flex-col gap-2.5 p-3 rounded-2xl overflow-hidden bg-gradient-to-br ${bg} border ${border} ${hb} ${glow} transition-all duration-300 block`}
                 >
                   <div className={`w-8 h-8 rounded-xl bg-black/50 border border-white/10 flex items-center justify-center ${accent}`}>
