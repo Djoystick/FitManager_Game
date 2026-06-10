@@ -755,7 +755,7 @@ export default function LineupPage() {
       )}
       {/* LINEUP Tab — existing pitch layout */}
       {primaryTab === 'lineup' && (
-      <>{/* TABS */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col relative z-10 w-full pb-28">{/* TABS */}
       <div className="flex justify-center mt-1.5 mb-1 z-10 relative shrink-0 px-3">
         <div className="glass-card flex w-full p-0.5 gap-0.5 relative">
           <div
@@ -1175,7 +1175,7 @@ export default function LineupPage() {
         </div>
       )}
 
-      </> /* end LINEUP tab fragment */
+      </div> /* end LINEUP tab container */
       )} {/* end primaryTab === 'lineup' */}
 
       <AnimatePresence>
