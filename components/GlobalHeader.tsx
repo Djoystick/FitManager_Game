@@ -251,9 +251,9 @@ export function GlobalHeader() {
             <div className="px-5 pt-2 pb-3 flex items-center justify-between border-b border-white/5">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_6px_rgba(250,204,21,0.8)]" />
-                <span className="text-xs font-black font-orbitron text-white uppercase tracking-widest">{t.activity_news || 'ACTIVITY / NEWS'}</span>
+                <span className="text-xs font-black font-orbitron text-white uppercase tracking-widest">{t?.activity_news || 'ACTIVITY / NEWS'}</span>
                 <span className="text-[8px] bg-red-500/20 border border-red-500/40 text-red-400
-                                 px-1.5 py-0.5 rounded-full font-bold uppercase">{t.live_feed || 'LIVE'}</span>
+                                 px-1.5 py-0.5 rounded-full font-bold uppercase">{t?.live_feed || 'LIVE'}</span>
               </div>
               <button
                 onClick={() => setShowNotifications(false)}
@@ -300,7 +300,7 @@ export function GlobalHeader() {
               )})}
 
               <p className="text-center text-[8px] text-gray-700 uppercase tracking-widest font-bold mt-1">
-                {t.coming_v4 || 'Live activity feed · coming in V4'}
+                {t?.coming_v4 || 'Live activity feed · coming in V4'}
               </p>
             </div>
           </div>

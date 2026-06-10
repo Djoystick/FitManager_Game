@@ -337,6 +337,40 @@ function CalendarMatchRow({
   );
 }
 
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function NextHourCountdown() {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    // Update every second without triggering full page re-render
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const nextHour = new Date(currentTime);
+  nextHour.setHours(currentTime.getHours() + 1, 0, 0, 0);
+  const diff = nextHour.getTime() - currentTime.getTime();
+  
+  const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const s = Math.floor((diff % (1000 * 60)) / 1000);
+  const progressPct = ((60 - m) / 60) * 100;
+
+  return (
+    <>
+      <div className="w-4/5 h-1 bg-black/40 rounded-full overflow-hidden mt-1 relative z-10 border border-white/5">
+        <div 
+          className="h-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)] transition-all duration-1000 ease-linear" 
+          style={{ width: `${progressPct}%` }}
+        />
+      </div>
+      <span className="text-[9px] text-cyan-400/80 uppercase tracking-widest font-mono z-10">
+        {m.toString().padStart(2, '0')}:{s.toString().padStart(2, '0')}
+      </span>
+    </>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Page Component
 // ─────────────────────────────────────────────────────────────────────────────
@@ -344,7 +378,7 @@ function CalendarMatchRow({
 export default function DashboardPage() {
   const { userId, isAuthenticated, isLoading: isAuthLoading } = useContext(TelegramAuthContext);
   const { language } = useContext(LanguageContext);
-  const t = dict[language as keyof typeof dict];
+  const t = dict[language as keyof typeof dict] || dict['en'];
   const { startTour, hasSeenTour, areAllToursSkipped } = usePageTour();
   const router = useRouter();
   const { paddingStyle, setUserId: setPaddingUserId } = usePadding();
@@ -564,6 +598,8 @@ export default function DashboardPage() {
     return <CyberLoader fullScreen text={t.loading} />;
   }
 
+  // ── Sub-components ────────────────────────────────────────────────────────────
+
   // ── Computed ─────────────────────────────────────────────────────────────
   const teamOvr     = players.length ? Math.round(players.reduce((s, p) => s + (p.ovr || 0), 0) / players.length) : 0;
   const avgStamina  = players.length ? Math.round(players.reduce((s, p) => s + (p.stamina || 0), 0) / players.length) : 0;
@@ -597,21 +633,6 @@ export default function DashboardPage() {
     return { str, positive: n >= 0 };
   };
   const profit = formatProfit(yearlyProfit);
-
-  // ── Countdown logic ───────────────────────────────────────────────────────
-  // We need current time to render the next hour progress bar for the Next Match CTA
-  const [currentTime, setCurrentTime] = useState(new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const nextHour = new Date();
-  nextHour.setHours(currentTime.getHours() + 1, 0, 0, 0);
-  const diff = nextHour.getTime() - currentTime.getTime();
-  const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  const s = Math.floor((diff % (1000 * 60)) / 1000);
-  const progressPct = ((60 - m) / 60) * 100;
 
   // Show Transfer Window countdown ONLY when in filling/offseason state
   // Show Next Match countdown ONLY when transfer window has closed (active season)
@@ -819,15 +840,7 @@ export default function DashboardPage() {
                 </span>
               )}
               {/* Restored Progress Bar inside the CTA */}
-              <div className="w-4/5 h-1 bg-black/40 rounded-full overflow-hidden mt-1 relative z-10 border border-white/5">
-                <div 
-                  className="h-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)] transition-all duration-1000 ease-linear" 
-                  style={{ width: `${progressPct}%` }}
-                />
-              </div>
-              <span className="text-[9px] text-cyan-400/80 uppercase tracking-widest font-mono z-10">
-                {m.toString().padStart(2, '0')}:{s.toString().padStart(2, '0')}
-              </span>
+              <NextHourCountdown />
             </motion.button>
           ) : (
             /* No next match data — show generic next-hour countdown */
