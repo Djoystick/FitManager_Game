@@ -25,10 +25,25 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
           setLanguageState(saved);
           document.cookie = `fitmanager_lang=${saved}; path=/; max-age=31536000`;
         } else {
-          const sdkModule = await import('@twa-dev/sdk');
-          const WebApp = sdkModule.default;
-          const twaLang = WebApp.initDataUnsafe?.user?.language_code;
-          const langToSet = twaLang === 'ru' ? 'ru' : 'en';
+          let isRussian = false;
+          
+          try {
+            const sdkModule = await import('@twa-dev/sdk');
+            const WebApp = sdkModule.default;
+            if (WebApp?.initDataUnsafe?.user?.language_code?.toLowerCase().startsWith('ru')) {
+              isRussian = true;
+            }
+          } catch (e) {
+            console.warn('TWA SDK not available for language check');
+          }
+
+          if (!isRussian && typeof navigator !== 'undefined' && navigator.language) {
+            if (navigator.language.toLowerCase().startsWith('ru')) {
+              isRussian = true;
+            }
+          }
+
+          const langToSet = isRussian ? 'ru' : 'en';
           setLanguageState(langToSet);
           localStorage.setItem('fitmanager_lang', langToSet);
           document.cookie = `fitmanager_lang=${langToSet}; path=/; max-age=31536000`;
