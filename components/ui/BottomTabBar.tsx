@@ -12,108 +12,98 @@ import { motion } from 'framer-motion';
 // Tabs: HOME · TEAM · TRANSFERS · MANAGER · HUB
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ── SVG Icons — Modern Cyberpunk Aesthetic ────────────────────────────────────
+// ── Advanced Sci-Fi SVG Icons ───────────────────────────────────────────────
 
-/** HOME — angular house with neon accent panel */
 function HomeIcon({ active }: { active: boolean }) {
-  const sw = active ? 2 : 1.6;
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
-      {/* Roof line */}
-      <path d="M2 12L12 3l10 9" />
-      {/* Left wall */}
-      <path d="M4 10.5V20a1 1 0 0 0 1 1h4v-5h6v5h4a1 1 0 0 0 1-1V10.5" />
-      {/* Door */}
-      <rect x="9.5" y="15" width="5" height="6" rx="0.5" strokeWidth={active ? 1.8 : 1.4} />
-      {/* Accent: small glowing window */}
-      <rect x="5" y="12" width="3" height="2.5" rx="0.4" strokeWidth={active ? 1.5 : 1.1}
-            fill={active ? 'rgba(0,240,255,0.25)' : 'none'} />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="transition-all duration-300">
+      {/* Outer tech frame */}
+      <path d="M12 2L2 8.5v7L12 22l10-6.5v-7L12 2z" stroke="currentColor" strokeWidth={active ? "1.5" : "1.2"} strokeLinecap="round" strokeLinejoin="round" opacity={active ? 1 : 0.6} />
+      {/* Inner glowing element */}
+      <path d="M12 6L6 9.8v4.4L12 18l6-3.8V9.8L12 6z" fill={active ? 'rgba(0, 240, 255, 0.2)' : 'none'} stroke={active ? '#00f0ff' : 'currentColor'} strokeWidth="1" strokeLinejoin="round" />
+      {/* Core dot */}
+      <circle cx="12" cy="12" r={active ? "2" : "1.5"} fill={active ? '#00f0ff' : 'currentColor'} style={{ filter: active ? 'drop-shadow(0 0 4px #00f0ff)' : 'none' }} />
+      {/* Cyberpunk accent lines */}
+      {active && (
+        <>
+          <line x1="12" y1="2" x2="12" y2="6" stroke="#00f0ff" strokeWidth="1.5" />
+          <line x1="12" y1="18" x2="12" y2="22" stroke="#00f0ff" strokeWidth="1.5" />
+        </>
+      )}
     </svg>
   );
 }
 
-/** TEAM — tactical formation grid (3 dots top + 4 dots bottom = squad shape) */
 function TeamIcon({ active }: { active: boolean }) {
-  const sw = active ? 2 : 1.6;
-  const dotR = active ? 2 : 1.7;
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
-      {/* Goalkeeper */}
-      <circle cx="12" cy="20.5" r={dotR} fill="currentColor" strokeWidth={0} />
-      {/* Defenders row */}
-      <circle cx="5.5" cy="15.5" r={dotR} fill="currentColor" strokeWidth={0} />
-      <circle cx="12"  cy="15.5" r={dotR} fill="currentColor" strokeWidth={0} />
-      <circle cx="18.5" cy="15.5" r={dotR} fill="currentColor" strokeWidth={0} />
-      {/* Midfielders row */}
-      <circle cx="7"  cy="10" r={dotR} fill="currentColor" strokeWidth={0} />
-      <circle cx="17" cy="10" r={dotR} fill="currentColor" strokeWidth={0} />
-      {/* Forwards / striker */}
-      <circle cx="12" cy="4.5" r={dotR + 0.3} fill="currentColor" strokeWidth={0} />
-      {/* Tactical connector lines */}
-      <path d="M12 20.5V15.5M5.5 15.5H18.5M7 10H17M12 4.5V10" strokeWidth={active ? 1.3 : 0.9} opacity={0.5} />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="transition-all duration-300">
+      {/* Background data grid */}
+      <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.2" strokeDasharray={active ? "none" : "2 2"} opacity={active ? 1 : 0.5} />
+      {/* Tactical positions */}
+      <circle cx="12" cy="17" r="2" fill={active ? '#00f0ff' : 'currentColor'} style={{ filter: active ? 'drop-shadow(0 0 3px #00f0ff)' : 'none' }} />
+      <circle cx="7" cy="12" r="1.5" fill={active ? '#fff' : 'currentColor'} opacity={active ? 0.9 : 0.6} />
+      <circle cx="17" cy="12" r="1.5" fill={active ? '#fff' : 'currentColor'} opacity={active ? 0.9 : 0.6} />
+      <circle cx="12" cy="7" r="2" fill={active ? '#ff0055' : 'currentColor'} style={{ filter: active ? 'drop-shadow(0 0 4px #ff0055)' : 'none' }} />
+      {/* Connection paths */}
+      <path d="M12 17L7 12L12 7L17 12Z" stroke={active ? 'rgba(0, 240, 255, 0.5)' : 'currentColor'} strokeWidth="1" strokeLinejoin="round" opacity={active ? 1 : 0.3} />
+      {/* Target brackets */}
+      {active && (
+        <path d="M7 6H5V8M19 6H17V8M5 16V18H7M17 18H19V16" stroke="#00f0ff" strokeWidth="1.5" />
+      )}
     </svg>
   );
 }
 
-/** TRANSFERS — two crossing arrows with a spark/lightning bolt at center */
 function TransfersIcon({ active }: { active: boolean }) {
-  const sw = active ? 2 : 1.6;
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
-      {/* Down-left arrow */}
-      <path d="M18 4L6 16" />
-      <path d="M6 10v6h6" />
-      {/* Up-right arrow */}
-      <path d="M6 20L18 8" />
-      <path d="M18 14V8h-6" />
-      {/* Center spark — filled polygon */}
-      <path d="M13.2 11.2l-1.5 2h1.1l-1.5 2 2.7-2.8h-1.2z"
-            fill={active ? 'currentColor' : 'none'}
-            strokeWidth={active ? 0.5 : 0}
-            opacity={active ? 1 : 0} />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="transition-all duration-300">
+      {/* Circular data tracks */}
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.2" strokeDasharray="4 4" opacity={active ? 0.8 : 0.4} />
+      {/* Arrow top-right to bottom-left */}
+      <path d="M16 8L8 16" stroke={active ? '#00f0ff' : 'currentColor'} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M8 16H13M8 16V11" stroke={active ? '#00f0ff' : 'currentColor'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Arrow bottom-left to top-right */}
+      <path d="M8 8L16 16" stroke={active ? '#ff0055' : 'currentColor'} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M16 16H11M16 16V11" stroke={active ? '#ff0055' : 'currentColor'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Data nodes */}
+      <circle cx="16" cy="8" r={active ? "2" : "1.5"} fill={active ? '#00f0ff' : 'currentColor'} style={{ filter: active ? 'drop-shadow(0 0 4px #00f0ff)' : 'none' }} />
+      <circle cx="8" cy="8" r={active ? "2" : "1.5"} fill={active ? '#ff0055' : 'currentColor'} style={{ filter: active ? 'drop-shadow(0 0 4px #ff0055)' : 'none' }} />
     </svg>
   );
 }
 
-/** MANAGER — commander badge: shield outline with rank chevron inside */
 function ManagerIcon({ active }: { active: boolean }) {
-  const sw = active ? 2 : 1.6;
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
-      {/* Shield */}
-      <path d="M12 3L4 6.5v5C4 16.5 7.5 20.5 12 22c4.5-1.5 8-5.5 8-10.5v-5L12 3z" />
-      {/* Inner accent line */}
-      <path d="M12 6l-5 2.2v3.3C7 14.5 9.3 17.2 12 18.5" strokeWidth={active ? 1.2 : 0.9} opacity={0.55} />
-      {/* Chevron rank pip */}
-      <path d="M9 12l3-3 3 3" strokeWidth={active ? 2.2 : 1.8} />
-      <path d="M9 15l3-3 3 3" strokeWidth={active ? 1.4 : 1.1} opacity={0.6} />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="transition-all duration-300">
+      {/* Cyber-shield base */}
+      <path d="M12 2L4 5v6c0 5.5 3.8 10.7 8 12c4.2-1.3 8-6.5 8-12V5l-8-3z" stroke="currentColor" strokeWidth="1.2" fill={active ? 'rgba(0,240,255,0.05)' : 'none'} opacity={active ? 1 : 0.6} />
+      {/* Inner tech lines */}
+      <path d="M12 5V21" stroke={active ? 'rgba(0,240,255,0.4)' : 'currentColor'} strokeWidth="1" strokeDasharray="3 3" opacity={active ? 1 : 0.3} />
+      {/* Rank insignia */}
+      <path d="M8 10L12 7L16 10" stroke={active ? '#00f0ff' : 'currentColor'} strokeWidth={active ? "2" : "1.5"} strokeLinecap="round" strokeLinejoin="round" style={{ filter: active ? 'drop-shadow(0 0 4px #00f0ff)' : 'none' }} />
+      <path d="M8 14L12 11L16 14" stroke={active ? '#fff' : 'currentColor'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity={active ? 0.9 : 0.5} />
+      <path d="M8 18L12 15L16 18" stroke={active ? '#ff0055' : 'currentColor'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity={active ? 0.7 : 0.3} />
     </svg>
   );
 }
 
-/** HUB — interconnected node network (5 nodes + edges) */
 function HubIcon({ active }: { active: boolean }) {
-  const sw = active ? 2 : 1.6;
-  const nodeR = active ? 2.2 : 1.9;
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
-      {/* Center node */}
-      <circle cx="12" cy="12" r={nodeR} fill={active ? 'currentColor' : 'none'} strokeWidth={active ? 0 : sw} />
-      {/* Satellite nodes */}
-      <circle cx="12" cy="4"  r={nodeR - 0.5} fill="currentColor" strokeWidth={0} />
-      <circle cx="20" cy="12" r={nodeR - 0.5} fill="currentColor" strokeWidth={0} />
-      <circle cx="12" cy="20" r={nodeR - 0.5} fill="currentColor" strokeWidth={0} />
-      <circle cx="4"  cy="12" r={nodeR - 0.5} fill="currentColor" strokeWidth={0} />
-      {/* Diagonal accent nodes */}
-      <circle cx="18.5" cy="5.5"  r={nodeR - 1} fill="currentColor" strokeWidth={0} opacity={0.6} />
-      <circle cx="5.5"  cy="18.5" r={nodeR - 1} fill="currentColor" strokeWidth={0} opacity={0.6} />
-      {/* Edges — center to satellites */}
-      <line x1="12" y1="9.8"  x2="12" y2="6.2"  strokeWidth={active ? 1.6 : 1.2} />
-      <line x1="14.2" y1="12" x2="17.8" y2="12" strokeWidth={active ? 1.6 : 1.2} />
-      <line x1="12" y1="14.2" x2="12" y2="17.8" strokeWidth={active ? 1.6 : 1.2} />
-      <line x1="9.8" y1="12"  x2="6.2" y2="12"  strokeWidth={active ? 1.6 : 1.2} />
-      {/* Diagonal edge */}
-      <line x1="13.7" y1="10.3" x2="17.2" y2="6.8" strokeWidth={active ? 1.1 : 0.8} opacity={0.5} />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="transition-all duration-300">
+      {/* Orbital rings */}
+      <ellipse cx="12" cy="12" rx="10" ry="4" stroke="currentColor" strokeWidth="1.2" transform="rotate(45 12 12)" opacity={active ? 0.8 : 0.4} />
+      <ellipse cx="12" cy="12" rx="10" ry="4" stroke="currentColor" strokeWidth="1.2" transform="rotate(-45 12 12)" opacity={active ? 0.8 : 0.4} />
+      {/* Center energy core */}
+      <circle cx="12" cy="12" r={active ? "3" : "2"} fill={active ? '#00f0ff' : 'currentColor'} style={{ filter: active ? 'drop-shadow(0 0 6px #00f0ff)' : 'none' }} />
+      {/* Satellite data packets */}
+      {active && (
+        <>
+          <circle cx="19" cy="5" r="1.5" fill="#ff0055" style={{ filter: 'drop-shadow(0 0 3px #ff0055)' }} />
+          <circle cx="5" cy="19" r="1.5" fill="#00f0ff" style={{ filter: 'drop-shadow(0 0 3px #00f0ff)' }} />
+          <circle cx="5" cy="5" r="1.5" fill="#fff" opacity="0.8" />
+          <circle cx="19" cy="19" r="1.5" fill="#fff" opacity="0.8" />
+        </>
+      )}
     </svg>
   );
 }
