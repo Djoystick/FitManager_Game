@@ -1092,19 +1092,7 @@ export default function LineupPage() {
 
       {/* FLOATING HUD was removed to streamline lineup swaps */}
 
-      <AnimatePresence>
-        {profilePlayer && userId && (
-          <PlayerProfileModal 
-            player={profilePlayer} 
-            userId={userId} 
-            onClose={() => setProfilePlayer(null)}
-            onTrainSuccess={(updatedPlayer, newBalance) => {
-              setPlayers(prev => prev.map(p => p.id === updatedPlayer.id ? { ...p, ...updatedPlayer } : p));
-              setProfilePlayer(updatedPlayer);
-            }}
-          />
-        )}
-      </AnimatePresence>
+
 
       {/* Legend Modal — compact to prevent overflow on small TMA screens */}
       {showLegend && (
@@ -1189,6 +1177,20 @@ export default function LineupPage() {
 
       </> /* end LINEUP tab fragment */
       )} {/* end primaryTab === 'lineup' */}
+
+      <AnimatePresence>
+        {profilePlayer && userId && (
+          <PlayerProfileModal 
+            player={profilePlayer} 
+            userId={userId} 
+            onClose={() => setProfilePlayer(null)}
+            onTrainSuccess={(updatedPlayer, newBalance) => {
+              setPlayers(prev => prev.map(p => p.id === updatedPlayer.id ? { ...p, ...updatedPlayer } : p));
+              setProfilePlayer(updatedPlayer);
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       <ScreenGuide 
         screenName="squad" 
