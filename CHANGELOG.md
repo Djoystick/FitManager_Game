@@ -2,8 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v1.2.0] - 2026-06-09
+## [v1.3.0] - 2026-06-10
 
+### Added
+- **Google Fit Integration (Production-Ready)**: Full OAuth 2.0 implementation with Google API Services to synchronize real-world step data directly into the game's `Sweat Bank`.
+- **Legal Compliance Modals**: Deployed comprehensive Google-compliant "Privacy Policy" and "Terms of Service" static pages (`/privacy`, `/terms`) and integrated them directly into the full-screen Game Profile Modals to satisfy OAuth Verification requirements.
+- **Strict Locale Priority System**: Improved the dual-language (RU/EN) logic. The app now strictly adheres to the user's `Telegram` language code. It only falls back to the browser's `navigator.language` if Telegram data is unavailable, defaulting securely to English.
+
+## [v1.2.0] - 2026-06-09
 ### Security
 - **Secure Backend Proof of Ownership**: Completely rewrote the TON Wallet connection mechanism to comply with maximum security standards. We now cryptographically verify `Ed25519` `ton_proof` signatures directly on the backend using the official `@ton/core` and `@ton/crypto` libraries.
 - **Anti-Replay Protection**: The connection payload is now a stateless JWT with a 15-minute expiration time, uniquely bound to the Telegram `userId` requesting it. This prevents interception, hijacking, or re-use of signatures.
