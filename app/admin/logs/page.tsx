@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import LogViewerClient from './LogViewerClient';
+import AdminDashboardClient from '../AdminDashboardClient';
 
 export const revalidate = 0; // Disable caching for admin page
 
@@ -20,5 +20,5 @@ export default async function AdminLogsPage() {
     return <div className="p-4 bg-red-900/50 text-red-200 rounded-lg">Failed to load logs: {error.message}</div>;
   }
 
-  return <LogViewerClient initialLogs={logs || []} />;
+  return <AdminDashboardClient initialLogs={logs || []} />;
 }

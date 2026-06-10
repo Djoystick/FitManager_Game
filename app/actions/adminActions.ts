@@ -259,3 +259,147 @@ export async function hardResetUserTeam(userId: string): Promise<AdminActionResu
   }
 }
 
+export async function addFanCoins(amount: number): Promise<AdminActionResult> {
+  try {
+    const cookieStore = await cookies();
+    const sessionUuid = cookieStore.get('tg_user_id')?.value;
+    if (!sessionUuid) return { success: false, error: 'Unauthorized' };
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const isAdmin = await checkIsAdmin(sessionUuid, supabaseAdmin);
+    if (!isAdmin) return { success: false, error: 'Forbidden' };
+
+    const { data: userData } = await supabaseAdmin.from('users').select('balance_fancoins').eq('id', sessionUuid).single();
+    const { error } = await supabaseAdmin.from('users').update({ balance_fancoins: (userData?.balance_fancoins || 0) + amount }).eq('id', sessionUuid);
+    if (error) return { success: false, error: error.message };
+
+    return { success: true, message: `Added ${amount} FC` };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
+export async function addManagerXp(amount: number): Promise<AdminActionResult> {
+  try {
+    const cookieStore = await cookies();
+    const sessionUuid = cookieStore.get('tg_user_id')?.value;
+    if (!sessionUuid) return { success: false, error: 'Unauthorized' };
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const isAdmin = await checkIsAdmin(sessionUuid, supabaseAdmin);
+    if (!isAdmin) return { success: false, error: 'Forbidden' };
+
+    const { data: userData } = await supabaseAdmin.from('users').select('manager_xp').eq('id', sessionUuid).single();
+    const { error } = await supabaseAdmin.from('users').update({ manager_xp: (userData?.manager_xp || 0) + amount }).eq('id', sessionUuid);
+    if (error) return { success: false, error: error.message };
+
+    return { success: true, message: `Added ${amount} XP` };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
+export async function maxEnergy(): Promise<AdminActionResult> {
+  try {
+    const cookieStore = await cookies();
+    const sessionUuid = cookieStore.get('tg_user_id')?.value;
+    if (!sessionUuid) return { success: false, error: 'Unauthorized' };
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const isAdmin = await checkIsAdmin(sessionUuid, supabaseAdmin);
+    if (!isAdmin) return { success: false, error: 'Forbidden' };
+
+    const { data: team } = await supabaseAdmin.from('teams').select('id').eq('user_id', sessionUuid).single();
+    if (!team) return { success: false, error: 'No team found' };
+
+    const { error } = await supabaseAdmin.from('players').update({ stamina: 100, is_injured: false, injury_duration: 0 }).eq('team_id', team.id);
+    if (error) return { success: false, error: error.message };
+
+    return { success: true, message: `Maxed energy & healed all players` };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
+export async function generateTopPlayer(): Promise<AdminActionResult> {
+  try {
+    const cookieStore = await cookies();
+    const sessionUuid = cookieStore.get('tg_user_id')?.value;
+    if (!sessionUuid) return { success: false, error: 'Unauthorized' };
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const isAdmin = await checkIsAdmin(sessionUuid, supabaseAdmin);
+    if (!isAdmin) return { success: false, error: 'Forbidden' };
+
+    const { data: team } = await supabaseAdmin.from('teams').select('id').eq('user_id', sessionUuid).single();
+    if (!team) return { success: false, error: 'No team found' };
+
+    const pFirst = ['Cristiano', 'Lionel', 'Kylian', 'Erling', 'Kevin'];
+    const pLast = ['Ronaldo', 'Messi', 'Mbappe', 'Haaland', 'De Bruyne'];
+    const ovr = 90 + Math.floor(Math.random() * 9);
+    
+    const { error } = await supabaseAdmin.from('players').insert({
+      team_id: team.id,
+      name: `${pFirst[Math.floor(Math.random() * pFirst.length)]} ${pLast[Math.floor(Math.random() * pLast.length)]}`,
+      age: 25,
+      ovr,
+      potential_limit: ovr + 5,
+      position: 'FWD',
+      stats: { pace: ovr, shooting: ovr, passing: ovr-5, dribbling: ovr, defending: 40, physical: 80 },
+      stamina: 100,
+      lineup_status: 'bench',
+      is_nft_coach: true,
+      traits: ['Sniper', 'Speedster']
+    });
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, message: `Generated a top player (OVR ${ovr})!` };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
+export async function forceMatchWin(): Promise<AdminActionResult> {
+  try {
+    const cookieStore = await cookies();
+    const sessionUuid = cookieStore.get('tg_user_id')?.value;
+    if (!sessionUuid) return { success: false, error: 'Unauthorized' };
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const isAdmin = await checkIsAdmin(sessionUuid, supabaseAdmin);
+    if (!isAdmin) return { success: false, error: 'Forbidden' };
+
+    const { data: team } = await supabaseAdmin.from('teams').select('id').eq('user_id', sessionUuid).single();
+    if (!team) return { success: false, error: 'No team found' };
+
+    const { data: st } = await supabaseAdmin.from('league_standings').select('*').eq('team_id', team.id).single();
+    if (st) {
+      const { error } = await supabaseAdmin.from('league_standings').update({
+        wins: (st.wins || 0) + 1,
+        points: (st.points || 0) + 3,
+        goals_for: (st.goals_for || 0) + 3,
+        matches_played: (st.matches_played || 0) + 1
+      }).eq('team_id', team.id);
+      if (error) return { success: false, error: error.message };
+    }
+    
+    return { success: true, message: `Forced a win (+3 pts)!` };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}

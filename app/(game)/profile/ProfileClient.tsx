@@ -11,7 +11,7 @@ import { renameTeamAction } from '@/app/actions/teamActions';
 import { getManagerObjectivesAction, type ManagerObjective } from '@/app/actions/objectivesActions';
 import {
   Edit3, FileText, AlertTriangle, Award, ChevronRight,
-  Globe, Bell, Shield, X, Target, TrendingUp, UserMinus, Star
+  Globe, Bell, Shield, X, Target, TrendingUp, UserMinus, Star, Maximize, Minimize, Settings as SettingsIcon
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTransition } from 'react';
@@ -23,7 +23,7 @@ import { useRouter } from 'next/navigation';
 // ProfileClient — MANAGER page with SubNav: GENERAL | AWARDS | RESULTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-type ManagerTab = 'general' | 'awards' | 'results';
+type ManagerTab = 'general' | 'awards' | 'results' | 'settings';
 
 interface UserData { wallet_address: string | null; }
 
@@ -96,6 +96,26 @@ export default function ProfileClient({
   const [objectives,     setObjectives]     = useState<ManagerObjective[]>([]);
   const [approvalRating, setApprovalRating] = useState(65);
   const [managerLevel,   setManagerLevel]   = useState(1);
+  const [isFullscreen,   setIsFullscreen]   = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+      setIsFullscreen((window as any).Telegram.WebApp.isFullscreen || false);
+    }
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+      const tg = (window as any).Telegram.WebApp;
+      if (tg.isFullscreen) {
+        tg.exitFullscreen();
+        setIsFullscreen(false);
+      } else if (tg.requestFullscreen) {
+        tg.requestFullscreen();
+        setIsFullscreen(true);
+      }
+    }
+  };
 
   const previewUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${avatarSeed}`;
 
@@ -260,6 +280,7 @@ export default function ProfileClient({
             { id: 'general', label: t.mgr_general || 'GENERAL' },
             { id: 'awards',  label: t.mgr_awards || 'AWARDS'  },
             { id: 'results', label: t.mgr_results || 'RESULTS' },
+            { id: 'settings',label: t.mgr_settings || 'SETTINGS' },
           ]}
           active={activeTab}
           onChange={(id) => setActiveTab(id as ManagerTab)}
@@ -353,71 +374,12 @@ export default function ProfileClient({
               </Link>
             </div>
 
-            {/* Settings grid */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="glass-card p-3 flex flex-col gap-2">
-                <div className="flex items-center gap-1.5 text-[8px] text-gray-500 uppercase tracking-widest font-bold">
-                  <Globe size={9} className="text-violet-400" />{t.language || 'Language'}
-                </div>
-                <div className="flex bg-black/40 rounded-lg border border-white/5 p-0.5">
-                  {(['en','ru'] as const).map(lang => (
-                    <button key={lang} onClick={() => setLanguage(lang)}
-                      className={`flex-1 py-1.5 rounded text-[9px] font-bold uppercase transition-all ${language === lang ? 'bg-violet-500 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
-                      {lang.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="glass-card p-3 flex flex-col gap-2">
-                <div className="flex items-center gap-1.5 text-[8px] text-gray-500 uppercase tracking-widest font-bold">
-                  <Bell size={9} className="text-cyan-400" />{t.notifications || 'Notifs'}
-                </div>
-                <div className="flex-1 flex items-center justify-center">
-                  <button onClick={() => setNotifications(!notifications)}
-                    className={`w-12 h-6 rounded-full p-0.5 transition-all relative ${notifications ? 'bg-violet-500' : 'bg-white/10 border border-white/10'}`}>
-                    <div className={`w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${notifications ? 'translate-x-6' : 'translate-x-0'}`} />
-                  </button>
-                </div>
-              </div>
-              <div className="glass-card p-3 flex flex-col gap-2">
-                <div className="flex items-center gap-1.5 text-[8px] text-gray-500 uppercase tracking-widest font-bold">
-                  <Target size={9} className="text-yellow-400" />{t.tutorials || 'Tutorials'}
-                </div>
-                <div className="flex-1 flex items-center justify-center">
-                  <button onClick={() => {
-                    if (confirm(t.prof_tour_confirm || 'Reset all tutorials forever?')) {
-                      window.dispatchEvent(new Event('skipAllToursForever'));
-                      toast.success(t.prof_tour_off_toast || 'Tutorials disabled!');
-                    }
-                  }} className="w-full h-6 rounded px-2 bg-yellow-500/10 text-yellow-500 text-[9px] font-bold uppercase transition-all hover:bg-yellow-500/20">
-                    {t.prof_tour_off || 'Disable all'}
-                  </button>
-                </div>
-              </div>
-            </div>
-
+            {/* Wallet Connect always in General */}
             <div className="mt-3 flex gap-2 w-full justify-between z-10" id="profile-wallet">
               <WalletConnect />
             </div>
 
-            {/* Admin link */}
-            {isAdmin && (
-              <Link href="/admin/logs" className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl
-                bg-red-900/15 border border-red-500/25 text-red-400 uppercase tracking-widest text-[9px] font-bold hover:bg-red-900/30 transition-all">
-                <Shield size={11} /> {t.mgr_dev_console || 'Developer Console'}
-              </Link>
-            )}
-
-            {/* Resign + Legal */}
-            <div className="mt-1">
-              <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
-                bg-red-500/5 border border-red-500/20 text-red-500/60
-                text-[9px] font-bold uppercase tracking-widest hover:bg-red-500/10 transition-colors">
-                <UserMinus size={11} /> {t.prof_resign || 'Resign as Manager'}
-              </button>
-            </div>
-
-            <div className="pt-2 border-t border-white/5 flex justify-center gap-6 pb-2">
+            <div className="pt-2 border-t border-white/5 flex justify-center gap-6 pb-2 mt-4">
               <button onClick={() => setShowTerms(true)} className="text-[8px] text-gray-700 hover:text-violet-400 transition-colors uppercase tracking-widest flex items-center gap-1">
                 <FileText size={8} /> {t.terms_of_use || 'Terms'}
               </button>
@@ -463,6 +425,82 @@ export default function ProfileClient({
             <Link href="/" className="mt-3 block text-[9px] font-bold text-cyan-400 uppercase tracking-wider hover:text-cyan-300">
               {t.go_dashboard || '→ Go to Dashboard'}
             </Link>
+          </div>
+        )}
+
+        {/* SETTINGS Tab */}
+        {activeTab === 'settings' && (
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="glass-card p-3 flex flex-col gap-2">
+                <div className="flex items-center gap-1.5 text-[8px] text-gray-500 uppercase tracking-widest font-bold">
+                  <Globe size={9} className="text-violet-400" />{t.language || 'Language'}
+                </div>
+                <div className="flex bg-black/40 rounded-lg border border-white/5 p-0.5">
+                  {(['en','ru'] as const).map(lang => (
+                    <button key={lang} onClick={() => setLanguage(lang)}
+                      className={`flex-1 py-1.5 rounded text-[9px] font-bold uppercase transition-all ${language === lang ? 'bg-violet-500 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
+                      {lang.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="glass-card p-3 flex flex-col gap-2">
+                <div className="flex items-center gap-1.5 text-[8px] text-gray-500 uppercase tracking-widest font-bold">
+                  <Bell size={9} className="text-cyan-400" />{t.notifications || 'Notifs'}
+                </div>
+                <div className="flex-1 flex items-center justify-center">
+                  <button onClick={() => setNotifications(!notifications)}
+                    className={`w-12 h-6 rounded-full p-0.5 transition-all relative ${notifications ? 'bg-violet-500' : 'bg-white/10 border border-white/10'}`}>
+                    <div className={`w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${notifications ? 'translate-x-6' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+              </div>
+              <div className="glass-card p-3 flex flex-col gap-2">
+                <div className="flex items-center gap-1.5 text-[8px] text-gray-500 uppercase tracking-widest font-bold">
+                  <Target size={9} className="text-yellow-400" />{t.tutorials || 'Tutorials'}
+                </div>
+                <div className="flex-1 flex items-center justify-center">
+                  <button onClick={() => {
+                    if (confirm(t.prof_tour_confirm || 'Reset all tutorials forever?')) {
+                      window.dispatchEvent(new Event('skipAllToursForever'));
+                      toast.success(t.prof_tour_off_toast || 'Tutorials disabled!');
+                    }
+                  }} className="w-full h-6 rounded px-2 bg-yellow-500/10 text-yellow-500 text-[9px] font-bold uppercase transition-all hover:bg-yellow-500/20">
+                    {t.prof_tour_off || 'Disable all'}
+                  </button>
+                </div>
+              </div>
+              <div className="glass-card p-3 flex flex-col gap-2">
+                <div className="flex items-center gap-1.5 text-[8px] text-gray-500 uppercase tracking-widest font-bold">
+                  {isFullscreen ? <Minimize size={9} className="text-emerald-400" /> : <Maximize size={9} className="text-emerald-400" />} Fullscreen
+                </div>
+                <div className="flex-1 flex items-center justify-center">
+                  <button onClick={toggleFullscreen}
+                    className={`w-full h-6 rounded px-2 text-[9px] font-bold uppercase transition-all
+                      ${isFullscreen ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}>
+                    {isFullscreen ? 'Exit' : 'Enter'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Admin link */}
+            {isAdmin && (
+              <Link href="/admin/logs" className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl mt-2
+                bg-red-900/15 border border-red-500/25 text-red-400 uppercase tracking-widest text-[9px] font-bold hover:bg-red-900/30 transition-all">
+                <Shield size={11} /> {t.mgr_dev_console || 'Developer Console'}
+              </Link>
+            )}
+
+            {/* Resign */}
+            <div className="mt-2">
+              <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
+                bg-red-500/5 border border-red-500/20 text-red-500/60
+                text-[9px] font-bold uppercase tracking-widest hover:bg-red-500/10 transition-colors">
+                <UserMinus size={11} /> {t.prof_resign || 'Resign as Manager'}
+              </button>
+            </div>
           </div>
         )}
       </div>

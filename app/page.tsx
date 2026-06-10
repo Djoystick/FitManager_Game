@@ -757,10 +757,11 @@ export default function DashboardPage() {
 
             {/* Profile link */}
             <Link href="/profile"
-              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
-                         border border-white/10 bg-white/5 hover:border-violet-500/40 hover:bg-violet-500/10
-                         transition-all duration-200 active:scale-90">
-              <User size={14} className="text-gray-400" />
+              className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0
+                         border border-violet-500/50 bg-violet-500/15 shadow-[0_0_15px_rgba(147,51,234,0.4)]
+                         hover:bg-violet-500/30 transition-all duration-200 active:scale-90 relative group">
+              <div className="absolute inset-0 rounded-full border border-violet-400/80 animate-ping opacity-30"></div>
+              <User size={16} className="text-violet-200 relative z-10 drop-shadow-[0_0_8px_rgba(167,139,250,0.8)]" />
             </Link>
           </div>
 

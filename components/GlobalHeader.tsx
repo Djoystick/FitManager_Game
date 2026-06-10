@@ -207,16 +207,8 @@ export function GlobalHeader() {
               </div>
             </div>
 
-            {/* ── RIGHT: Settings ─────────────────────────────────────── */}
-            <Link
-              href="/profile"
-              className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center
-                         bg-white/5 border border-white/10
-                         hover:border-violet-500/40 hover:bg-violet-500/10
-                         transition-all duration-200 active:scale-90"
-            >
-              <Settings size={13} className="text-gray-400" />
-            </Link>
+            {/* ── RIGHT: Empty placeholder to maintain center alignment ── */}
+            <div className="flex-shrink-0 w-7 h-7" />
           </div>
         </div>
       </div>

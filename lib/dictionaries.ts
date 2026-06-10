@@ -280,6 +280,7 @@ export const dict = {
     mgr_staff: "STAFF",
     mgr_manage: "Manage",
     mgr_dev_console: "DEVELOPER CONSOLE",
+    mgr_settings: "SETTINGS",
     mgr_resign: "RESIGN AS MANAGER",
 
     // Base Additions
@@ -643,6 +644,7 @@ export const dict = {
     mgr_staff: "ПЕРСОНАЛ",
     mgr_manage: "Управление",
     mgr_dev_console: "КОНСОЛЬ РАЗРАБОТЧИКА",
+    mgr_settings: "НАСТРОЙКИ",
     mgr_resign: "УЙТИ В ОТСТАВКУ",
 
     // Base Additions
