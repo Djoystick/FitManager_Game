@@ -477,6 +477,9 @@ export default function ProfileClient({
             <div className="text-[10px] text-gray-400 space-y-3 mb-6 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
               <p>{t.prof_terms_desc_1 || 'In-game currency (FanCoins, SP) has no real-world financial value outside our TON marketplace.'}</p>
               <p>{t.prof_terms_desc_2 || 'Developers reserve the right to ban accounts for fraud, step manipulation or forbidden content.'}</p>
+              <a href="/terms" target="_blank" rel="noopener noreferrer" className="block mt-2 text-violet-400 hover:text-violet-300 underline transition-colors">
+                Читать полную версию (Read Full Terms)
+              </a>
             </div>
             <button onClick={() => setShowTerms(false)} className="w-full py-2.5 bg-violet-500 text-white font-bold uppercase tracking-widest text-xs rounded-xl">{t.prof_close || 'Close'}</button>
           </div>
@@ -492,6 +495,9 @@ export default function ProfileClient({
             <div className="text-[10px] text-gray-400 space-y-3 mb-6 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
               <p><strong className="text-violet-300">Medical:</strong> {t.prof_disc_desc_1 || 'This app is for entertainment only and is not a medical device.'}</p>
               <p><strong className="text-cyan-300">Crypto:</strong> {t.prof_disc_desc_2 || 'We are not an exchange or broker. TON purchases are in-game transactions.'}</p>
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="block mt-2 text-cyan-400 hover:text-cyan-300 underline transition-colors">
+                Политика конфиденциальности (Privacy Policy)
+              </a>
             </div>
             <button onClick={() => setShowDisclaimer(false)} className="w-full py-2.5 bg-cyan-500 text-black font-bold uppercase tracking-widest text-xs rounded-xl">{t.prof_close || 'Close'}</button>
           </div>
