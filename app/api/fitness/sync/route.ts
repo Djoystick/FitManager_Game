@@ -40,8 +40,8 @@ export async function POST(req: Request) {
     if (user.last_step_sync) {
       const lastSync = new Date(user.last_step_sync);
       const diffSecs = (now.getTime() - lastSync.getTime()) / 1000;
-      if (diffSecs < 60) {
-        return NextResponse.json({ error: 'Rate limit exceeded. Try again in a minute.' }, { status: 429 });
+      if (diffSecs >= 0 && diffSecs < 5) {
+        return NextResponse.json({ error: 'Rate limit exceeded. Try again in a few seconds.' }, { status: 429 });
       }
     }
 
