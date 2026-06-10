@@ -263,23 +263,8 @@ export default function LineupPage() {
   };
 
   const handlePlayerClick = async (player: Player, e?: React.MouseEvent) => {
-
     if (!selectedPlayerId) {
-      if (e) {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const MENU_WIDTH = 220; 
-        const MENU_HEIGHT = 100;
-        
-        const centerX = rect.left + rect.width / 2;
-        const safeX = Math.min(Math.max(centerX, MENU_WIDTH / 2 + 10), typeof window !== 'undefined' ? window.innerWidth - MENU_WIDTH / 2 - 10 : centerX);
-        
-        const isBelow = rect.top < MENU_HEIGHT + 20;
-        const safeY = isBelow ? rect.bottom + 10 : rect.top - 10;
-        
-        setActiveHUD({ player, x: safeX, y: safeY, isBelow });
-      } else {
-        setActiveHUD({ player, x: typeof window !== 'undefined' ? window.innerWidth / 2 : 200, y: typeof window !== 'undefined' ? window.innerHeight / 2 : 400 });
-      }
+      setSelectedPlayerId(player.id);
       return;
     }
 
@@ -1105,58 +1090,7 @@ export default function LineupPage() {
         )}
       </AnimatePresence>
 
-      {/* FLOATING HUD: Player Context Menu */}
-      <AnimatePresence>
-        {activeHUD && (
-          <>
-            {/* Overlay */}
-            <motion.div
-              key="overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
-              onClick={() => setActiveHUD(null)}
-            />
-
-            {/* Popover Menu */}
-            <motion.div
-              key="menu"
-              initial={{ opacity: 0, scale: 0.85, x: '-50%', y: activeHUD.isBelow ? '-50%' : '-80%' }}
-              animate={{ opacity: 1, scale: 1, x: '-50%', y: activeHUD.isBelow ? '0%' : '-100%' }}
-              exit={{ opacity: 0, scale: 0.85, x: '-50%', y: activeHUD.isBelow ? '-50%' : '-80%' }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              className="fixed z-[110] glass-card-violet rounded-2xl p-3 flex flex-row gap-2"
-              style={{ left: activeHUD.x, top: activeHUD.y, boxShadow: '0 0 30px rgba(147,51,234,0.3)' }}
-            >
-              <button
-                onClick={() => {
-                  const id = activeHUD.player.id;
-                  setActiveHUD(null);
-                  setSelectedPlayerId(id);
-                }}
-                className="px-4 py-2.5 rounded-xl font-black uppercase tracking-widest glass-card-cyan text-cyan-300
-                           hover:bg-cyan-500/20 transition-all flex flex-col items-center gap-1 min-w-[80px] text-[9px]"
-              >
-                <RefreshCw className="w-4 h-4" />
-                ЗАМЕНИТЬ
-              </button>
-              <button
-                onClick={() => {
-                  setProfilePlayer(activeHUD.player);
-                  setActiveHUD(null);
-                }}
-                className="px-4 py-2.5 rounded-xl font-black uppercase tracking-widest glass-card text-gray-300
-                           hover:text-white transition-all flex flex-col items-center gap-1 min-w-[80px] text-[9px]"
-              >
-                <User className="w-4 h-4" />
-                ПРОФИЛЬ
-              </button>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {/* FLOATING HUD was removed to streamline lineup swaps */}
 
       <AnimatePresence>
         {profilePlayer && userId && (
