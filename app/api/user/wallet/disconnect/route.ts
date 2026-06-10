@@ -1,11 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { validateTelegramWebAppData } from '@/lib/telegramAuth';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
 
 export async function POST(req: Request) {
   try {
@@ -22,7 +17,7 @@ export async function POST(req: Request) {
     }
 
     // Unlink the wallet in the database
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('users')
       .update({ wallet_address: null })
       .eq('telegram_id', validation.user.id);
