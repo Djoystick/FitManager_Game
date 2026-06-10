@@ -48,6 +48,9 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "FitManager Game",
   },
+  verification: {
+    google: "r2LoGmiscZnK-JO7Y4cycbT9d55MokZfjb9nIK5c7O8",
+  },
 };
 
 import { TelegramAuthProvider } from "@/components/providers/TelegramAuthProvider";
