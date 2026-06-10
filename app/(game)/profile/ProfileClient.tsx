@@ -10,7 +10,7 @@ import { dict } from '@/lib/dictionaries';
 import { renameTeamAction } from '@/app/actions/teamActions';
 import { getManagerObjectivesAction, type ManagerObjective } from '@/app/actions/objectivesActions';
 import {
-  Edit3, FileText, AlertTriangle, Award, ChevronRight,
+  Edit3, FileText, AlertTriangle, Award, ChevronRight, Unlink,
   Globe, Bell, Shield, X, Target, TrendingUp, UserMinus, Star, Maximize, Minimize, Settings as SettingsIcon
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -252,11 +252,36 @@ export default function ProfileClient({
               <div className="text-[8px] text-gray-600 font-mono">{t.id || 'ID'}: {tgUser?.id || userId || '—'}</div>
               <div className="mt-1.5">
                 {userData?.wallet_address ? (
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_4px_rgba(52,211,153,0.8)]" />
-                    <span className="font-mono text-emerald-300 text-[9px]">{shortenAddress(userData.wallet_address)}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_4px_rgba(52,211,153,0.8)]" />
+                      <span className="font-mono text-emerald-300 text-[9px]">{shortenAddress(userData.wallet_address)}</span>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (confirm(t.wallet_disconnect_confirm || 'Are you sure you want to disconnect your wallet?')) {
+                          try {
+                            const sdkModule = await import('@twa-dev/sdk');
+                            const WebApp = sdkModule.default;
+                            await fetch('/api/user/wallet/disconnect', {
+                              method: 'POST',
+                              headers: { 'Authorization': `tma ${WebApp.initData}` }
+                            });
+                            setUserData({ ...userData, wallet_address: null });
+                            window.dispatchEvent(new Event('balanceUpdated'));
+                          } catch (e) {
+                            console.error('Failed to disconnect wallet', e);
+                          }
+                        }
+                      }}
+                      className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded flex items-center gap-1 text-[8px] uppercase font-bold transition-all"
+                    >
+                      <Unlink size={8} /> {t.wallet_disconnect_btn || 'Disconnect'}
+                    </button>
                   </div>
-                ) : <div className="scale-90 origin-left"><WalletConnect /></div>}
+                ) : <div className="scale-90 origin-left"><WalletConnect onSyncSuccess={() => {
+                   fetch(`/api/user/me?userId=${userId}`).then(r=>r.json()).then(j=>setUserData(j.user));
+                }} /></div>}
               </div>
             </div>
 
