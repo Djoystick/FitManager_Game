@@ -1,7 +1,72 @@
-/* eslint-disable react/no-unescaped-entities */
+'use client';
+
 import Link from 'next/link';
+import { useContext } from 'react';
+import { LanguageContext } from '@/components/LanguageContext';
 
 export default function PrivacyPage() {
+  const { language } = useContext(LanguageContext);
+
+  if (language === 'ru') {
+    return (
+      <div className="flex flex-col flex-1 min-h-screen bg-[#0B0F19] items-center p-6 relative overflow-hidden">
+        {/* Background Orbs */}
+        <div className="fixed top-[-10%] left-[-20%] w-[150%] h-[150%] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-neon-cyan/5 via-[#0B0F19]/80 to-[#0B0F19] pointer-events-none" />
+        
+        <div className="w-full max-w-2xl z-10 flex flex-col pt-10 pb-20">
+          <Link 
+            href="/onboarding" 
+            className="text-neon-cyan hover:text-white font-orbitron text-sm mb-8 flex items-center gap-2 transition-colors w-fit"
+          >
+            ← Назад
+          </Link>
+          <h1 className="text-3xl font-black text-white mb-8 tracking-wide font-orbitron drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
+            Политика Конфиденциальности
+          </h1>
+          <div className="bg-black/60 backdrop-blur-md border border-gray-800 p-6 md:p-8 rounded-2xl shadow-[0_0_20px_rgba(0,0,0,0.5)] flex flex-col gap-8 text-gray-300 font-inter text-sm md:text-base leading-relaxed">
+            <div className="text-center pb-4 border-b border-gray-800/50">
+              <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">Дата вступления в силу: 10 июня 2026</p>
+            </div>
+            <section>
+              <h2 className="text-xl font-bold text-white mb-3 font-orbitron flex items-center gap-2">
+                <span className="text-cyan-400">1.</span> Какую информацию мы собираем
+              </h2>
+              <ul className="list-disc pl-6 space-y-2">
+                <li><strong>Данные Telegram:</strong> Мы получаем ваш Telegram ID, имя пользователя и язык через Telegram WebApp SDK.</li>
+                <li><strong>Данные о фитнесе (Google Fit):</strong> При подключении Google Fit через OAuth мы собираем количество шагов для перевода их во внутриигровые Sweat Points.</li>
+                <li><strong>Данные кошелька:</strong> При подключении кошелька TON мы сохраняем ваш публичный адрес для транзакций и наград.</li>
+              </ul>
+            </section>
+            <section>
+              <h2 className="text-xl font-bold text-white mb-3 font-orbitron flex items-center gap-2">
+                <span className="text-cyan-400">2.</span> Как мы используем ваши данные
+              </h2>
+              <p>Ваши данные о физической активности используются <strong>исключительно</strong> для расчета внутриигровых наград. Мы не продаем и не передаем ваши данные третьим лицам. Ваш Telegram ID используется для аутентификации.</p>
+            </section>
+            <section>
+              <h2 className="text-xl font-bold text-white mb-3 font-orbitron flex items-center gap-2">
+                <span className="text-cyan-400">3.</span> Политика использования данных Google API
+              </h2>
+              <p>Использование FitManager информации, полученной от Google API, соответствует <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" className="text-cyan-400 hover:underline">Политике данных Google API</a>, включая требования Limited Use.</p>
+            </section>
+            <section>
+              <h2 className="text-xl font-bold text-white mb-3 font-orbitron flex items-center gap-2">
+                <span className="text-cyan-400">4.</span> Хранение и удаление данных
+              </h2>
+              <p>Вы можете запросить полное удаление вашей франшизы и данных через внутриигровую кнопку "Уйти в отставку". Это действие необратимо.</p>
+            </section>
+            <section>
+              <h2 className="text-xl font-bold text-white mb-3 font-orbitron flex items-center gap-2">
+                <span className="text-cyan-400">5.</span> Связаться с нами
+              </h2>
+              <p>По вопросам конфиденциальности обращайтесь в нашу поддержку в официальном канале Telegram.</p>
+            </section>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col flex-1 min-h-screen bg-[#0B0F19] items-center p-6 relative overflow-hidden">
       {/* Background Orbs */}
@@ -28,86 +93,48 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-xl font-bold text-white mb-3 font-orbitron flex items-center gap-2">
-              <span className="text-cyan-400">1.</span> Introduction
+              <span className="text-cyan-400">1.</span> Information We Collect
             </h2>
-            <p>
-              Welcome to <strong>FitManager</strong> ("we", "our", or "us"). We are committed to protecting your privacy and ensuring you have a positive experience while playing our game. FitManager is a Telegram Mini App game that integrates physical activity to reward players with in-game resources.
-            </p>
-            <p className="mt-2">
-              This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our application and, specifically, how we handle data received from Google APIs (Google Fit).
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-white mb-3 font-orbitron flex items-center gap-2">
-              <span className="text-cyan-400">2.</span> Google API Services User Data Policy Compliance
-            </h2>
-            <div className="bg-cyan-950/30 border border-cyan-900/50 p-4 rounded-xl text-cyan-100/80">
-              <strong>FitManager's use and transfer to any other app of information received from Google APIs will adhere to <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noreferrer" className="text-cyan-400 hover:underline">Google API Services User Data Policy</a>, including the Limited Use requirements.</strong>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-white mb-3 font-orbitron flex items-center gap-2">
-              <span className="text-cyan-400">3.</span> Information We Collect
-            </h2>
-            <ul className="list-disc pl-5 space-y-2">
-              <li><strong>Telegram User Data:</strong> We collect your basic Telegram ID, username, and profile picture to create and authenticate your in-game account.</li>
-              <li><strong>Fitness Data (via Google Fit):</strong> If you explicitly authorize our application, we request read-only access to your physical activity data. Specifically, we read your <strong>Step Count</strong> (`com.google.step_count.delta`). We DO NOT request or read any other health metrics (e.g., heart rate, weight, location).</li>
-              <li><strong>Authentication Tokens:</strong> We securely store OAuth access and refresh tokens required to maintain the synchronization with Google Fit.</li>
+            <ul className="list-disc pl-6 space-y-2">
+              <li><strong>Telegram Data:</strong> We receive your Telegram ID, username, and language preference via the Telegram WebApp SDK to uniquely identify your franchise.</li>
+              <li><strong>Fitness Data (Google Fit):</strong> If you choose to connect Google Fit via OAuth, we collect your step counts and active minutes to convert them into in-game Sweat Points.</li>
+              <li><strong>Wallet Data:</strong> If you connect a TON wallet, we store your public address for marketplace transactions and season rewards.</li>
             </ul>
           </section>
 
           <section>
             <h2 className="text-xl font-bold text-white mb-3 font-orbitron flex items-center gap-2">
-              <span className="text-cyan-400">4.</span> How We Use Your Information
+              <span className="text-cyan-400">2.</span> How We Use Your Data
             </h2>
-            <p>We use the collected information strictly for providing and improving the game mechanics:</p>
-            <ul className="list-disc pl-5 space-y-2 mt-2">
-              <li>To synchronize your physical real-world steps with the game.</li>
-              <li>To convert your step count into in-game currency (such as Stamina Points or FanCoins) to heal your players and progress in the game.</li>
-              <li>To authenticate you and maintain your game progress.</li>
-            </ul>
-            <p className="mt-3 text-red-400 font-bold border-l-2 border-red-500 pl-3">
-              We DO NOT use your fitness data for advertising, nor do we sell it to data brokers or third parties.
+            <p>
+              Your physical activity data is used <strong>exclusively</strong> for calculating in-game rewards. We do not sell, rent, or share your fitness data with third-party advertising platforms. Your Telegram ID is used to authenticate you without passwords.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-bold text-white mb-3 font-orbitron flex items-center gap-2">
-              <span className="text-cyan-400">5.</span> Data Storage and Security
+              <span className="text-cyan-400">3.</span> Google API Services User Data Policy
             </h2>
             <p>
-              Your data is stored in a secure, encrypted PostgreSQL database (Supabase). We implement industry-standard security measures, including TLS/SSL encryption for data in transit and encrypted storage for OAuth tokens. Only authorized automated systems within our backend can access your fitness data to perform the daily step-to-currency conversion.
+              FitManager's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" className="text-cyan-400 hover:underline">Google API Services User Data Policy</a>, including the Limited Use requirements.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-bold text-white mb-3 font-orbitron flex items-center gap-2">
-              <span className="text-cyan-400">6.</span> Data Sharing and Disclosure
+              <span className="text-cyan-400">4.</span> Data Retention & Deletion
             </h2>
             <p>
-              We do not share, sell, or rent your personal information or fitness data to third parties. We may only disclose information if required to do so by law or in response to valid requests by public authorities.
+              You can request full deletion of your franchise and associated data via the in-game "Resign as Manager" button. This action is irreversible and immediately wipes your Telegram link, fitness history, and squad from our active database.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-bold text-white mb-3 font-orbitron flex items-center gap-2">
-              <span className="text-cyan-400">7.</span> User Rights, Revocation & Data Deletion
-            </h2>
-            <p>You have full control over your data:</p>
-            <ul className="list-disc pl-5 space-y-2 mt-2">
-              <li><strong>Revoke Access:</strong> You can disconnect Google Fit from FitManager at any time via the in-game settings. Additionally, you can revoke FitManager's access directly from your <a href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer" className="text-cyan-400 hover:underline">Google Account Security page</a>.</li>
-              <li><strong>Data Deletion:</strong> If you delete your FitManager account or revoke Google Fit access, we immediately delete your OAuth tokens and cease all synchronization. Past steps that were already converted into in-game currency remain as anonymous game stats, but all link to your Google account is destroyed.</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-white mb-3 font-orbitron flex items-center gap-2">
-              <span className="text-cyan-400">8.</span> Contact Us
+              <span className="text-cyan-400">5.</span> Contact Us
             </h2>
             <p>
-              If you have any questions about this Privacy Policy or our data practices, please contact our support team via Telegram or at <strong>support@fitmanager.game</strong>.
+              For privacy-related inquiries, please contact our support team via our official Telegram channel or email <a href="mailto:privacy@fitmanager.web3" className="text-cyan-400 hover:underline">privacy@fitmanager.web3</a>.
             </p>
           </section>
 
