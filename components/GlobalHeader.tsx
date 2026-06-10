@@ -92,8 +92,15 @@ export function GlobalHeader() {
       setTimeout(() => fetchBalances(), 0);
     }
     const handleBalanceUpdate = () => setTimeout(() => fetchBalances(), 0);
+    const handleOpenNotifications = () => setShowNotifications(true);
+    
     window.addEventListener('balanceUpdated', handleBalanceUpdate);
-    return () => window.removeEventListener('balanceUpdated', handleBalanceUpdate);
+    window.addEventListener('openNotifications', handleOpenNotifications);
+    
+    return () => {
+      window.removeEventListener('balanceUpdated', handleBalanceUpdate);
+      window.removeEventListener('openNotifications', handleOpenNotifications);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, userId]);
 
@@ -244,9 +251,9 @@ export function GlobalHeader() {
             <div className="px-5 pt-2 pb-3 flex items-center justify-between border-b border-white/5">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_6px_rgba(250,204,21,0.8)]" />
-                <span className="text-xs font-black font-orbitron text-white uppercase tracking-widest">Activity</span>
+                <span className="text-xs font-black font-orbitron text-white uppercase tracking-widest">{t.activity_news || 'ACTIVITY / NEWS'}</span>
                 <span className="text-[8px] bg-red-500/20 border border-red-500/40 text-red-400
-                                 px-1.5 py-0.5 rounded-full font-bold uppercase">2 New</span>
+                                 px-1.5 py-0.5 rounded-full font-bold uppercase">{t.live_feed || 'LIVE'}</span>
               </div>
               <button
                 onClick={() => setShowNotifications(false)}
@@ -260,7 +267,15 @@ export function GlobalHeader() {
 
             {/* Notification rows */}
             <div className="px-4 py-3 flex flex-col gap-2 pb-10">
-              {MOCK_NOTIFICATIONS.map((n) => (
+              {MOCK_NOTIFICATIONS.map((n) => {
+                const title = language === 'ru' 
+                  ? (n.id === '1' ? 'МАТЧ СИМУЛИРОВАН' : n.id === '2' ? 'ТРАНСФЕРНОЕ ОКНО' : 'ДОСТИЖЕНИЕ ПОЛУЧЕНО')
+                  : n.title;
+                const desc = language === 'ru'
+                  ? (n.id === '1' ? 'Тур лиги завершен — проверьте результаты' : n.id === '2' ? 'Летнее окно откроется через 3 дня' : 'Первая победа — Выиграйте свой первый матч')
+                  : n.desc;
+                  
+                return (
                 <div
                   key={n.id}
                   className={`flex items-start gap-3 p-3 rounded-2xl border transition-all ${
@@ -275,17 +290,17 @@ export function GlobalHeader() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-[10px] font-black text-white uppercase tracking-wide">{n.title}</span>
+                      <span className="text-[10px] font-black text-white uppercase tracking-wide">{title}</span>
                       {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 flex-shrink-0" />}
                     </div>
-                    <p className="text-[9px] text-gray-500 leading-snug">{n.desc}</p>
+                    <p className="text-[9px] text-gray-500 leading-snug">{desc}</p>
                   </div>
                   <span className="text-[8px] text-gray-700 font-mono flex-shrink-0 pt-0.5">{n.time}</span>
                 </div>
-              ))}
+              )})}
 
               <p className="text-center text-[8px] text-gray-700 uppercase tracking-widest font-bold mt-1">
-                Live activity feed · coming in V4
+                {t.coming_v4 || 'Live activity feed · coming in V4'}
               </p>
             </div>
           </div>

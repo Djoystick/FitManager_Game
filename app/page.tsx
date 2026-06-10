@@ -18,7 +18,6 @@ import {
 import { UnseenMatchesModal } from '@/components/UnseenMatchesModal';
 import { NextMatchCountdown } from '@/components/dashboard/NextMatchCountdown';
 import { OffseasonCard } from '@/components/dashboard/OffseasonCard';
-import { SocialFeed } from '@/components/dashboard/SocialFeed';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MatchReport, MatchReportModal } from '@/components/MatchReportModal';
 import { OpponentScoutModal } from '@/components/OpponentScoutModal';
@@ -233,80 +232,7 @@ function StandingsModal({
 }
 
 
-// ── Social Feed Modal ──────────────────────────────────────────────────────
 
-const MOCK_FEED = [
-  { id: 1, emoji: '⚽', team: 'IRON WOLVES FC', action: 'crushed their rivals 4-1 in Round 7', time: '2m ago', color: 'text-emerald-400' },
-  { id: 2, emoji: '🔥', team: 'NEON DRAGONS', action: 'are on a 5-match winning streak!', time: '15m ago', color: 'text-orange-400' },
-  { id: 3, emoji: '📢', team: 'LEAGUE HQ', action: 'Transfer window closes in 18 hours', time: '32m ago', color: 'text-violet-400' },
-  { id: 4, emoji: '🏆', team: 'CYBER SQUAD', action: 'signed a new 88 OVR striker from the market', time: '1h ago', color: 'text-cyan-400' },
-  { id: 5, emoji: '💥', team: 'GHOST FC', action: 'suffered a 0-3 defeat to the league leaders', time: '2h ago', color: 'text-red-400' },
-];
-
-function SocialFeedModal({ onClose }: { onClose: () => void }) {
-  return (
-    <ModalBackdrop onClose={onClose}>
-      {/* Handle */}
-      <div className="flex justify-center pt-3 pb-1">
-        <div className="w-10 h-1 rounded-full bg-white/20" />
-      </div>
-
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 pb-3 pt-2">
-        <div className="flex items-center gap-2">
-          <Radio size={16} className="text-cyan-400 animate-pulse" />
-          <span className="text-[11px] font-black font-orbitron uppercase tracking-widest text-white">
-            Social Feed
-          </span>
-          <span className="text-[7px] font-bold bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-            LIVE
-          </span>
-        </div>
-        <button
-          onClick={onClose}
-          className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center
-                     hover:bg-white/10 transition-colors active:scale-90"
-        >
-          <X size={13} className="text-gray-400" />
-        </button>
-      </div>
-
-      <div className="px-5 pb-24 flex flex-col gap-2">
-        <p className="text-[9px] text-gray-700 uppercase tracking-wider font-bold mb-1">
-          Latest from your league
-        </p>
-        {MOCK_FEED.map((item, i) => (
-          <motion.div
-            key={item.id}
-            className="flex items-start gap-3 p-3 rounded-xl border border-white/[0.05] bg-white/[0.02]
-                       hover:bg-white/[0.04] transition-colors"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06 }}
-          >
-            <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-lg
-                            bg-black/40 border border-white/[0.06]">
-              {item.emoji}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-black uppercase tracking-wide">
-                <span className={item.color}>{item.team}</span>
-                <span className="text-gray-400 font-normal ml-1">{item.action}</span>
-              </div>
-              <div className="text-[8px] text-gray-700 mt-0.5 font-mono">{item.time}</div>
-            </div>
-          </motion.div>
-        ))}
-
-        <div className="mt-2 text-center text-[8px] text-gray-700 font-bold uppercase tracking-wider">
-          Full social feed coming soon · WOOF 🐾
-        </div>
-      </div>
-    </ModalBackdrop>
-  );
-}
-
-// ── Sub-components ────────────────────────────────────────────────────────────
 
 function MatchCard({
   match,
@@ -355,14 +281,15 @@ function CalendarMatchRow({
   teamName,
   index,
   onScout,
-}: { match: any; teamName: string | null; index: number; onScout: () => void }) {
+  t,
+}: { match: any; teamName: string | null; index: number; onScout: () => void; t: any }) {
   const isHome       = match.home_team_id === undefined
     ? match.home_team?.name === teamName || match.home_team_name === teamName
     : match.home_side;
   const opponentName = isHome
     ? (match.away_team?.name || match.away_team_name || 'Unknown')
     : (match.home_team?.name || match.home_team_name || 'Unknown');
-  const venue        = isHome ? 'HOME' : 'AWAY';
+  const venue        = isHome ? (t.home_label || 'HOME') : (t.away_label || 'AWAY');
   const venueColor   = isHome ? 'text-emerald-400' : 'text-rose-400';
   const scheduledAt  = match.scheduled_at || match.created_at;
 
@@ -404,7 +331,7 @@ function CalendarMatchRow({
                    hover:bg-cyan-500/20 transition-colors active:scale-90"
       >
         <Shield size={9} />
-        Scout
+        {t.scout_btn || 'Scout'}
       </button>
     </motion.div>
   );
@@ -454,7 +381,6 @@ export default function DashboardPage() {
 
   // Modal visibility state
   const [showStandingsModal, setShowStandingsModal]  = useState(false);
-  const [showSocialModal,    setShowSocialModal]     = useState(false);
 
   // ── Data fetching ────────────────────────────────────────────────────────
 
@@ -673,6 +599,20 @@ export default function DashboardPage() {
   const profit = formatProfit(yearlyProfit);
 
   // ── Countdown logic ───────────────────────────────────────────────────────
+  // We need current time to render the next hour progress bar for the Next Match CTA
+  const [currentTime, setCurrentTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const nextHour = new Date();
+  nextHour.setHours(currentTime.getHours() + 1, 0, 0, 0);
+  const diff = nextHour.getTime() - currentTime.getTime();
+  const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const s = Math.floor((diff % (1000 * 60)) / 1000);
+  const progressPct = ((60 - m) / 60) * 100;
+
   // Show Transfer Window countdown ONLY when in filling/offseason state
   // Show Next Match countdown ONLY when transfer window has closed (active season)
   const isTransferWindowActive =
@@ -878,6 +818,16 @@ export default function DashboardPage() {
                   vs {nextOpponent} · R{nextMatch.round_number}
                 </span>
               )}
+              {/* Restored Progress Bar inside the CTA */}
+              <div className="w-4/5 h-1 bg-black/40 rounded-full overflow-hidden mt-1 relative z-10 border border-white/5">
+                <div 
+                  className="h-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)] transition-all duration-1000 ease-linear" 
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <span className="text-[9px] text-cyan-400/80 uppercase tracking-widest font-mono z-10">
+                {m.toString().padStart(2, '0')}:{s.toString().padStart(2, '0')}
+              </span>
             </motion.button>
           ) : (
             /* No next match data — show generic next-hour countdown */
@@ -900,7 +850,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.05]">
             <Calendar size={12} className="text-cyan-400" />
             <span className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">
-              Upcoming Fixtures
+              {t.upcoming_fixtures || 'Upcoming Fixtures'}
             </span>
           </div>
 
@@ -923,12 +873,13 @@ export default function DashboardPage() {
                       setSelectedOpponentName(opponentName);
                     }
                   }}
+                  t={t}
                 />
               ))}
             </div>
           ) : (
             <div className="px-3 py-4 text-center">
-              <p className="text-gray-600 text-[10px] font-bold uppercase tracking-wider">No upcoming fixtures</p>
+              <p className="text-gray-600 text-[10px] font-bold uppercase tracking-wider">{t.no_upcoming || 'No upcoming fixtures'}</p>
             </div>
           )}
         </motion.div>
@@ -950,7 +901,7 @@ export default function DashboardPage() {
                        p-3 flex flex-col gap-0.5 hover:border-yellow-500/40 hover:bg-yellow-900/15
                        transition-all duration-200 active:scale-95 group">
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-yellow-400/40 to-transparent" />
-            <div className="text-[7px] text-gray-600 uppercase tracking-[0.18em] font-bold">Bank Balance</div>
+            <div className="text-[7px] text-gray-600 uppercase tracking-[0.18em] font-bold">{t.bank_balance || 'Bank Balance'}</div>
             <div className="text-lg font-black font-orbitron text-yellow-400 leading-none group-hover:text-yellow-300 transition-colors">
               {fcBalance.toLocaleString()}
             </div>
@@ -966,7 +917,7 @@ export default function DashboardPage() {
                  background:  profit.positive ? 'rgba(52,211,153,0.06)' : 'rgba(239,68,68,0.06)',
                }}>
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-            <div className="text-[7px] text-gray-600 uppercase tracking-[0.18em] font-bold">Yearly Profit</div>
+            <div className="text-[7px] text-gray-600 uppercase tracking-[0.18em] font-bold">{t.yearly_profit || 'Yearly Profit'}</div>
             <div className={`text-lg font-black font-orbitron leading-none flex items-center gap-1
                             ${profit.positive ? 'text-emerald-400' : 'text-red-400'}`}>
               <span className="text-sm">{profit.positive ? '▲' : '▼'}</span>
@@ -974,7 +925,7 @@ export default function DashboardPage() {
             </div>
             <div className={`text-[7px] font-bold uppercase tracking-wider
                              ${profit.positive ? 'text-emerald-700' : 'text-red-700'}`}>
-              {profit.positive ? 'Net Gain' : 'Net Loss'} · Season
+              {profit.positive ? (t.net_gain || 'Net Gain') : (t.net_loss || 'Net Loss')} · {t.season_label || 'Season'}
             </div>
           </div>
         </motion.div>
@@ -1009,9 +960,9 @@ export default function DashboardPage() {
             <span className="text-[8px] font-black uppercase tracking-widest text-violet-300">{t.home_standings || 'STANDINGS'}</span>
           </button>
 
-          {/* WOOF / Social Feed — opens social feed modal */}
+          {/* ACTIVITY / NEWS — dispatches event to open GlobalHeader modal */}
           <button
-            onClick={() => setShowSocialModal(true)}
+            onClick={() => window.dispatchEvent(new Event('openNotifications'))}
             className="relative overflow-hidden rounded-2xl border border-cyan-500/25
                        bg-gradient-to-br from-cyan-900/20 to-black/40
                        p-3 flex flex-col items-center justify-center gap-1.5
@@ -1024,7 +975,7 @@ export default function DashboardPage() {
                             group-hover:bg-cyan-500/25 transition-colors">
               <Radio size={16} className="text-cyan-400" />
             </div>
-            <span className="text-[8px] font-black uppercase tracking-widest text-cyan-300">WOOF 🐾</span>
+            <span className="text-[8px] font-black uppercase tracking-widest text-cyan-300">{t.activity_news || 'ACTIVITY / NEWS'}</span>
           </button>
 
           {/* FITNESS HUB — navigates to bank page */}
@@ -1078,9 +1029,6 @@ export default function DashboardPage() {
                 })}
               />
             ))}
-            
-            <SocialFeed />
-
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center text-center px-6 py-8 mb-2">
@@ -1126,10 +1074,6 @@ export default function DashboardPage() {
 
 
 
-      {/* ── Social Feed Modal ──────────────────────────────────────────────── */}
-      {showSocialModal && (
-        <SocialFeedModal onClose={() => setShowSocialModal(false)} />
-      )}
     </div>
   );
 }
