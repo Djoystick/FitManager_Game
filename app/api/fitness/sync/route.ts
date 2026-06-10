@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { cookies } from 'next/headers';
 import { getGoogleOAuthClient } from '@/lib/googleFitness';
 import { fitness_v1, google } from 'googleapis';
@@ -34,6 +35,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Google Fit not connected', not_connected: true }, { status: 403 });
     }
 
+    // 1.5 Rate Limiting (1 sync per minute max)
+    const now = new Date();
+    if (user.last_step_sync) {
+      const lastSync = new Date(user.last_step_sync);
+      const diffSecs = (now.getTime() - lastSync.getTime()) / 1000;
+      if (diffSecs < 60) {
+        return NextResponse.json({ error: 'Rate limit exceeded. Try again in a minute.' }, { status: 429 });
+      }
+    }
+
     // 2. Init Google Auth
     const { origin } = new URL(req.url);
     const oauth2Client = getGoogleOAuthClient(origin);
@@ -42,17 +53,11 @@ export async function POST(req: Request) {
     const fitness = google.fitness({ version: 'v1', auth: oauth2Client });
 
     // 3. Calculate time bounds (From midnight to now in user's timezone)
-    const now = new Date();
-    // Use offset to find midnight. Offset is in minutes (e.g., -180 for UTC+3)
     const offsetMins = typeof timezoneOffsetMins === 'number' ? timezoneOffsetMins : now.getTimezoneOffset();
-    
-    // Create a Date representing midnight in the user's local time
-    // A simple approximation:
     const localNow = new Date(now.getTime() - (offsetMins * 60000));
     const localMidnight = new Date(localNow);
     localMidnight.setUTCHours(0, 0, 0, 0);
     
-    // Convert back to UTC for the API request
     const startTimeMillis = localMidnight.getTime() + (offsetMins * 60000);
     const endTimeMillis = now.getTime();
 
@@ -85,6 +90,45 @@ export async function POST(req: Request) {
       }
     }
 
+    // ANTI-CHEAT: Calculate Velocity (Steps Per Minute)
+    let isSuspicious = false;
+    let spm = 0;
+    const newSteps = totalStepsToday - (user.daily_steps || 0);
+    
+    if (newSteps > 0 && user.last_step_sync) {
+      const lastSync = new Date(user.last_step_sync);
+      const diffMins = (now.getTime() - lastSync.getTime()) / 60000;
+      if (diffMins > 0) {
+        spm = newSteps / diffMins;
+        if (spm > 250) { // 250 SPM is beyond humanly possible walking/running continuously
+          isSuspicious = true;
+        }
+      }
+    }
+
+    if (isSuspicious) {
+       // Log suspicious activity, DO NOT grant SP or add steps!
+       await supabaseAdmin.from('fitness_sync_logs').insert({
+         user_id: userId,
+         provider: 'google_health',
+         steps_raw: newSteps,
+         steps_credited: 0,
+         sp_awarded: 0,
+         status: 'error',
+         error_message: 'Abnormal step activity detected. Sync rejected.',
+         metadata: { is_suspicious: true, velocity_steps_per_min: spm }
+       });
+       
+       // Update last_step_sync anyway to reset the timer, preventing them from just waiting to validate cheated steps
+       await supabaseAdmin.from('users').update({ last_step_sync: now.toISOString() }).eq('id', userId);
+
+       return NextResponse.json({
+          success: false,
+          error: 'Abnormal step activity detected. Sync rejected.',
+          is_suspicious: true
+       }, { status: 403 });
+    }
+
     // 5. Call the sync_daily_steps RPC with total steps and local date
     const { data: rpcResult, error: rpcError } = await supabase.rpc('sync_daily_steps', {
       p_user_id:           userId,
@@ -97,7 +141,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Failed to sync steps' }, { status: 500 });
     }
     
-    // rpcResult is an object like { added_steps, sp_gained, total_sp, daily_steps }
     const spRewarded = rpcResult?.sp_gained || 0;
     const addedSteps = rpcResult?.added_steps || 0;
     const currentDailySteps = rpcResult?.daily_steps || 0;
@@ -113,12 +156,15 @@ export async function POST(req: Request) {
       });
     }
 
-    // Log sync for audit
-    await supabase.from('fitness_sync_logs').insert({
+    // Log success sync for audit
+    await supabaseAdmin.from('fitness_sync_logs').insert({
        user_id: userId,
-       steps_synced: addedSteps,
-       sp_rewarded: spRewarded,
-       velocity_steps_per_min: 0 // placeholder
+       provider: 'google_health',
+       steps_raw: addedSteps,
+       steps_credited: addedSteps,
+       sp_awarded: spRewarded,
+       status: 'success',
+       metadata: { velocity_steps_per_min: spm }
     });
 
     return NextResponse.json({
