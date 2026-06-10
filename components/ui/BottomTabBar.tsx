@@ -146,19 +146,17 @@ export function BottomTabBar() {
   if (pathname === '/onboarding') return null;
 
   return (
-    <div
-      className="fixed bottom-0 w-full max-w-[480px] z-50 pb-safe"
-      style={{
-        background: 'rgba(5,6,15,0.97)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
-        borderTop: '1px solid rgba(255,255,255,0.05)',
-      }}
-    >
-      {/* Top neon gradient line */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-500/40 to-transparent" />
-
-      <div className="flex gap-0 px-1 py-1.5">
+    <div className="fixed bottom-4 left-0 right-0 w-full max-w-[480px] mx-auto z-50 px-4 pointer-events-none">
+      <div
+        className="flex items-center justify-between px-2 py-2 rounded-2xl pointer-events-auto shadow-2xl"
+        style={{
+          background: 'rgba(5,6,15,0.65)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
+        }}
+      >
         {navItems.map(({ name, href, Icon, id }) => {
           const isActive = activeTab === href;
 
@@ -168,48 +166,41 @@ export function BottomTabBar() {
               href={href}
               id={id}
               aria-label={name}
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-1 relative transition-all duration-200 active:scale-90"
+              className="relative flex-1 flex flex-col items-center justify-center gap-1 py-1.5 transition-all duration-200 active:scale-90 tap-highlight-transparent"
             >
-              {/* Active indicator — animated cyan bar above icon */}
+              {/* Active Pill Background Indicator (Sliding) */}
               {isActive && (
                 <motion.div
-                  layoutId="tab-active-bar"
-                  className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full"
-                  style={{
-                    background: 'linear-gradient(90deg, transparent, #00f0ff, transparent)',
-                    boxShadow: '0 0 10px rgba(0,240,255,0.9), 0 0 20px rgba(0,240,255,0.4)',
-                  }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                />
-              )}
-
-              {/* Active glow halo under icon */}
-              {isActive && (
-                <motion.div
-                  layoutId="tab-glow-halo"
-                  className="absolute top-1 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full pointer-events-none"
-                  style={{
-                    background: 'radial-gradient(ellipse at center, rgba(0,240,255,0.18) 0%, transparent 70%)',
-                  }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  layoutId="tab-active-pill"
+                  className="absolute inset-0 rounded-xl bg-cyan-500/15 border border-cyan-400/20"
+                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                 />
               )}
 
               {/* Icon */}
-              <div className={`relative mt-1 transition-all duration-200 ${
+              <div className={`relative z-10 transition-all duration-300 ${
                 isActive
-                  ? 'text-cyan-400 drop-shadow-[0_0_12px_rgba(0,240,255,0.9)]'
-                  : 'text-gray-600 hover:text-gray-400'
+                  ? 'text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)] scale-110'
+                  : 'text-gray-500 hover:text-gray-300'
               }`}>
                 <Icon active={isActive} />
               </div>
 
               {/* Label */}
-              <span className={`text-[7px] uppercase font-black tracking-wider transition-colors duration-200 ${
-                isActive ? 'text-cyan-400' : 'text-gray-700'
+              <span className={`relative z-10 text-[8px] uppercase font-bold tracking-widest transition-colors duration-300 ${
+                isActive ? 'text-cyan-300' : 'text-gray-600'
               }`}>
                 {name}
               </span>
+              
+              {/* Active Dot underneath */}
+              {isActive && (
+                <motion.div 
+                  layoutId="tab-active-dot"
+                  className="absolute -bottom-1 w-1 h-1 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,1)]"
+                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                />
+              )}
             </Link>
           );
         })}
