@@ -25,28 +25,30 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
           setLanguageState(saved);
           document.cookie = `fitmanager_lang=${saved}; path=/; max-age=31536000`;
         } else {
-          let isRussian = false;
+          let finalLang = 'en'; // Default
+          let telegramLangFound = false;
           
           try {
             const sdkModule = await import('@twa-dev/sdk');
             const WebApp = sdkModule.default;
-            if (WebApp?.initDataUnsafe?.user?.language_code?.toLowerCase().startsWith('ru')) {
-              isRussian = true;
+            const twaCode = WebApp?.initDataUnsafe?.user?.language_code;
+            
+            if (twaCode) {
+              telegramLangFound = true;
+              finalLang = twaCode.toLowerCase().startsWith('ru') ? 'ru' : 'en';
             }
           } catch (e) {
             console.warn('TWA SDK not available for language check');
           }
 
-          if (!isRussian && typeof navigator !== 'undefined' && navigator.language) {
-            if (navigator.language.toLowerCase().startsWith('ru')) {
-              isRussian = true;
-            }
+          // Fallback ONLY if Telegram didn't provide a language
+          if (!telegramLangFound && typeof navigator !== 'undefined' && navigator.language) {
+            finalLang = navigator.language.toLowerCase().startsWith('ru') ? 'ru' : 'en';
           }
 
-          const langToSet = isRussian ? 'ru' : 'en';
-          setLanguageState(langToSet);
-          localStorage.setItem('fitmanager_lang', langToSet);
-          document.cookie = `fitmanager_lang=${langToSet}; path=/; max-age=31536000`;
+          setLanguageState(finalLang as Language);
+          localStorage.setItem('fitmanager_lang', finalLang);
+          document.cookie = `fitmanager_lang=${finalLang}; path=/; max-age=31536000`;
         }
       } catch (e) {
         console.warn('LanguageContext init error', e);
