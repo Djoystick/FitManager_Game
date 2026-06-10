@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.4.0] - 2026-06-10
+
+### Added
+- **Settings Extraction**: Separated the Settings pane from the General profile view to declutter the UI.
+- **Fullscreen API Integration**: Introduced a native Telegram Fullscreen API toggle inside the Settings tab, allowing the app to run in immersive mode.
+- **Advanced Admin Dashboard**: Redesigned the developer logs view into a comprehensive `AdminDashboardClient`, introducing a complete "Cheat Menu" allowing admins to add resources, force match outcomes, generate top players, and hard reset their teams.
+- **Improved UI Highlights**: Added pulsating neon glow effects to the Profile button on the dashboard to ensure users can easily discover it.
+
 ## [v1.3.0] - 2026-06-10
 
 ### Added

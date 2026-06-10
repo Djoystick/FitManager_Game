@@ -55,7 +55,8 @@ Instead of waiting for energy to recharge or buying micro-transactions, managers
   * **Form Decay:** Superstars (78+ OVR) require a daily physical maintenance fee in Sweat Points. If unpaid, their Pace and Physical stats decay automatically. Crypto-whales are forced to walk or lose their investment!
   * **Exponential Salaries:** High OVR players demand massive FC salaries per match, forcing managers to actively trade, walk, or upgrade infrastructure to avoid bankruptcy.
 * 🏆 **10-Tier Global Leagues:** Fight through 10 divisions with automatic Promotion and Relegation. Fully automated cron-job scheduling.
-* 📱 **Native Telegram Integration:** Frictionless onboarding via Telegram WebApp SDK. Seamless, cyberpunk UI built for mobile screens.
+* 📱 **Native Telegram Integration:** Frictionless onboarding via Telegram WebApp SDK. Seamless, cyberpunk UI built for mobile screens. Now featuring **Native Fullscreen Mode** for maximum immersion.
+* 💻 **Advanced Admin Console & Dev Tools:** Built-in dashboard for developers to monitor system logs in real-time, resolve errors, and utilize a powerful **Cheat Menu** (Inject FanCoins/XP, max out stamina, force match outcomes, generate top players, and seed bot leagues for stress testing).
 
 ## 🛠️ Architecture & Tech Stack
 
