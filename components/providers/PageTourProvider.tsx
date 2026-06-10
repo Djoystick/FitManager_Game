@@ -94,7 +94,7 @@ export function PageTourProvider({ children }: { children: ReactNode }) {
   }, [closeTour]);
 
   // Logic to grant final reward
-  const checkCoreToursCompletion = async () => {
+  async function checkCoreToursCompletion() {
     if (typeof window === 'undefined') return;
     
     // Core tours required for the reward:
