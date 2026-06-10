@@ -514,8 +514,8 @@ export default function DashboardPage() {
     startTour('home', [
       {
         targetId: 'tab-lineup',
-        title: 'Добро пожаловать, Тренер!',
-        description: 'Твоя команда ждет указаний. Давай перейдем в раздел Состав и расставим игроков по позициям!',
+        title: t.tour_coach_welcome || 'Welcome, Coach!',
+        description: t.tour_coach_desc || 'Your team is waiting for instructions.',
       }
     ]);
   };
@@ -670,7 +670,7 @@ export default function DashboardPage() {
             <h2 className="text-2xl font-black text-white uppercase tracking-widest font-orbitron mb-2">WAITING FOR TEAMS</h2>
             <p className="text-violet-400 text-xl font-bold mb-8 font-orbitron tracking-widest">{lobbyTeamCount} / 14</p>
             <div className="glass-card p-4 rounded-xl max-w-sm">
-              <p className="text-gray-300 text-sm">Лига заполнится ботами и стартует автоматически.</p>
+              <p className="text-gray-300 text-sm">{t.league_auto_start || 'The league will start automatically.'}</p>
             </div>
           </motion.div>
         )}
@@ -1007,7 +1007,7 @@ export default function DashboardPage() {
                             group-hover:bg-emerald-500/25 transition-colors">
               <Dumbbell size={16} className="text-emerald-400" />
             </div>
-            <span className="text-[8px] font-black uppercase tracking-widest text-emerald-300 text-center">ФИТНЕС ЦЕНТР</span>
+            <span className="text-[8px] font-black uppercase tracking-widest text-emerald-300 text-center">{t.fitness_center_tab || 'FITNESS CENTER'}</span>
           </Link>
         </motion.div>
       </div>

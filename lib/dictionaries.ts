@@ -127,6 +127,10 @@ export const dict = {
     tour_match_desc: "Set up your starting 11. Matches happen automatically twice a day. Get ready to climb the leagues!",
     tour_next: "NEXT",
     tour_start: "START",
+    tour_coach_welcome: "Welcome, Coach!",
+    tour_coach_desc: "Your team is waiting for instructions. Let's go to the Squad section and place the players in their positions!",
+    league_auto_start: "The league will be filled with bots and start automatically.",
+    fitness_center_tab: "FITNESS CENTER",
     understood: "Understood",
 
     // Dashboard Additions
@@ -491,6 +495,10 @@ export const dict = {
     tour_match_desc: "Настройте стартовые 11 игроков. Матчи проходят автоматически дважды в день. Готовьтесь покорять лиги!",
     tour_next: "ДАЛЕЕ",
     tour_start: "НАЧАТЬ",
+    tour_coach_welcome: "Добро пожаловать, Тренер!",
+    tour_coach_desc: "Твоя команда ждет указаний. Давай перейдем в раздел Состав и расставим игроков по позициям!",
+    league_auto_start: "Лига заполнится ботами и стартует автоматически.",
+    fitness_center_tab: "ФИТНЕС ЦЕНТР",
     understood: "Понятно",
 
     // Dashboard Additions
