@@ -512,14 +512,25 @@ export default function ProfileClient({
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent" />
             <button onClick={() => setShowTerms(false)} className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/10 flex items-center justify-center"><X size={14} /></button>
             <h3 className="text-white font-bold mb-4 uppercase tracking-widest text-sm font-orbitron shrink-0">{t.terms_of_use || 'Terms'}</h3>
-            <div className="flex-1 overflow-y-auto pr-3 custom-scrollbar text-xs text-gray-400 space-y-4 mb-4">
-              <p><strong>1. Acceptance of Terms:</strong> By accessing and playing FitManager (the "Game"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Game.</p>
-              <p><strong>2. Physical Activity & Fitness Data (Google Fit):</strong> FitManager utilizes physical activity data (such as Step Count) retrieved from Google Fit to reward players. By connecting your Google Fit account, you agree to allow us read-only access to this data strictly for the purposes of gameplay progression. We are not a medical app, and the data displayed or utilized in the Game should not be considered medical advice.</p>
-              <p><strong>3. Fair Play & Anti-Cheat:</strong> The use of third-party bots, step-spoofing emulators (e.g., artificially inflating Google Fit steps), auto-clickers, or any software designed to manipulate Sweat Points or match results is strictly prohibited. Violators will face permanent bans without compensation.</p>
-              <p><strong>4. Virtual Assets & Economy:</strong> In-game currencies (FanCoins, Stamina Points) and digital assets (players) have no guaranteed real-world value. The developers reserve the right to modify, balance, or reset the economy to maintain game health.</p>
-              <p><strong>5. User Content:</strong> Team names, logos, and communication must comply with standard decency rules. Offensive, illegal, or heavily controversial content will result in warnings or bans.</p>
-              <p><strong>6. Disclaimer of Warranties:</strong> The Game is provided "AS IS". We do not guarantee uninterrupted service, completely bug-free gameplay, or the preservation of virtual assets in the event of unforeseen server failures or API changes (including Google Fit API deprecations).</p>
-            </div>
+            {language === 'ru' ? (
+              <div className="flex-1 overflow-y-auto pr-3 custom-scrollbar text-xs text-gray-400 space-y-4 mb-4">
+                <p><strong>1. Принятие Условий:</strong> Открывая и играя в FitManager ("Игра"), вы соглашаетесь с настоящими Условиями использования. Если вы не согласны, не используйте Игру.</p>
+                <p><strong>2. Данные о физической активности (Google Fit):</strong> FitManager использует данные о физической активности (например, количество шагов), полученные из Google Fit, для вознаграждения игроков. Подключая свою учетную запись Google Fit, вы соглашаетесь предоставить нам доступ к этим данным только для чтения в целях игрового прогресса. Мы не являемся медицинским приложением, и представленные данные не должны рассматриваться как медицинские рекомендации.</p>
+                <p><strong>3. Честная игра и Анти-чит:</strong> Использование сторонних ботов, эмуляторов шагов (например, для искусственного накручивания шагов Google Fit), автокликеров или любого программного обеспечения, предназначенного для манипулирования Sweat Points или результатами матчей, строго запрещено. Нарушители будут заблокированы без компенсации.</p>
+                <p><strong>4. Виртуальные активы и экономика:</strong> Внутриигровая валюта (FanCoins) и цифровые активы (игроки) не имеют гарантированной реальной ценности. Разработчики оставляют за собой право изменять, балансировать или сбрасывать экономику для поддержания здоровья игры.</p>
+                <p><strong>5. Пользовательский контент:</strong> Названия команд, логотипы и общение должны соответствовать стандартным правилам приличия. Оскорбительный или незаконный контент приведет к предупреждениям или банам.</p>
+                <p><strong>6. Отказ от гарантий:</strong> Игра предоставляется "КАК ЕСТЬ". Мы не гарантируем бесперебойную работу, отсутствие ошибок или сохранение виртуальных активов в случае непредвиденных сбоев сервера или изменений API (включая отключения Google Fit API).</p>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto pr-3 custom-scrollbar text-xs text-gray-400 space-y-4 mb-4">
+                <p><strong>1. Acceptance of Terms:</strong> By accessing and playing FitManager (the "Game"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Game.</p>
+                <p><strong>2. Physical Activity & Fitness Data (Google Fit):</strong> FitManager utilizes physical activity data (such as Step Count) retrieved from Google Fit to reward players. By connecting your Google Fit account, you agree to allow us read-only access to this data strictly for the purposes of gameplay progression. We are not a medical app, and the data displayed or utilized in the Game should not be considered medical advice.</p>
+                <p><strong>3. Fair Play & Anti-Cheat:</strong> The use of third-party bots, step-spoofing emulators (e.g., artificially inflating Google Fit steps), auto-clickers, or any software designed to manipulate Sweat Points or match results is strictly prohibited. Violators will face permanent bans without compensation.</p>
+                <p><strong>4. Virtual Assets & Economy:</strong> In-game currencies (FanCoins, Stamina Points) and digital assets (players) have no guaranteed real-world value. The developers reserve the right to modify, balance, or reset the economy to maintain game health.</p>
+                <p><strong>5. User Content:</strong> Team names, logos, and communication must comply with standard decency rules. Offensive, illegal, or heavily controversial content will result in warnings or bans.</p>
+                <p><strong>6. Disclaimer of Warranties:</strong> The Game is provided "AS IS". We do not guarantee uninterrupted service, completely bug-free gameplay, or the preservation of virtual assets in the event of unforeseen server failures or API changes (including Google Fit API deprecations).</p>
+              </div>
+            )}
             <button onClick={() => setShowTerms(false)} className="w-full py-3 bg-violet-500 text-white font-bold uppercase tracking-widest text-xs rounded-xl shrink-0">{t.prof_close || 'Close'}</button>
           </div>
         </div>
@@ -531,17 +542,31 @@ export default function ProfileClient({
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent" />
             <button onClick={() => setShowDisclaimer(false)} className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/10 flex items-center justify-center"><X size={14} /></button>
             <h3 className="text-white font-bold mb-4 uppercase tracking-widest text-sm font-orbitron shrink-0">{t.disclaimer || 'Disclaimer'}</h3>
-            <div className="flex-1 overflow-y-auto pr-3 custom-scrollbar text-xs text-gray-400 space-y-4 mb-4">
-              <div className="bg-cyan-950/30 border border-cyan-900/50 p-3 rounded-xl text-cyan-100/80 text-[10px]">
-                <strong>FitManager's use and transfer to any other app of information received from Google APIs will adhere to Google API Services User Data Policy, including the Limited Use requirements.</strong>
+            {language === 'ru' ? (
+              <div className="flex-1 overflow-y-auto pr-3 custom-scrollbar text-xs text-gray-400 space-y-4 mb-4">
+                <div className="bg-cyan-950/30 border border-cyan-900/50 p-3 rounded-xl text-cyan-100/80 text-[10px]">
+                  <strong>Использование FitManager информации, полученной от Google API, соответствует Политике данных Google API, включая требования Limited Use.</strong>
+                </div>
+                <p><strong>1. Какую информацию мы собираем:</strong> Мы получаем ваш Telegram ID, имя пользователя и язык через Telegram WebApp SDK. Если вы подключаете Google Fit, мы собираем количество шагов. Мы не запрашиваем другие метрики здоровья.</p>
+                <p><strong>2. Как мы используем ваши данные:</strong> Данные о физической активности используются исключительно для расчета внутриигровых наград. Мы не продаем и не передаем данные третьим лицам. Telegram ID используется для аутентификации.</p>
+                <p><strong>3. Хранение и безопасность:</strong> Данные хранятся в защищенной базе PostgreSQL (Supabase) с шифрованием TLS/SSL. Токены авторизации защищены и используются только для синхронизации шагов.</p>
+                <p><strong>4. Передача данных:</strong> Мы не продаем и не передаем данные третьим лицам. Раскрытие возможно только по требованию закона.</p>
+                <p><strong>5. Удаление данных:</strong> Вы можете отозвать доступ Google Fit в любой момент или удалить аккаунт через кнопку "Уйти в отставку". Это немедленно удалит ваши токены и прекратит синхронизацию.</p>
+                <p><strong>6. Связаться с нами:</strong> По вопросам удаления данных или конфиденциальности обращайтесь в нашу поддержку в Telegram или на support@fitmanager.game.</p>
               </div>
-              <p><strong>1. Information We Collect:</strong> We collect your basic Telegram profile data (ID, username, first name) to create and authenticate your in-game account. If authorized, we request read-only access to your physical activity data via Google Fit, specifically your Step Count. We do not request or read any other health metrics.</p>
-              <p><strong>2. How We Use Your Information:</strong> We use your step count strictly to synchronize your real-world steps with the game and convert them into in-game currency (Stamina Points / FanCoins) to progress in the game. We do not use your fitness data for advertising, nor do we sell it to third parties.</p>
-              <p><strong>3. Data Storage & Security:</strong> Your data is stored securely in our encrypted PostgreSQL database (Supabase). We employ industry-standard security measures, including TLS/SSL encryption. Authentication tokens are securely stored and used only by our automated background jobs to sync steps.</p>
-              <p><strong>4. Data Sharing:</strong> We do not share, sell, or rent your personal information or fitness data to third parties. We may only disclose information if required by law.</p>
-              <p><strong>5. Revocation & Data Deletion:</strong> You can disconnect Google Fit from FitManager at any time. You can also revoke access directly from your Google Account settings. If you delete your account or revoke access, we immediately delete your OAuth tokens and cease all synchronization.</p>
-              <p><strong>6. Contact Us:</strong> For data deletion requests or privacy-related questions, contact us via our official Telegram community or at support@fitmanager.game.</p>
-            </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto pr-3 custom-scrollbar text-xs text-gray-400 space-y-4 mb-4">
+                <div className="bg-cyan-950/30 border border-cyan-900/50 p-3 rounded-xl text-cyan-100/80 text-[10px]">
+                  <strong>FitManager's use and transfer to any other app of information received from Google APIs will adhere to Google API Services User Data Policy, including the Limited Use requirements.</strong>
+                </div>
+                <p><strong>1. Information We Collect:</strong> We collect your basic Telegram profile data (ID, username, first name) to create and authenticate your in-game account. If authorized, we request read-only access to your physical activity data via Google Fit, specifically your Step Count. We do not request or read any other health metrics.</p>
+                <p><strong>2. How We Use Your Information:</strong> We use your step count strictly to synchronize your real-world steps with the game and convert them into in-game currency (Stamina Points / FanCoins) to progress in the game. We do not use your fitness data for advertising, nor do we sell it to third parties.</p>
+                <p><strong>3. Data Storage & Security:</strong> Your data is stored securely in our encrypted PostgreSQL database (Supabase). We employ industry-standard security measures, including TLS/SSL encryption. Authentication tokens are securely stored and used only by our automated background jobs to sync steps.</p>
+                <p><strong>4. Data Sharing:</strong> We do not share, sell, or rent your personal information or fitness data to third parties. We may only disclose information if required by law.</p>
+                <p><strong>5. Revocation & Data Deletion:</strong> You can disconnect Google Fit from FitManager at any time. You can also revoke access directly from your Google Account settings. If you delete your account or revoke access, we immediately delete your OAuth tokens and cease all synchronization.</p>
+                <p><strong>6. Contact Us:</strong> For data deletion requests or privacy-related questions, contact us via our official Telegram community or at support@fitmanager.game.</p>
+              </div>
+            )}
             <button onClick={() => setShowDisclaimer(false)} className="w-full py-3 bg-cyan-500 text-black font-bold uppercase tracking-widest text-xs rounded-xl shrink-0">{t.prof_close || 'Close'}</button>
           </div>
         </div>

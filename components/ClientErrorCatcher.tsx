@@ -45,8 +45,7 @@ export default function ClientErrorCatcher() {
       // Extract message
       const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
       
-      // Avoid spamming too many toasts for known harmless errors, but log others
-      if (!msg.includes('Warning: React') && !msg.includes('Hydration')) {
+      if (!msg.includes('Warning: React') && !msg.includes('Hydration') && !msg.includes('[TON_CONNECT_SDK] Failed to send analytics events')) {
         toast.error(`Console Error: ${msg.substring(0, 100)}`, { duration: 6000 });
       }
     };
