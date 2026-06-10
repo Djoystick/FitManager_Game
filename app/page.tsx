@@ -21,6 +21,7 @@ import { OffseasonCard } from '@/components/dashboard/OffseasonCard';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MatchReport, MatchReportModal } from '@/components/MatchReportModal';
 import { OpponentScoutModal } from '@/components/OpponentScoutModal';
+import { LandingPage } from '@/components/LandingPage';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HOME DASHBOARD — Cyberpunk Command Center
@@ -591,6 +592,10 @@ export default function DashboardPage() {
   }, [userId, standingsData.length]);
 
   // ── Guards ───────────────────────────────────────────────────────────────
+  if (!isAuthLoading && !userId) {
+    return <LandingPage />;
+  }
+
   if (isAuthLoading || isDataLoading || hasTeam === null) {
     return <CyberLoader fullScreen text={t.loading} />;
   }

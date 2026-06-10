@@ -41,12 +41,12 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "FitManager TMA",
-  description: "FitManager Telegram Mini App",
+  title: "FitManager Game",
+  description: "FitManager Game is a Telegram Mini App that syncs your Google Fit steps and converts them into in-game currency.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "FitManager",
+    title: "FitManager Game",
   },
 };
 
