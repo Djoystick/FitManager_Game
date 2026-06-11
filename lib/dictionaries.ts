@@ -190,6 +190,7 @@ export const dict = {
     chemistry: "Chemistry",
     match_journal_title: "Match Journal",
     no_matches_yet: "No matches played yet",
+    dashboard_new_matches: "NEW MATCHES",
     simulating_in: "Simulating in",
     upcoming_matches: "Upcoming Matches",
 

@@ -34,8 +34,8 @@ export async function GET(request: Request) {
     // We limit this to 3 per run so we don't hit the Vercel 10s Serverless timeout
     const { data: activeInstances } = await supabaseAdmin
       .from('league_instances')
-      .select('id, tier_level')
-      .eq('status', 'active')
+      .select('id, tier_level, status')
+      .in('status', ['active', 'finishing'])
       .limit(3);
 
     if (!activeInstances || activeInstances.length === 0) {
@@ -57,25 +57,25 @@ export async function GET(request: Request) {
       }
 
       // ── R2 FIX: CAS (Compare-And-Swap) lock via intermediate 'finishing' status ──
-      // We attempt to atomically transition status active → finishing.
-      // If another cron process already claimed this instance, the UPDATE will
-      // match 0 rows (status is no longer 'active') and we skip it.
-      // This prevents double-processing and double-payouts in concurrent runs.
-      const { data: claimed, error: lockError } = await supabaseAdmin
-        .from('league_instances')
-        .update({ status: 'finishing' })
-        .eq('id', instance.id)
-        .eq('status', 'active')  // CAS condition: only update if still 'active'
-        .select('id')
-        .maybeSingle();
+      // If the instance is already 'finishing', we assume it was interrupted and resume it.
+      let claimedId = instance.id;
+      if (instance.status === 'active') {
+        const { data: claimed, error: lockError } = await supabaseAdmin
+          .from('league_instances')
+          .update({ status: 'finishing' })
+          .eq('id', instance.id)
+          .eq('status', 'active')  // CAS condition: only update if still 'active'
+          .select('id')
+          .maybeSingle();
 
-      if (lockError) {
-        console.error(`[CRON EndOfSeason] Lock error for instance ${instance.id}:`, lockError);
-        continue;
-      }
-      if (!claimed) {
-        console.log(`[CRON EndOfSeason] Instance ${instance.id} already claimed by another process — skipping.`);
-        continue;
+        if (lockError) {
+          console.error(`[CRON EndOfSeason] Lock error for instance ${instance.id}:`, lockError);
+          continue;
+        }
+        if (!claimed) {
+          console.log(`[CRON EndOfSeason] Instance ${instance.id} already claimed by another process — skipping.`);
+          continue;
+        }
       }
 
       console.log(`[CRON EndOfSeason] Instance ${instance.id} claimed. Processing Tier ${instance.tier_level}...`);

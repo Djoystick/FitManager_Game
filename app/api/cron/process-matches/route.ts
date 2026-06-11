@@ -103,10 +103,11 @@ export async function GET(req: NextRequest) {
     }
 
     // ── Notify players via Telegram ───────────────────────────────────────────
+    const matchIds = matches.map(m => m.id);
     const { data: resolvedMatches } = await supabaseAdmin
       .from('league_matches')
       .select('id, home_team_id, away_team_id, home_score, away_score, home_team:teams!home_team_id(name), away_team:teams!away_team_id(name)')
-      .eq('round_number', targetRound);
+      .in('id', matchIds);
 
     if (resolvedMatches) {
       const teamIds = new Set<string>();
