@@ -16,16 +16,26 @@ FitManager is a Telegram Mini App (TMA) Web3 football manager on the TON blockch
    - **Phase 2 (Task 002):** Migrated 8 API routes from body/query userId to cookie-based auth (`tg_user_id`).
    - **Phase 3 (Task 003 — in progress):** Fixing cron/webhook security — adding CRON_SECRET auth to `bot/register`, removing localhost bypasses from `stamina-regen` and `age-players`, fixing conditional bypass in `economy-agent`, removing fallback JWT secret from `marketActions.ts`.
 
-## Next Steps: Achievements System (Ачивки)
-The next major feature to implement is the **Achievements System**.
-- We need to implement 25 achievements across different categories (e.g., matching the `ACHIEVEMENTS.md` or lore documents if they exist).
-- This involves adding an `achievements` table or JSON column in the database.
-- Building the UI for the Achievements tab.
-- Integrating event hooks in the backend (e.g., when a match finishes, when a player is trained, when the treasury is drained) to check and unlock achievements and reward the user.
+## 🚀 Updated Roadmap (Post-Audit Action Plan)
+
+Based on a deep security and architecture audit, we are pivoting to prioritize Web3 Production Readiness before launching the Social Hub.
+
+### 🔴 Phase 1: P0 Web3 Production Readiness (CRITICAL)
+- **CI/CD & Tests:** Setup Vitest/Jest and GitHub Actions. We MUST cover the Match Engine and Economy functions with tests.
+- **Real Economy Data:** Remove `Math.random()` stubs for `mintedToday`/`burnedToday`. Implement a real `treasury_transactions` table to track all TON/FC flow so the AI Economy Agent operates on real financial data.
+- **Migration Cleanup:** Fix messy/duplicate Supabase migration numbers (00004, 00038, etc.) to ensure a reproducible database schema.
+
+### 🟡 Phase 2: P1 Architecture & Code Quality
+- **Refactoring:** Decompose monolithic files (`page.tsx`, `dictionaries.ts`, modals).
+- **Type Safety:** Eliminate `any` and `@ts-ignore` in critical paths.
+- **Licensing:** Add an open-source LICENSE to the repository.
+
+### 🟢 Phase 3: Social Hub (Сводки)
+- Build the global event feed (transfers, high-stakes match results).
+- Implement league-specific feeds.
+- Build anti-collusion mechanics for transfers (e.g., price clamping, cooldowns between same managers).
 
 ## IDE Instructions
 If you are an AI assistant reading this after a fresh install or context wipe:
-- You are working in a Next.js App Router codebase.
-- We use Supabase (PostgreSQL) for DB and Auth, and TailwindCSS for styling.
-- All styles should match the cyberpunk/neon aesthetic (Midnight Command Center).
-- Proceed directly to designing the database schema for the Achievements and implementing the backend logic.
+- We are currently in **Phase 1 (P0 Web3 Production Readiness)**.
+- Focus strictly on setting up the test environment, cleaning migrations, and removing fake economy data before writing any new feature code.
