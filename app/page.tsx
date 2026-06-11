@@ -101,10 +101,12 @@ function StandingsModal({
   standings,
   userTeamId,
   onClose,
+  t,
 }: {
   standings: any[];
   userTeamId: string | null;
   onClose: () => void;
+  t: any;
 }) {
   const top3 = standings.slice(0, 3);
   const userEntry = standings.find((s: any) => s.team_id === userTeamId);
@@ -128,7 +130,7 @@ function StandingsModal({
         <div className="flex items-center gap-2">
           <Trophy size={16} className="text-violet-400" />
           <span className="text-[11px] font-black font-orbitron uppercase tracking-widest text-white">
-            League Standings
+            {t.standings_title || 'League Standings'}
           </span>
         </div>
         <button
@@ -144,7 +146,7 @@ function StandingsModal({
         {/* Top 3 */}
         {standings.length === 0 ? (
           <div className="text-center py-8 text-gray-600 text-sm font-bold uppercase tracking-wider">
-            No standings data yet
+            {t.standings_empty || 'No standings data yet'}
           </div>
         ) : (
           <>
@@ -164,18 +166,18 @@ function StandingsModal({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-[11px] font-black text-white uppercase truncate">
-                    {entry.team_name || 'Unknown'}
+                    {entry.team_name || (t.unknown_team || 'Unknown')}
                     {entry.team_id === userTeamId && (
-                      <span className="ml-1.5 text-[8px] text-cyan-400 font-bold bg-cyan-500/15 px-1.5 py-0.5 rounded-full">YOU</span>
+                      <span className="ml-1.5 text-[8px] text-cyan-400 font-bold bg-cyan-500/15 px-1.5 py-0.5 rounded-full">{t.standings_you || 'YOU'}</span>
                     )}
                   </div>
                   <div className="text-[9px] text-gray-600 font-mono mt-0.5">
-                    {entry.wins ?? 0}W · {entry.draws ?? 0}D · {entry.losses ?? 0}L
+                    {entry.wins ?? 0}{t.win_short || 'W'} · {entry.draws ?? 0}{t.draw_short || 'D'} · {entry.losses ?? 0}{t.loss_short || 'L'}
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <div className="text-base font-black text-white font-orbitron">{entry.points ?? 0}</div>
-                  <div className="text-[8px] text-gray-600 uppercase tracking-wider">pts</div>
+                  <div className="text-[8px] text-gray-600 uppercase tracking-wider">{t.standings_pts || 'pts'}</div>
                 </div>
               </motion.div>
             ))}
@@ -185,7 +187,7 @@ function StandingsModal({
               <>
                 <div className="flex items-center gap-2 my-1">
                   <div className="flex-1 h-px bg-white/5" />
-                  <span className="text-[8px] text-gray-700 uppercase tracking-wider font-bold">Your Position</span>
+                  <span className="text-[8px] text-gray-700 uppercase tracking-wider font-bold">{t.standings_your_position || 'Your Position'}</span>
                   <div className="flex-1 h-px bg-white/5" />
                 </div>
                 <motion.div
@@ -199,16 +201,16 @@ function StandingsModal({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-[11px] font-black text-cyan-300 uppercase truncate">
-                      {userEntry.team_name || 'Your Team'}
-                      <span className="ml-1.5 text-[8px] text-cyan-400 font-bold bg-cyan-500/15 px-1.5 py-0.5 rounded-full">YOU</span>
+                      {userEntry.team_name || (t.standings_your_team || 'Your Team')}
+                      <span className="ml-1.5 text-[8px] text-cyan-400 font-bold bg-cyan-500/15 px-1.5 py-0.5 rounded-full">{t.standings_you || 'YOU'}</span>
                     </div>
                     <div className="text-[9px] text-gray-600 font-mono mt-0.5">
-                      {userEntry.wins ?? 0}W · {userEntry.draws ?? 0}D · {userEntry.losses ?? 0}L
+                      {userEntry.wins ?? 0}{t.win_short || 'W'} · {userEntry.draws ?? 0}{t.draw_short || 'D'} · {userEntry.losses ?? 0}{t.loss_short || 'L'}
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <div className="text-base font-black text-cyan-300 font-orbitron">{userEntry.points ?? 0}</div>
-                    <div className="text-[8px] text-gray-600 uppercase tracking-wider">pts</div>
+                    <div className="text-[8px] text-gray-600 uppercase tracking-wider">{t.standings_pts || 'pts'}</div>
                   </div>
                 </motion.div>
               </>
@@ -223,7 +225,7 @@ function StandingsModal({
                          text-[10px] font-black uppercase tracking-widest text-violet-300
                          hover:bg-violet-500/20 transition-colors active:scale-95"
             >
-              Full Standings <ChevronRight size={11} />
+              {t.standings_full || 'Full Standings'} <ChevronRight size={11} />
             </Link>
           </>
         )}
@@ -239,7 +241,8 @@ function MatchCard({
   match,
   teamName,
   onClick,
-}: { match: any; teamName: string | null; onClick: () => void }) {
+  t,
+}: { match: any; teamName: string | null; onClick: () => void; t: any }) {
   const isHome     = match.home_team?.name === teamName || match.home_team_name === teamName;
   const myScore    = isHome ? match.home_score : match.away_score;
   const theirScore = isHome ? match.away_score : match.home_score;
@@ -269,8 +272,8 @@ function MatchCard({
         <div className={`text-xl font-black font-orbitron ${resultStyle.score} leading-none`}>
           {myScore}<span className="text-gray-700 text-sm mx-0.5">:</span>{theirScore}
         </div>
-        <div className="text-[9px] text-gray-400 font-bold truncate">vs {opponent || '—'}</div>
-        <div className="text-[8px] text-gray-600 uppercase tracking-wider font-orbitron">R{match.round_number}</div>
+        <div className="text-[9px] text-gray-400 font-bold truncate">{t.match_vs || 'vs'} {opponent || '—'}</div>
+        <div className="text-[8px] text-gray-600 uppercase tracking-wider font-orbitron">{t.match_round?.replace('{round}', String(match.round_number)) || `R${match.round_number}`}</div>
       </div>
     </div>
   );
@@ -304,7 +307,7 @@ function CalendarMatchRow({
       {/* Round badge */}
       <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center
                       bg-violet-500/10 border border-violet-500/25">
-        <span className="text-[9px] font-black text-violet-300 font-orbitron">R{match.round_number || '?'}</span>
+        <span className="text-[9px] font-black text-violet-300 font-orbitron">{t.match_round?.replace('{round}', String(match.round_number || '?')) || `R${match.round_number || '?'}`}</span>
       </div>
 
       {/* Opponent info */}
@@ -672,8 +675,8 @@ export default function DashboardPage() {
                  style={{ background: 'rgba(147,51,234,0.08)' }}>
               <span className="text-4xl text-violet-300 font-orbitron font-black">{lobbyTimeLeft}s</span>
             </div>
-            <h2 className="text-2xl font-black text-white uppercase tracking-widest font-orbitron mb-2">WAITING FOR TEAMS</h2>
-            <p className="text-violet-400 text-xl font-bold mb-8 font-orbitron tracking-widest">{lobbyTeamCount} / 14</p>
+            <h2 className="text-2xl font-black text-white uppercase tracking-widest font-orbitron mb-2">{t.waiting_for_teams || 'WAITING FOR TEAMS'}</h2>
+            <p className="text-violet-400 text-xl font-bold mb-8 font-orbitron tracking-widest">{t.lobby_teams_count?.replace('{count}', String(lobbyTeamCount)) || `${lobbyTeamCount} / 14`}</p>
             <div className="glass-card p-4 rounded-xl max-w-sm">
               <p className="text-gray-300 text-sm">{t.league_auto_start || 'The league will start automatically.'}</p>
             </div>
@@ -842,7 +845,7 @@ export default function DashboardPage() {
               </span>
               {nextOpponent && (
                 <span className="text-[9px] text-cyan-400/70 uppercase tracking-wider font-bold">
-                  vs {nextOpponent} · R{nextMatch.round_number}
+                  {t.match_vs || 'vs'} {nextOpponent} · {t.match_round?.replace('{round}', String(nextMatch.round_number)) || `R${nextMatch.round_number}`}
                 </span>
               )}
               {/* Restored Progress Bar inside the CTA */}
@@ -924,7 +927,7 @@ export default function DashboardPage() {
             <div className="text-lg font-black font-orbitron text-yellow-400 leading-none group-hover:text-yellow-300 transition-colors">
               {fcBalance.toLocaleString()}
             </div>
-            <div className="text-[7px] text-yellow-600 font-bold uppercase tracking-wider">FanCoin (FC)</div>
+            <div className="text-[7px] text-yellow-600 font-bold uppercase tracking-wider">{t.fancoin_label || 'FanCoin (FC)'}</div>
           </Link>
 
           {/* Yearly Profit */}
@@ -1046,6 +1049,7 @@ export default function DashboardPage() {
                   events:         m.events || [],
                   round_number:   m.round_number,
                 })}
+                t={t}
               />
             ))}
           </div>
@@ -1054,7 +1058,7 @@ export default function DashboardPage() {
             <div className="w-10 h-10 rounded-full glass-card flex items-center justify-center mb-2">
               <Zap className="w-5 h-5 text-gray-700" />
             </div>
-            <p className="text-gray-600 text-xs font-bold uppercase tracking-wider">No matches yet</p>
+            <p className="text-gray-600 text-xs font-bold uppercase tracking-wider">{t.no_matches_yet || 'No matches yet'}</p>
             <p className="text-gray-700 text-[10px] mt-1">{t.home_wait_next || 'Wait for the next league round'}</p>
           </div>
         )}
@@ -1088,6 +1092,7 @@ export default function DashboardPage() {
           standings={standingsLoading ? [] : standingsData}
           userTeamId={teamId}
           onClose={() => setShowStandingsModal(false)}
+          t={t}
         />
       )}
 
