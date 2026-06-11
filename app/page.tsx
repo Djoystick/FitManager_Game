@@ -642,14 +642,8 @@ export default function DashboardPage() {
   };
   const profit = formatProfit(yearlyProfit);
 
-  // Show Transfer Window countdown ONLY when in filling/offseason state
-  // Show Next Match countdown ONLY when transfer window has closed (active season)
-  const isTransferWindowActive =
-    instanceStatus === 'filling' &&
-    instanceCreatedAt &&
-    (new Date(instanceCreatedAt).getTime() + 24 * 60 * 60 * 1000) > Date.now();
-
-  // ─────────────────────────────────────────────────────────────────────────
+  // Show Offseason Card when league is over or waiting for a new one to start
+  const isOffseason = instanceStatus === 'filling' || instanceStatus === 'completed';
   return (
     <div
       className="h-full flex flex-col overflow-y-auto custom-scrollbar text-white relative"
@@ -799,8 +793,8 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.05 }}
         >
-          {isTransferWindowActive ? (
-            /* Transfer Window is open — show offseason card only */
+          {isOffseason ? (
+            /* Offseason or Transfer Window is open — show offseason card only */
             <OffseasonCard
               lastSeasonResult={lastSeasonResult}
               instanceCreatedAt={instanceCreatedAt}
