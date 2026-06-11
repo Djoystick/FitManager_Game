@@ -1,4 +1,4 @@
-﻿# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
 /node_modules
@@ -55,3 +55,11 @@ logo_original.png
 # Папка для всех неиспользуемых в билде файлов, защищенная от коммитов
 _dev_assets/
 publish_tg.ps1
+
+# AI and Workflow Tools
+.ai-tools/
+.mimo_workflow/
+.mimocode/
+CLAUDE_PROMPT_*.md
+security_audit_report.md
+implementation_plan.md
