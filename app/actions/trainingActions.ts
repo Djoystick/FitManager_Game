@@ -272,22 +272,20 @@ export async function batchTrainPlayerAction(
       .single();
     if (userErr || !user) return { success: false, error: 'User not found.' };
 
-    // 4. Calculate progressive costs
-    // ── Прогрессивная стоимость прокачки (Production-кривая) ────────────────
-    // Новые тиры специально откалиброваны под 2 матча/день расписание:
-    //   stat ≤ 60 →    5 монет  (быстрый старт, хукает новичка)
-    //   stat ≤ 70 →   30 монет  (1–2 дня для среднего ходока)
-    //   stat ≤ 78 →  120 монет  (≈1 неделя)
-    //   stat ≤ 85 →  400 монет  (≈3 недели)
-    //   stat ≤ 91 → 1200 монет  (≈7 недель, элита)
-    //   stat > 91 → 4000 монет  (3–6+ месяцев, легенда)
-    const getCost = (val: number): number => {
-      if (val <= 60) return 5;
-      if (val <= 70) return 30;
-      if (val <= 78) return 120;
-      if (val <= 85) return 400;
-      if (val <= 91) return 1200;
-      return 4000;
+    // 4. Calculate progressive costs — must match RPC scale exactly
+    // Increment  1- 5:  5 FC
+    // Increment  6-10: 10 FC
+    // Increment 11-15: 25 FC
+    // Increment 16-20: 60 FC
+    // Increment 21-25: 120 FC
+    // Increment 26+:  300 FC
+    const getCost = (incrementNumber: number): number => {
+      if (incrementNumber <= 5)  return 5;
+      if (incrementNumber <= 10) return 10;
+      if (incrementNumber <= 15) return 25;
+      if (incrementNumber <= 20) return 60;
+      if (incrementNumber <= 25) return 120;
+      return 300;
     };
 
     const currencyMap: Record<StatKey, SpecCurrencyType> = {
@@ -315,7 +313,7 @@ export async function batchTrainPlayerAction(
 
       for (let i = 0; i < inc; i++) {
         if (currentVal >= 99) break; // Cannot exceed 99
-        totalCosts[curType] += getCost(currentVal);
+        totalCosts[curType] += getCost(i + 1);
         currentVal++;
       }
       newStats[key] = currentVal;

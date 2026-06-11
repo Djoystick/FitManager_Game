@@ -56,17 +56,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });
     }
 
-    // 1. Get user data for FanCoins balance and team_id
-    const [userRes, teamRes] = await Promise.all([
-      supabase.from('users').select('balance_fancoins').eq('id', userId).single(),
-      supabase.from('teams').select('id').eq('user_id', userId).single()
-    ]);
+    // 1. Get team_id
+    const teamRes = await supabase
+      .from('teams')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
 
-    if (userRes.error || !userRes.data || teamRes.error || !teamRes.data) {
-      return NextResponse.json({ error: 'User or Team not found' }, { status: 404 });
+    if (teamRes.error || !teamRes.data) {
+      return NextResponse.json({ error: 'Team not found' }, { status: 404 });
     }
 
-    const currentFancoins = userRes.data.balance_fancoins;
     const teamId = teamRes.data.id;
 
     // 2. Get current infrastructure level
@@ -83,29 +83,33 @@ export async function POST(req: Request) {
     const currentLevel = infra[`${buildingType}_level` as keyof typeof infra] as number;
     const upgradeCost = currentLevel * 1000;
 
-    // 3. Check balance
-    if (currentFancoins < upgradeCost) {
-      return NextResponse.json({ error: 'Insufficient FanCoins' }, { status: 400 });
+    // 3. Atomic deduction via RPC (C4 fix — prevents race condition)
+    const { data: newBalance, error: deductError } = await supabase.rpc('deduct_fancoins', { 
+      user_id: userId, 
+      amount: upgradeCost 
+    });
+
+    if (deductError) {
+      return NextResponse.json({ error: 'Insufficient FanCoins or transaction failed' }, { status: 400 });
     }
 
-    // 4. Perform upgrade (deduct coins and increment level)
-    const newBalance = currentFancoins - upgradeCost;
+    // 4. Increment level
     const newLevel = currentLevel + 1;
+    const { data: updatedInfra, error: upgradeErr } = await supabase
+      .from('infrastructure')
+      .update({ [`${buildingType}_level`]: newLevel })
+      .eq('team_id', teamId)
+      .select()
+      .single();
 
-    // Use a Promise.all to pseudo-transaction this for MVP
-    const [updateUserRes, updateInfraRes] = await Promise.all([
-      supabase.from('users').update({ balance_fancoins: newBalance }).eq('id', userId),
-      supabase.from('infrastructure').update({ [`${buildingType}_level`]: newLevel }).eq('team_id', teamId).select().single()
-    ]);
-
-    if (updateUserRes.error || updateInfraRes.error) {
-      console.error("Upgrade error:", updateUserRes.error, updateInfraRes.error);
-      return NextResponse.json({ error: 'Failed to process upgrade transaction' }, { status: 500 });
+    if (upgradeErr) {
+      console.error("Infrastructure upgrade error:", upgradeErr);
+      return NextResponse.json({ error: 'Failed to upgrade infrastructure' }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      infrastructure: updateInfraRes.data,
+      infrastructure: updatedInfra,
       new_balance: newBalance
     });
 

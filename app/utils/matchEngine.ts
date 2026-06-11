@@ -659,7 +659,7 @@ export function simulateMatch(
     0) / (team.length || 1);
 
   const ovrDiff = Math.abs(avgOVR(homeTeam) - avgOVR(awayTeam));
-  const maxGoals = ovrDiff >= 20 ? 99
+  const maxGoals = ovrDiff >= 20 ? 8
                  : ovrDiff >= 10 ? 6
                  : ovrDiff >= 5  ? 5
                  : 4;

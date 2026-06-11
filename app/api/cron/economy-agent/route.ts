@@ -115,7 +115,15 @@ export async function GET(request: Request) {
     const text = result.response.text();
     const aiDecision = JSON.parse(text);
 
-    // 5. Update Economy State
+    // 5. Clamp AI multipliers to safe ranges (C17 fix)
+    const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val));
+    const m = aiDecision.multipliers;
+    m.match_reward  = clamp(m.match_reward,  0.7, 1.3);
+    m.medical_cost  = clamp(m.medical_cost,  0.5, 2.0);
+    m.stadium_tax   = clamp(m.stadium_tax,   0.5, 2.0);
+    m.scouting_cost = clamp(m.scouting_cost,  0.5, 2.0);
+
+    // 6. Update Economy State
     await supabase.from('economy_state').insert({
       match_reward_multiplier: aiDecision.multipliers.match_reward,
       medical_cost_multiplier: aiDecision.multipliers.medical_cost,
