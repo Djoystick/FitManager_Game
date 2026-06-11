@@ -89,6 +89,8 @@ interface AttackContext {
   maxGoals: number;
   yellowCards: Map<string, number>;
   hasRedCardBonus: boolean;
+  momentumAtkBonus: number;
+  momentumDefBonus: number;
 }
 
 // =============================================================================
@@ -216,32 +218,40 @@ function pick<T>(arr: T[], fallback?: T[]): T {
 }
 
 // =============================================================================
-// Stamina drain (P2 — pressing factor + Engine trait)
+// Stamina drain — Phase-based intensity + Engine/Tireless traits
 // =============================================================================
+
+/** Phase multiplier for stamina drain based on match minute. */
+function getPhaseDrainMultiplier(minute: number): number {
+  if (minute <= 30)  return 1.20;  // Phase 1: high intensity start
+  if (minute <= 60)  return 1.00;  // Phase 2: normal pace
+  if (minute <= 75)  return 0.85;  // Phase 3: energy conservation
+  return 1.10;                      // Phase 4: final sprint
+}
 
 function drainStamina(
   players: MatchPlayer[],
   teamKey: 'home' | 'away',
-  possession: number,             // this team's possession share (0.0–1.0)
-  staminaDrain: { home: Record<string, number>; away: Record<string, number> }
+  possession: number,
+  staminaDrain: { home: Record<string, number>; away: Record<string, number> },
+  minute: number = 1
 ) {
-  // Low possession → high pressing → more drain
   const pressingFactor = possession < 0.40 ? 1.25
                        : possession < 0.50 ? 1.10
                        : 1.00;
+  const phaseMult = getPhaseDrainMultiplier(minute);
 
   for (const p of players) {
     let base = Math.floor(Math.random() * 7) + 16; // 16–22
 
-    // Positional modifier — midfielders run most, keepers rest
-    if (p.position === 'GK')   base = Math.floor(base * 0.50);
+    if (p.position === 'GK')    base = Math.floor(base * 0.50);
     else if (isMID(p.position)) base = Math.floor(base * 1.15);
 
-    const pressedDrain = Math.floor(base * pressingFactor);
-    // Engine trait reduces drain by 30%
-    const finalDrain = p.traits.includes('Engine')
-      ? Math.floor(pressedDrain * 0.70)
-      : pressedDrain;
+    let finalDrain = Math.floor(base * pressingFactor * phaseMult);
+    // Engine trait: -30% drain
+    if (p.traits.includes('Engine'))  finalDrain = Math.floor(finalDrain * 0.70);
+    // Tireless trait: -40% drain (stacks multiplicatively with Engine)
+    if (p.traits.includes('Tireless')) finalDrain = Math.floor(finalDrain * 0.60);
 
     staminaDrain[teamKey][p.id] = Math.max(0, p.stamina - finalDrain);
   }
@@ -320,9 +330,11 @@ function resolveCorner(ctx: AttackContext) {
   const defGet = makeStatGetter(defLinks, liveStamina);
 
   const headerEff = atkGet(header, safeNum(header.stats.physical) * 1.2 + safeNum(header.stats.shooting) * 0.8);
+  // Aerial Threat: +25% to header effectiveness on corners
+  const headerFinal = header.traits.includes('Aerial Threat') ? headerEff * 1.25 : headerEff;
   const saveEff   = defGet(gk,     safeNum(gk.stats.defending) * 1.0 + safeNum(gk.stats.physical) * 0.5);
 
-  if (duel(headerEff, saveEff, 0.0) && score[attackingTeamKey] < maxGoals) {
+  if (duel(headerFinal, saveEff, 0.0) && score[attackingTeamKey] < maxGoals) {
     score[attackingTeamKey]++;
     events.push({
       type: 'goal', minute,
@@ -365,7 +377,9 @@ function resolvePenalty(
     details: `⚠️ ПЕНАЛЬТИ! ${atkFwd.name} выходит к точке против ${gk.name}!`,
   });
 
-  if (duel(shotEff, saveEff, 0.15) && score[attackingTeamKey] < maxGoals) {
+  // Dive King: +5% penalty conversion (higher attackerBias)
+  const penBias = atkFwd.traits.includes('Dive King') ? 0.20 : 0.15;
+  if (duel(shotEff, saveEff, penBias) && score[attackingTeamKey] < maxGoals) {
     score[attackingTeamKey]++;
     events.push({
       type: 'goal', minute: minute + 1,
@@ -416,8 +430,11 @@ function resolveAttack(ctx: AttackContext) {
   const defGet = makeStatGetter(defLinks, liveStamina);
 
   // ── PHASE 1: Build-up ──────────────────────────────────────────────────────
-  const atkBuild = atkGet(atkMid, safeNum(atkMid.stats.passing) + safeNum(atkMid.stats.dribbling));
-  const defBuild = defGet(defMid, safeNum(defMid.stats.defending) + safeNum(defMid.stats.physical));
+  let atkBuild = atkGet(atkMid, safeNum(atkMid.stats.passing) + safeNum(atkMid.stats.dribbling));
+  let defBuild = defGet(defMid, safeNum(defMid.stats.defending) + safeNum(defMid.stats.physical));
+  // Momentum: apply attack/defense bonuses from score pressure
+  atkBuild *= ctx.momentumAtkBonus;
+  defBuild *= ctx.momentumDefBonus;
 
   if (!duel(atkBuild, defBuild)) {
     events.push({
@@ -439,23 +456,32 @@ function resolveAttack(ctx: AttackContext) {
   // ── PHASE 2: Penetration ───────────────────────────────────────────────────
   let atkPaceVal = safeNum(atkFwd.stats.pace) + safeNum(atkFwd.stats.dribbling);
   if (atkFwd.traits.includes('Speedster')) atkPaceVal *= 1.15;
+  // Comeback Kid: +15% to all attack stats when team is losing
+  const atkTeamTrailing = score[defTeamKey] > score[attackingTeamKey];
+  if (atkFwd.traits.includes('Comeback Kid') && atkTeamTrailing) atkPaceVal *= 1.15;
 
   let defDefVal = safeNum(defDef.stats.defending) + safeNum(defDef.stats.physical);
   if (defDef.traits.includes('Anchor')) defDefVal *= 1.15;
-  // Yellow card aggression penalty: player afraid of second yellow → less aggressive tackles
+  // Enforcer: +10% to defend duels
+  if (defDef.traits.includes('Enforcer')) defDefVal *= 1.10;
+  // Comeback Kid: +15% to all defense stats when team is losing
+  const defTeamTrailing = score[attackingTeamKey] > score[defTeamKey];
+  if (defDef.traits.includes('Comeback Kid') && defTeamTrailing) defDefVal *= 1.15;
+  // Yellow card aggression penalty
   const defHasYellow = (ctx.yellowCards.get(defDef.id) ?? 0) > 0;
   if (defHasYellow) defDefVal *= 0.85;
-  // Red card numerical advantage: defending team down to 10 → weaker defense + stronger attack
+  // Red card numerical advantage
   if (ctx.hasRedCardBonus) {
     atkPaceVal *= 1.08;
     defDefVal *= 0.92;
   }
 
-  const atkPenet = atkGet(atkFwd, atkPaceVal);
-  const defPenet = defGet(defDef, defDefVal);
+  const atkPenet = atkGet(atkFwd, atkPaceVal) * ctx.momentumAtkBonus;
+  const defPenet = defGet(defDef, defDefVal) * ctx.momentumDefBonus;
 
-  // 5% foul chance — fires discipline event, possibly penalty
-  if (Math.random() < 0.05) {
+  // 5% foul chance — Enforcer trait adds +5% to foul probability
+  const foulChance = defDef.traits.includes('Enforcer') ? 0.10 : 0.05;
+  if (Math.random() < foulChance) {
     const isInBox = Math.random() < 0.35; // 35% of fouls are in the penalty area
 
     if (isInBox) {
@@ -517,14 +543,18 @@ function resolveAttack(ctx: AttackContext) {
   // ── PHASE 3: Finishing ─────────────────────────────────────────────────────
   let shotVal = safeNum(atkFwd.stats.shooting) * 1.5 + safeNum(atkFwd.stats.pace) * 0.5;
   if (atkFwd.traits.includes('Poacher'))   shotVal *= 1.20;
-  if (atkMid.traits.includes('Playmaker')) shotVal *= 1.10; // playmaker pass bonus
-  if (hasWingAssist)                       shotVal *= 1.08; // winger cross bonus
+  if (atkMid.traits.includes('Playmaker')) shotVal *= 1.10;
+  if (hasWingAssist)                       shotVal *= 1.08;
+  // Clutch: +20% finishing in last 15 minutes (75+ min)
+  if (atkFwd.traits.includes('Clutch') && minute >= 75) shotVal *= 1.20;
+  // Comeback Kid: +15% finishing when losing
+  if (atkFwd.traits.includes('Comeback Kid') && atkTeamTrailing) shotVal *= 1.15;
 
   let saveVal = safeNum(gk.stats.defending) * 1.5 + safeNum(gk.stats.physical) * 0.5;
   if (gk.traits.includes('Wall')) saveVal *= 1.20;
 
-  const atkFinish = atkGet(atkFwd, shotVal);
-  const defSave   = defGet(gk,     saveVal);
+  const atkFinish = atkGet(atkFwd, shotVal) * ctx.momentumAtkBonus;
+  const defSave   = defGet(gk,     saveVal) * ctx.momentumDefBonus;
 
   // [P0 FIX] Check score cap BEFORE pushing goal event
   if (duel(atkFinish, defSave)) {
@@ -684,8 +714,11 @@ export function simulateMatch(
     liveStaminaMap[p.id] = Math.round((p.stamina + end) / 2);
   }
 
+  // ── Home Advantage — +5% to all stats for home team ───────────────────────
+  const homeAdvBonus = 1.05;
+
   // ── True midfield score (with live stamina + links) ────────────────────────
-  const homeMid = midfieldScore(homeTeam, homeLinks, liveStaminaMap);
+  const homeMid = midfieldScore(homeTeam, homeLinks, liveStaminaMap) * homeAdvBonus;
   const awayMid = midfieldScore(awayTeam, awayLinks, liveStaminaMap);
   const totalMid = homeMid + awayMid || 1;
 
@@ -717,9 +750,13 @@ export function simulateMatch(
   homePoss = Math.max(0.15, Math.min(0.85, homePoss + getTacticPossMod(homeTactic)));
   awayPoss = 1 - homePoss;
 
-  // Attack count: base 5 + up to 8 bonus based on possession ± 2 jitter + tactic modifier
-  const homeAttacks = Math.min(12, Math.max(3, Math.round(5 + homePoss * 8 + Math.random() * 4 - 2 + getTacticAttackMod(homeTactic)) || 3));
-  const awayAttacks = Math.min(12, Math.max(3, Math.round(5 + awayPoss * 8 + Math.random() * 4 - 2 + getTacticAttackMod(awayTactic)) || 3));
+  // Attack count: base 5 + possession bonus ± jitter + tactic modifier + home advantage
+  let homeAttackBase = 5 + homePoss * 8 + Math.random() * 4 - 2 + getTacticAttackMod(homeTactic);
+  let awayAttackBase = 5 + awayPoss * 8 + Math.random() * 4 - 2 + getTacticAttackMod(awayTactic);
+  // Home advantage: +1 attack
+  homeAttackBase += 1;
+  const homeAttacks = Math.min(12, Math.max(3, Math.round(homeAttackBase) || 3));
+  const awayAttacks = Math.min(12, Math.max(3, Math.round(awayAttackBase) || 3));
 
   // ── OVR disparity score cap ────────────────────────────────────────────────
   const avgOVR = (team: MatchPlayer[]) =>
@@ -824,6 +861,18 @@ export function simulateMatch(
     const defRedCount = isHomeAtk ? awayRedCards : homeRedCards;
     const prevEventCount = events.length;
 
+    // ── Momentum: score pressure bonuses ─────────────────────────────────────
+    const homeGoalDiff = score.home - score.away;
+    const atkGoalDiff = isHomeAtk ? homeGoalDiff : -homeGoalDiff;
+    // Desperation Push: trailing by ≥2 goals → +10% attack bonus
+    const momentumAtkBonus = atkGoalDiff <= -2 ? 1.10 : 1.0;
+    // Comfort Zone: leading by ≥3 goals → -5% attack penalty
+    const momentumAtkPenalty = atkGoalDiff >= 3 ? 0.95 : 1.0;
+    const finalAtkBonus = momentumAtkBonus * momentumAtkPenalty;
+    // Defending team gets inverse: if THEY are desperate, they defend harder
+    const defGoalDiff = -atkGoalDiff;
+    const momentumDefBonus = defGoalDiff <= -2 ? 1.05 : 1.0;
+
     const ctx: AttackContext = {
       minute: slot.minute,
       attackingTeam: isHomeAtk ? currentHomePitch : currentAwayPitch,
@@ -837,6 +886,8 @@ export function simulateMatch(
       maxGoals,
       yellowCards,
       hasRedCardBonus: defRedCount > 0,
+      momentumAtkBonus: finalAtkBonus,
+      momentumDefBonus,
     };
     resolveAttack(ctx);
 
