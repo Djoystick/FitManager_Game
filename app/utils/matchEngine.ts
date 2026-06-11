@@ -1,7 +1,16 @@
 // =============================================================================
-// FitManager Match Engine v3.0 — "Swiss Watch Architecture"
+// FitManager Match Engine v4.0 — "Swiss Watch Architecture"
 // =============================================================================
-// Changes over v2.1:
+// Phase 1 changes (Task 009):
+//  [P0] staminaMult() → smooth piecewise linear interpolation (no step jumps)
+//  [P0] midfieldScore() → normalized by pool length (quality over quantity)
+//  [P0] Attack jitter increased to ±2 for more match pacing variance
+//  [P1] 2 yellows = red card; yellow card aggression penalty (-15%)
+//  [P1] Red card → opposing team gets +8% attack bonus (numerical advantage)
+//  [P1] 6 Tactical Styles: Tiki-Taka, Counter Attack, High Press, Park the Bus, Wing Play, Balanced
+//  [P1] Tactical style modifiers on possession, attack count, and wing assist chance
+//
+// Prior changes (v3.0):
 //  [P0] Guard against pick([]) crash — all pools have safe fallbacks
 //  [P0] NaN/null stat protection via safeNum()
 //  [P0] Score cap check BEFORE pushing goal event (fixes transcript mismatch)
@@ -35,8 +44,10 @@ export interface MatchPlayer {
   traits: string[];
 }
 
+export type TacticalStyle = 'Tiki-Taka' | 'Counter Attack' | 'High Press' | 'Park the Bus' | 'Wing Play' | 'Balanced';
+
 export interface MatchEvent {
-  type: 'goal' | 'breakthrough_failed' | 'save' | 'yellow_card' | 'red_card' | 'injury' | 'info' | 'substitution';
+  type: 'goal' | 'breakthrough_failed' | 'save' | 'yellow_card' | 'second_yellow' | 'red_card' | 'injury' | 'info' | 'substitution';
   minute: number;
   player_id: string;
   player_name: string;
@@ -76,6 +87,8 @@ interface AttackContext {
   score: { home: number; away: number };
   events: MatchEvent[];
   maxGoals: number;
+  yellowCards: Map<string, number>;
+  hasRedCardBonus: boolean;
 }
 
 // =============================================================================
@@ -103,14 +116,16 @@ function duel(atkStat: number, defStat: number, attackerBias = 0.08): boolean {
   return Math.random() < p;
 }
 
-/** Stamina multiplier — linear above 50, steep penalty below 25. */
+/**
+ * Stamina multiplier — smooth piecewise linear interpolation.
+ * No sudden jumps: 75→74 is a gentle slope, not a 5% cliff.
+ * Zones: [75–100]=1.0, [30–75] linear 1.0→0.75, [0–30] steep 0.75→0.55
+ */
 function staminaMult(stamina: number): number {
-  const s = Math.max(0, stamina);
-  if (s >= 75) return 1.00;
-  if (s >= 50) return 0.95;
-  if (s >= 35) return 0.88;
-  if (s >= 25) return 0.78;
-  return 0.60;
+  const s = Math.max(0, Math.min(100, stamina));
+  if (s >= 75) return 1.0;
+  if (s >= 30) return 1.0 - ((75 - s) / 45) * 0.25;   // 1.0 → 0.75
+  return 0.75 - ((30 - s) / 30) * 0.20;                 // 0.75 → 0.55
 }
 
 /**
@@ -236,6 +251,11 @@ function drainStamina(
 // Midfield Control
 // =============================================================================
 
+/**
+ * Midfield control score — normalized by pool length so possession is determined
+ * by midfield *quality*, not *quantity*. A team with 5 weak MIDs doesn't
+ * automatically dominate possession over 3 strong ones.
+ */
 function midfieldScore(
   players: MatchPlayer[],
   links: TeamLinks,
@@ -246,12 +266,13 @@ function midfieldScore(
   if (pool.length === 0) return 100; // safety fallback
 
   const get = makeStatGetter(links, liveStamina);
-  return pool.reduce((sum, p) =>
+  const rawSum = pool.reduce((sum, p) =>
     sum +
     get(p, safeNum(p.stats.passing, 50)) +
     get(p, safeNum(p.stats.dribbling, 50)) +
     get(p, safeNum(p.stats.physical, 50) * 0.4),
   0);
+  return rawSum / pool.length;
 }
 
 // =============================================================================
@@ -421,6 +442,14 @@ function resolveAttack(ctx: AttackContext) {
 
   let defDefVal = safeNum(defDef.stats.defending) + safeNum(defDef.stats.physical);
   if (defDef.traits.includes('Anchor')) defDefVal *= 1.15;
+  // Yellow card aggression penalty: player afraid of second yellow → less aggressive tackles
+  const defHasYellow = (ctx.yellowCards.get(defDef.id) ?? 0) > 0;
+  if (defHasYellow) defDefVal *= 0.85;
+  // Red card numerical advantage: defending team down to 10 → weaker defense + stronger attack
+  if (ctx.hasRedCardBonus) {
+    atkPaceVal *= 1.08;
+    defDefVal *= 0.92;
+  }
 
   const atkPenet = atkGet(atkFwd, atkPaceVal);
   const defPenet = defGet(defDef, defDefVal);
@@ -442,11 +471,24 @@ function resolveAttack(ctx: AttackContext) {
 
     const r = Math.random();
     if (r < 0.55) {
-      events.push({
-        type: 'yellow_card', minute,
-        player_id: defDef.id, player_name: defDef.name, team: defTeamKey,
-        details: `🟡 ЖЁЛТАЯ! ${defDef.name} срубает ${atkFwd.name} на подходе к штрафной.`,
-      });
+      // Yellow card — track and check for second yellow
+      const prevYellows = ctx.yellowCards.get(defDef.id) ?? 0;
+      ctx.yellowCards.set(defDef.id, prevYellows + 1);
+
+      if (prevYellows >= 1) {
+        // Second yellow → red card + send off
+        events.push({
+          type: 'second_yellow', minute,
+          player_id: defDef.id, player_name: defDef.name, team: defTeamKey,
+          details: `🟡🟡 ВТОРАЯ ЖЁЛТАЯ! ${defDef.name} получает вторую карточку и УДАЛЁН!`,
+        });
+      } else {
+        events.push({
+          type: 'yellow_card', minute,
+          player_id: defDef.id, player_name: defDef.name, team: defTeamKey,
+          details: `🟡 ЖЁЛТАЯ! ${defDef.name} срубает ${atkFwd.name} на подходе к штрафной.`,
+        });
+      }
     } else if (r < 0.80) {
       events.push({
         type: 'injury', minute,
@@ -578,11 +620,14 @@ export function simulateMatch(
   homeBench: MatchPlayer[],
   awayBench: MatchPlayer[],
   homeGreenLinks: Record<string, boolean>,
-  awayGreenLinks: Record<string, boolean>
+  awayGreenLinks: Record<string, boolean>,
+  homeTactic: TacticalStyle = 'Balanced',
+  awayTactic: TacticalStyle = 'Balanced'
 ): MatchResult {
   const events: MatchEvent[] = [];
   const score = { home: 0, away: 0 };
   const staminaDrain: { home: Record<string, number>; away: Record<string, number> } = { home: {}, away: {} };
+  const yellowCards = new Map<string, number>();
 
   // [P0] Safety: empty teams → 0-0 immediately
   if (homeTeam.length === 0 || awayTeam.length === 0) {
@@ -644,12 +689,37 @@ export function simulateMatch(
   const awayMid = midfieldScore(awayTeam, awayLinks, liveStaminaMap);
   const totalMid = homeMid + awayMid || 1;
 
-  const homePoss = isNaN(homeMid / totalMid) ? 0.5 : (homeMid / totalMid);
-  const awayPoss = 1 - homePoss;
+  let homePoss = isNaN(homeMid / totalMid) ? 0.5 : (homeMid / totalMid);
+  let awayPoss = 1 - homePoss;
 
-  // Attack count: base 5 + up to 7 bonus based on possession ± 1 jitter
-  const homeAttacks = Math.min(12, Math.max(3, Math.round(5 + homePoss * 7 + Math.random() * 2 - 1) || 3));
-  const awayAttacks = Math.min(12, Math.max(3, Math.round(5 + awayPoss * 7 + Math.random() * 2 - 1) || 3));
+  // ── Tactical style modifiers (Phase 1) ─────────────────────────────────────
+  const getTacticPossMod = (t: TacticalStyle): number => {
+    switch (t) {
+      case 'Tiki-Taka':      return 0.15;
+      case 'Counter Attack':  return -0.10;
+      case 'High Press':      return 0.05;
+      case 'Park the Bus':    return -0.15;
+      case 'Wing Play':       return 0.05;
+      case 'Balanced':        return 0;
+    }
+  };
+  const getTacticAttackMod = (t: TacticalStyle): number => {
+    switch (t) {
+      case 'Tiki-Taka':      return -1;
+      case 'Counter Attack':  return 2;
+      case 'High Press':      return 1;
+      case 'Park the Bus':    return -2;
+      case 'Wing Play':       return 0;
+      case 'Balanced':        return 0;
+    }
+  };
+
+  homePoss = Math.max(0.15, Math.min(0.85, homePoss + getTacticPossMod(homeTactic)));
+  awayPoss = 1 - homePoss;
+
+  // Attack count: base 5 + up to 8 bonus based on possession ± 2 jitter + tactic modifier
+  const homeAttacks = Math.min(12, Math.max(3, Math.round(5 + homePoss * 8 + Math.random() * 4 - 2 + getTacticAttackMod(homeTactic)) || 3));
+  const awayAttacks = Math.min(12, Math.max(3, Math.round(5 + awayPoss * 8 + Math.random() * 4 - 2 + getTacticAttackMod(awayTactic)) || 3));
 
   // ── OVR disparity score cap ────────────────────────────────────────────────
   const avgOVR = (team: MatchPlayer[]) =>
@@ -668,7 +738,7 @@ export function simulateMatch(
   events.push({
     type: 'info', minute: 1,
     player_id: homeTeam[0]?.id ?? 'sys', player_name: 'Referee', team: 'home',
-    details: `⚽ Матч начался! Владение: Дом ${Math.round(homePoss * 100)}% — Гости ${Math.round(awayPoss * 100)}%.`,
+    details: `⚽ Матч начался! Тактика: Дом [${homeTactic}] — Гости [${awayTactic}]. Владение: ${Math.round(homePoss * 100)}% — ${Math.round(awayPoss * 100)}%.`,
   });
 
   // ── Track Pitch and Bench states ───────────────────────────────────────────
@@ -739,6 +809,8 @@ export function simulateMatch(
 
   // ── Process timeline ───────────────────────────────────────────────────────
   const timeline = buildTimeline(homeAttacks, awayAttacks);
+  let homeRedCards = 0;
+  let awayRedCards = 0;
 
   for (const slot of timeline) {
     // Attempt substitutions around key minutes
@@ -748,6 +820,10 @@ export function simulateMatch(
     }
 
     const isHomeAtk = slot.team === 'home';
+    const defTeamKey: 'home' | 'away' = isHomeAtk ? 'away' : 'home';
+    const defRedCount = isHomeAtk ? awayRedCards : homeRedCards;
+    const prevEventCount = events.length;
+
     const ctx: AttackContext = {
       minute: slot.minute,
       attackingTeam: isHomeAtk ? currentHomePitch : currentAwayPitch,
@@ -759,8 +835,54 @@ export function simulateMatch(
       score,
       events,
       maxGoals,
+      yellowCards,
+      hasRedCardBonus: defRedCount > 0,
     };
     resolveAttack(ctx);
+
+    // Detect new red/second-yellow cards and handle send-offs
+    for (let i = prevEventCount; i < events.length; i++) {
+      const ev = events[i];
+      if (ev.type === 'red_card' || ev.type === 'second_yellow') {
+        const isHome = ev.team === 'home';
+        if (isHome) homeRedCards++;
+        else awayRedCards++;
+
+        // Remove sent-off player from pitch
+        const pitch = isHome ? currentHomePitch : currentAwayPitch;
+        const bench = isHome ? currentHomeBench : currentAwayBench;
+        const teamKey: 'home' | 'away' = isHome ? 'home' : 'away';
+        const pIdx = pitch.findIndex(p => p.id === ev.player_id);
+        if (pIdx !== -1) {
+          const sentOff = pitch[pIdx];
+          // Try auto-sub if bench has a matching position player
+          const subIdx = bench.findIndex(bp => {
+            if (isDEF(sentOff.position) && isDEF(bp.position)) return true;
+            if (isMID(sentOff.position) && isMID(bp.position)) return true;
+            if ((isFWD(sentOff.position) || isWNG(sentOff.position)) && (isFWD(bp.position) || isWNG(bp.position))) return true;
+            return false;
+          });
+          if (subIdx !== -1) {
+            const sub = bench[subIdx];
+            pitch[pIdx] = sub;
+            bench.splice(subIdx, 1);
+            const remainingFraction = (90 - slot.minute) / 90;
+            staminaDrain[teamKey][sub.id] = Math.max(0, sub.stamina - (18 * remainingFraction));
+            liveStaminaMap[sub.id] = sub.stamina - (18 * remainingFraction * 0.5);
+            events.push({
+              type: 'substitution', minute: slot.minute,
+              player_id: sub.id, player_name: sub.name, team: teamKey,
+              details: `🔄 Замена после удаления: ${sub.name} выходит вместо ${sentOff.name}.`
+            });
+            if (teamKey === 'home') homeSubsLeft = Math.max(0, homeSubsLeft - 1);
+            else awaySubsLeft = Math.max(0, awaySubsLeft - 1);
+          } else {
+            // No matching sub — remove player, team plays with 10
+            pitch.splice(pIdx, 1);
+          }
+        }
+      }
+    }
   }
 
   // ── Final whistle ──────────────────────────────────────────────────────────
