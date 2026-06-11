@@ -44,7 +44,7 @@ Instead of waiting for energy to recharge or buying micro-transactions, managers
 ## 🔥 Key Features (Currently Implemented)
 
 * 🏃 **Real-World Sync (W2E Sweat Bank):** Connect your fitness tracker. Your real-world steps convert into **Sweat Points (SP)** through a specialized manager profile (Runner, Gym Bro, Footballer, Coach).
-* ⚽ **Match Engine v3.0 (Micro-Duels):** A deep backend engine simulating matches phase-by-phase based on player traits, OOP penalties, stamina drain, and situational probability. 
+* ⚽ **Match Engine v4.0 (Micro-Duels & Real-time Events):** An ultra-deep backend engine simulating matches phase-by-phase. It calculates xG dynamically, applies OOP (Out of Position) penalties, tracks stamina drain per minute, and triggers rare situational events.
 * 📊 **Deep Match Analytics & Reports:** Post-match screens providing granular data—xG (Expected Goals), possession stats, interactive timelines with goalscorers, cards, and injuries.
 * 🏙️ **Club Infrastructure:** Upgrade your Stadium, Medical Center, Academy, and Training Camp to gain passive FanCoins (FC), tax exemptions, and recovery buffs.
 * 🤖 **Smart Telegram Notifications:** Get real-time alerts pushed straight to your Telegram DMs when a match finishes. See the final score, injuries, and your league standing directly in chat.
