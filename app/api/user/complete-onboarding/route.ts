@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -8,10 +9,11 @@ const supabase = createClient(
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await req.json();
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
 
     if (!userId) {
-      return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { error } = await supabase

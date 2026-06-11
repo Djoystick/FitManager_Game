@@ -9,13 +9,9 @@ const supabaseAdmin = createClient(
 
 export async function GET(request: Request) {
   try {
-    // 1. Verify cron secret to prevent unauthorized access
     const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      // Allow localhost for testing
-      if (!request.url.includes('localhost')) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
+    if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     console.log('[CRON: stamina-regen] Starting stamina regeneration process...');

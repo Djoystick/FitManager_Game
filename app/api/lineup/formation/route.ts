@@ -1,12 +1,20 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
 
 export async function PUT(req: Request) {
   try {
-    const { userId, formation } = await req.json();
+    const { formation } = await req.json();
+
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const allowedFormations = ['4-4-2', '4-3-3', '3-5-2'];
-    if (!userId || !allowedFormations.includes(formation)) {
+    if (!allowedFormations.includes(formation)) {
       return NextResponse.json({ error: 'Invalid parameters or formation' }, { status: 400 });
     }
 

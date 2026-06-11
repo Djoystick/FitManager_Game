@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
 
 export interface MarketListRequest {
-  userId: string;
   playerId: string;
   priceTon: number;
 }
@@ -12,12 +12,19 @@ const LISTING_FEE_FANCOINS = 100;
 export async function POST(req: Request) {
   try {
     const body: Partial<MarketListRequest> = await req.json();
-    const { userId, playerId, priceTon } = body;
+    const { playerId, priceTon } = body;
+
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     // 1. Payload Verification
-    if (!userId || !playerId || priceTon === undefined || priceTon <= 0) {
+    if (!playerId || priceTon === undefined || priceTon <= 0) {
       return NextResponse.json(
-        { error: 'Missing or invalid payload fields: userId, playerId, or priceTon' },
+        { error: 'Missing or invalid payload fields: playerId or priceTon' },
         { status: 400 }
       );
     }

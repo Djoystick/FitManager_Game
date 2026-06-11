@@ -3,6 +3,11 @@ import { Telegraf } from 'telegraf';
 
 export async function GET(req: NextRequest) {
   try {
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const token = process.env.TELEGRAM_BOT_TOKEN;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 

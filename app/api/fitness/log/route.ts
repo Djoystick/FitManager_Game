@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
 
 export interface FitnessLogRequest {
-  userId: string;
   activityType: string;
   durationMinutes: number;
   calories: number;
@@ -11,12 +11,19 @@ export interface FitnessLogRequest {
 export async function POST(req: Request) {
   try {
     const body: Partial<FitnessLogRequest> = await req.json();
-    const { userId, activityType, durationMinutes, calories } = body;
+    const { activityType, durationMinutes, calories } = body;
+
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     // 1. Basic validation
-    if (!userId || !activityType || durationMinutes === undefined || calories === undefined) {
+    if (!activityType || durationMinutes === undefined || calories === undefined) {
       return NextResponse.json(
-        { error: 'Missing required payload fields: userId, activityType, durationMinutes, or calories' },
+        { error: 'Missing required payload fields: activityType, durationMinutes, or calories' },
         { status: 400 }
       );
     }

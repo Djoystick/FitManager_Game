@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       .from('players')
       .select('ovr')
       .eq('team_id', team.id)
-      .eq('lineup_status', 'starter');
+      .eq('lineup_status', 'starting');
 
     let totalOvr = 0;
     if (players && players.length > 0) {

@@ -1,11 +1,19 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
 
 export async function POST(req: Request) {
   try {
-    const { userId, playerOutId, playerInId } = await req.json();
+    const { playerOutId, playerInId } = await req.json();
 
-    if (!userId || !playerOutId || !playerInId) {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!playerOutId || !playerInId) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 

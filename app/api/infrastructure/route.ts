@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId');
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
 
     if (!userId) {
-      return NextResponse.json({ error: 'Missing userId parameter' }, { status: 400 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // 1. Get the team_id for this user
@@ -42,9 +43,16 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { userId, buildingType } = body; // buildingType: 'stadium' | 'training_camp' | 'medical_center'
+    const { buildingType } = body; // buildingType: 'stadium' | 'training_camp' | 'medical_center'
 
-    if (!userId || !['stadium', 'training_camp', 'medical_center'].includes(buildingType)) {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!['stadium', 'training_camp', 'medical_center'].includes(buildingType)) {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });
     }
 

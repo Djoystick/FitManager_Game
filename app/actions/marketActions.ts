@@ -185,7 +185,8 @@ export async function getFreeAgentsAction() {
     const userId = cookieStore.get('tg_user_id')?.value;
     if (!userId) return { success: false, error: 'User not authenticated' };
 
-    const jwtSecret = process.env.CRON_SECRET || 'fallback_secret_for_jwt';
+    const jwtSecret = process.env.CRON_SECRET;
+    if (!jwtSecret) throw new Error("CRON_SECRET is not configured");
 
     const freeAgents = [];
     for (let i = 0; i < 5; i++) {
@@ -255,7 +256,8 @@ export async function buyFreeAgentAction(token: string) {
     const userId = cookieStore.get('tg_user_id')?.value;
     if (!userId) return { success: false, error: 'User not authenticated' };
 
-    const jwtSecret = process.env.CRON_SECRET || 'fallback_secret_for_jwt';
+    const jwtSecret = process.env.CRON_SECRET;
+    if (!jwtSecret) throw new Error("CRON_SECRET is not configured");
 
     // 1. Verify token
     let decodedBot;

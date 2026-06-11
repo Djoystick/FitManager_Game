@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseAdmin = createClient(
@@ -8,14 +9,18 @@ const supabaseAdmin = createClient(
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId');
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     let userTeamId = null;
     let targetLeagueId = null;
 
     // 1. Find the current user's team ID and their league instance
-    if (userId) {
+    {
        const { data: teamData } = await supabaseAdmin.from('teams').select('id').eq('user_id', userId).single();
        if (teamData) {
          userTeamId = teamData.id;
