@@ -2,6 +2,7 @@
 
 import { createContext, useEffect, useState, ReactNode, useContext } from 'react';
 import { LanguageContext } from '@/components/LanguageContext';
+import { CyberLoader } from '@/components/ui/CyberLoader';
 
 interface TelegramAuthContextType {
   isAuthenticated: boolean;
@@ -114,27 +115,7 @@ export function TelegramAuthProvider({ children }: { children: ReactNode }) {
 
   // ── Loading screen ────────────────────────────────────────────────────────
   if (!isMounted || isLoading) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-space-dark relative overflow-hidden">
-        <style>{`
-          @keyframes spin-reverse { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
-          .spin-slow { animation: spin 3s linear infinite; }
-          .spin-rev  { animation: spin-reverse 1.5s linear infinite; }
-        `}</style>
-        <div className="relative w-32 h-32 flex items-center justify-center">
-          <div className="absolute w-full h-full border-4 border-t-transparent border-neon-cyan rounded-full spin-slow opacity-80 shadow-[0_0_15px_rgba(0,240,255,0.5)]" />
-          <div className="absolute w-3/4 h-3/4 border-4 border-b-transparent border-blue-400 rounded-full spin-rev opacity-60" />
-          <div className="absolute w-1/2 h-1/2 border-4 border-l-transparent border-white rounded-full animate-spin opacity-90" />
-          <div className="font-mono text-neon-cyan font-bold tracking-widest animate-pulse text-sm">0101</div>
-        </div>
-        <h2 className="mt-8 text-sm font-bold tracking-[0.3em] font-orbitron uppercase text-neon-cyan animate-pulse drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
-          SYNCING CLUB DATA...
-        </h2>
-        <p className="text-[10px] uppercase font-mono tracking-widest text-gray-500 mt-3 opacity-60">
-          Connecting to Telegram Secure Gateway...
-        </p>
-      </div>
-    );
+    return <CyberLoader fullScreen text="SYNCING CLUB DATA..." />;
   }
 
   // ── Friendly error screen (no more "Access Denied"!) ─────────────────────
