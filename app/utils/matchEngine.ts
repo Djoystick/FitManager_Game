@@ -1,6 +1,18 @@
 // =============================================================================
-// FitManager Match Engine v4.0 — "Swiss Watch Architecture"
+// FitManager Match Engine v5.0 — "Swiss Watch Architecture"
 // =============================================================================
+// Phase 3 changes (Task 011):
+//  [P1] New events: Offside (10%), Crossbar/Post (5%), Own Goal (2%), Penalty Save (35%)
+//  [P1] Last-minute Goal: x1.5 finishing multiplier at 85+ min when losing by 1
+//  [P1] Match Form: optional homeForm/awayForm params; W-W-W→+5%, L-L-L→-5%
+//  [P1] Timeline pacing: weighted distribution (front-loaded + back-loaded attacks)
+//
+// Phase 2 changes (Task 010):
+//  [P1] Dynamic stamina drain by 4 match phases (1.20/1.00/0.85/1.10)
+//  [P1] Home Advantage: +5% stats, +1 attack
+//  [P1] Momentum: Desperation Push (+10% atk when trailing ≥2), Comfort Zone (-5% atk when leading ≥3)
+//  [P1] 6 new traits: Comeback Kid, Clutch, Tireless, Enforcer, Aerial Threat, Dive King
+//
 // Phase 1 changes (Task 009):
 //  [P0] staminaMult() → smooth piecewise linear interpolation (no step jumps)
 //  [P0] midfieldScore() → normalized by pool length (quality over quantity)
@@ -47,7 +59,7 @@ export interface MatchPlayer {
 export type TacticalStyle = 'Tiki-Taka' | 'Counter Attack' | 'High Press' | 'Park the Bus' | 'Wing Play' | 'Balanced';
 
 export interface MatchEvent {
-  type: 'goal' | 'breakthrough_failed' | 'save' | 'yellow_card' | 'second_yellow' | 'red_card' | 'injury' | 'info' | 'substitution';
+  type: 'goal' | 'breakthrough_failed' | 'save' | 'yellow_card' | 'second_yellow' | 'red_card' | 'injury' | 'info' | 'substitution' | 'offside' | 'crossbar' | 'own_goal' | 'penalty_save';
   minute: number;
   player_id: string;
   player_name: string;
@@ -378,8 +390,13 @@ function resolvePenalty(
   });
 
   // Dive King: +5% penalty conversion (higher attackerBias)
+  // Penalty Save: ~35% base chance for GK to save (adjusted by GK defending)
   const penBias = atkFwd.traits.includes('Dive King') ? 0.20 : 0.15;
-  if (duel(shotEff, saveEff, penBias) && score[attackingTeamKey] < maxGoals) {
+  const gkSaveBonus = (safeNum(gk.stats.defending) - 50) * 0.002; // GK quality modifier
+  const penSaveChance = Math.max(0.20, Math.min(0.50, 0.35 - gkSaveBonus));
+  const penaltySaved = Math.random() < penSaveChance;
+
+  if (!penaltySaved && duel(shotEff, saveEff, penBias) && score[attackingTeamKey] < maxGoals) {
     score[attackingTeamKey]++;
     events.push({
       type: 'goal', minute: minute + 1,
@@ -388,9 +405,9 @@ function resolvePenalty(
     });
   } else {
     events.push({
-      type: 'save', minute: minute + 1,
+      type: 'penalty_save', minute: minute + 1,
       player_id: gk.id, player_name: gk.name, team: defTeamKey,
-      details: `🧤 ЧУДО-СЕЙВ! ${gk.name} угадывает угол и отражает удар ${atkFwd.name}!`,
+      details: `🧤 ПЕНальти ОТРАЖЁН! ${gk.name} угадывает угол и парирует удар ${atkFwd.name}!`,
     });
   }
 }
@@ -540,6 +557,16 @@ function resolveAttack(ctx: AttackContext) {
     return;
   }
 
+  // ── Offside check (~10% after successful penetration) ──────────────────────
+  if (Math.random() < 0.10) {
+    events.push({
+      type: 'offside', minute,
+      player_id: atkFwd.id, player_name: atkFwd.name, team: attackingTeamKey,
+      details: `🚩 ОФСАЙД! ${atkFwd.name} забегает за последнего защитника — атака сорвана!`,
+    });
+    return;
+  }
+
   // ── PHASE 3: Finishing ─────────────────────────────────────────────────────
   let shotVal = safeNum(atkFwd.stats.shooting) * 1.5 + safeNum(atkFwd.stats.pace) * 0.5;
   if (atkFwd.traits.includes('Poacher'))   shotVal *= 1.20;
@@ -549,6 +576,9 @@ function resolveAttack(ctx: AttackContext) {
   if (atkFwd.traits.includes('Clutch') && minute >= 75) shotVal *= 1.20;
   // Comeback Kid: +15% finishing when losing
   if (atkFwd.traits.includes('Comeback Kid') && atkTeamTrailing) shotVal *= 1.15;
+  // Last-minute Goal: x1.5 finishing if 85+ min and losing by exactly 1 goal
+  const losingByOne = score[defTeamKey] - score[attackingTeamKey] === 1;
+  if (minute >= 85 && losingByOne) shotVal *= 1.50;
 
   let saveVal = safeNum(gk.stats.defending) * 1.5 + safeNum(gk.stats.physical) * 0.5;
   if (gk.traits.includes('Wall')) saveVal *= 1.20;
@@ -569,8 +599,29 @@ function resolveAttack(ctx: AttackContext) {
         details: goalDetail,
       });
     }
-    // If score cap reached, the attack silently fizzles — no goal event added
   } else {
+    // Crossbar / Post check (~5% dramatic miss)
+    if (Math.random() < 0.05) {
+      events.push({
+        type: 'crossbar', minute,
+        player_id: atkFwd.id, player_name: atkFwd.name, team: attackingTeamKey,
+        details: `🔴 ШАГАНГА! ${atkFwd.name} бьёт — мяч попадает в штангу! Так близко к голу!`,
+      });
+      return;
+    }
+
+    // Own Goal check (~2% when defending team has very low average defending)
+    const avgDef = outfieldDef.reduce((s, p) => s + safeNum(p.stats.defending, 50), 0) / (outfieldDef.length || 1);
+    if (avgDef < 40 && Math.random() < 0.02 && score[attackingTeamKey] < maxGoals) {
+      score[attackingTeamKey]++;
+      events.push({
+        type: 'own_goal', minute,
+        player_id: defDef.id, player_name: defDef.name, team: defTeamKey,
+        details: `😱 АВТОГОЛ! ${defDef.name} неудачно обрабатывает мяч после удара ${atkFwd.name} и отправляет его в свои ворота!`,
+      });
+      return;
+    }
+
     // Corner kick check — 30% of misses produce a corner
     if (Math.random() < 0.30) {
       events.push({
@@ -601,43 +652,69 @@ function resolveAttack(ctx: AttackContext) {
 }
 
 // =============================================================================
-// Timeline builder — guaranteed no infinite loop (pool of 87 unique slots)
+// Timeline builder — weighted distribution for realistic match pacing
 // =============================================================================
 
+/**
+ * Builds a timeline of attacks with realistic minute distribution.
+ * - Front-loads attacks in first 15 min (high energy)
+ * - Increases density in last 15 min (final pushes)
+ * - Maintains randomness so it's not entirely predictable
+ */
 function buildTimeline(
   homeCount: number,
   awayCount: number
 ): Array<{ team: 'home' | 'away'; minute: number }> {
-  const availableMinutes: number[] = [];
-  for (let m = 2; m <= 88; m++) availableMinutes.push(m);
-
-  // Fisher-Yates shuffle
-  for (let i = availableMinutes.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [availableMinutes[i], availableMinutes[j]] = [availableMinutes[j], availableMinutes[i]];
-  }
-
   const safeHome = Math.max(0, Math.floor(homeCount || 0));
   const safeAway = Math.max(0, Math.floor(awayCount || 0));
   const total = safeHome + safeAway;
+  if (total === 0) return [];
 
-  const selectedMinutes = availableMinutes.slice(0, total).sort((a, b) => a - b);
+  // Build weighted minute pool — higher weight = more likely to be selected
+  const minuteWeights: Array<{ minute: number; weight: number }> = [];
+  for (let m = 2; m <= 88; m++) {
+    let weight = 1.0;
+    // Front-load: first 15 minutes get more attacks
+    if (m <= 15) weight = 1.5;
+    // Mid-game dip: minutes 30–60 are quieter
+    else if (m >= 30 && m <= 60) weight = 0.7;
+    // Back-load: last 15 minutes get more attacks
+    else if (m >= 75) weight = 1.5;
+    // Normal zone: minutes 16–29 and 61–74
+    else weight = 1.0;
 
-  const homeSlots = Math.min(safeHome, selectedMinutes.length);
-  const result: Array<{ team: 'home' | 'away'; minute: number }> = [];
+    minuteWeights.push({ minute: m, weight });
+  }
 
+  // Weighted sampling without replacement
+  const selectedMinutes: number[] = [];
+  const pool = [...minuteWeights];
+  for (let i = 0; i < total && pool.length > 0; i++) {
+    const totalWeight = pool.reduce((s, e) => s + e.weight, 0);
+    let r = Math.random() * totalWeight;
+    let pickIdx = 0;
+    for (let j = 0; j < pool.length; j++) {
+      r -= pool[j].weight;
+      if (r <= 0) { pickIdx = j; break; }
+    }
+    selectedMinutes.push(pool[pickIdx].minute);
+    pool.splice(pickIdx, 1);
+  }
+
+  selectedMinutes.sort((a, b) => a - b);
+
+  // Assign home/away randomly
   const indices = [...Array(total).keys()];
   for (let i = indices.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [indices[i], indices[j]] = [indices[j], indices[i]];
   }
-  const homeIndices = new Set(indices.slice(0, homeSlots));
+  const homeIndices = new Set(indices.slice(0, safeHome));
 
-  selectedMinutes.forEach((min, idx) => {
-    result.push({ team: homeIndices.has(idx) ? 'home' : 'away', minute: min });
-  });
-
-  return result;
+  return selectedMinutes.map((min, idx) => ({
+    team: homeIndices.has(idx) ? 'home' as const : 'away' as const,
+    minute: min,
+  }));
 }
 
 // =============================================================================
@@ -652,7 +729,9 @@ export function simulateMatch(
   homeGreenLinks: Record<string, boolean>,
   awayGreenLinks: Record<string, boolean>,
   homeTactic: TacticalStyle = 'Balanced',
-  awayTactic: TacticalStyle = 'Balanced'
+  awayTactic: TacticalStyle = 'Balanced',
+  homeForm: string[] = [],
+  awayForm: string[] = []
 ): MatchResult {
   const events: MatchEvent[] = [];
   const score = { home: 0, away: 0 };
@@ -663,6 +742,17 @@ export function simulateMatch(
   if (homeTeam.length === 0 || awayTeam.length === 0) {
     return { score, events, staminaDrain };
   }
+
+  // ── Match Form bonuses ─────────────────────────────────────────────────────
+  const calcFormBonus = (form: string[]): number => {
+    if (form.length < 3) return 0;
+    const last3 = form.slice(-3);
+    if (last3.every(r => r === 'W')) return 1.05;  // Confidence Boost: +5%
+    if (last3.every(r => r === 'L')) return 0.95;  // Tilt penalty: -5%
+    return 0;
+  };
+  const homeFormBonus = calcFormBonus(homeForm);
+  const awayFormBonus = calcFormBonus(awayForm);
 
   // ── Trait synergy/conflict maps ────────────────────────────────────────────
   const homeSyn: Record<string, boolean> = {};
@@ -718,8 +808,8 @@ export function simulateMatch(
   const homeAdvBonus = 1.05;
 
   // ── True midfield score (with live stamina + links) ────────────────────────
-  const homeMid = midfieldScore(homeTeam, homeLinks, liveStaminaMap) * homeAdvBonus;
-  const awayMid = midfieldScore(awayTeam, awayLinks, liveStaminaMap);
+  const homeMid = midfieldScore(homeTeam, homeLinks, liveStaminaMap) * homeAdvBonus * (homeFormBonus || 1);
+  const awayMid = midfieldScore(awayTeam, awayLinks, liveStaminaMap) * (awayFormBonus || 1);
   const totalMid = homeMid + awayMid || 1;
 
   let homePoss = isNaN(homeMid / totalMid) ? 0.5 : (homeMid / totalMid);
@@ -750,11 +840,16 @@ export function simulateMatch(
   homePoss = Math.max(0.15, Math.min(0.85, homePoss + getTacticPossMod(homeTactic)));
   awayPoss = 1 - homePoss;
 
-  // Attack count: base 5 + possession bonus ± jitter + tactic modifier + home advantage
+  // Attack count: base 5 + possession bonus ± jitter + tactic modifier + home advantage + form
   let homeAttackBase = 5 + homePoss * 8 + Math.random() * 4 - 2 + getTacticAttackMod(homeTactic);
   let awayAttackBase = 5 + awayPoss * 8 + Math.random() * 4 - 2 + getTacticAttackMod(awayTactic);
   // Home advantage: +1 attack
   homeAttackBase += 1;
+  // Form bonus: ±0.5 attack (rounded)
+  if (homeFormBonus === 1.05) homeAttackBase += 0.5;
+  if (homeFormBonus === 0.95) homeAttackBase -= 0.5;
+  if (awayFormBonus === 1.05) awayAttackBase += 0.5;
+  if (awayFormBonus === 0.95) awayAttackBase -= 0.5;
   const homeAttacks = Math.min(12, Math.max(3, Math.round(homeAttackBase) || 3));
   const awayAttacks = Math.min(12, Math.max(3, Math.round(awayAttackBase) || 3));
 
