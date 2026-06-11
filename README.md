@@ -44,17 +44,21 @@ Instead of waiting for energy to recharge or buying micro-transactions, managers
 ## 🔥 Key Features (Currently Implemented)
 
 * 🏃 **Real-World Sync (W2E Sweat Bank):** Connect your fitness tracker. Your real-world steps convert into **Sweat Points (SP)** through a specialized manager profile (Runner, Gym Bro, Footballer, Coach).
-* ⚽ **Match Engine v3.0 (Micro-Duels):** A deep backend engine simulating matches phase-by-phase based on player traits, OOP (Out of Position) penalties, stamina drain, and situational probability. 
-* 🧬 **Chemistry & Trait Resonance:** Highly visual SVG-based synergy maps. Combine specific player traits (e.g., Playmaker + Poacher) for duel buffs, but beware of clashing leaders.
+* ⚽ **Match Engine v3.0 (Micro-Duels):** A deep backend engine simulating matches phase-by-phase based on player traits, OOP penalties, stamina drain, and situational probability. 
+* 📊 **Deep Match Analytics & Reports:** Post-match screens providing granular data—xG (Expected Goals), possession stats, interactive timelines with goalscorers, cards, and injuries.
 * 🏙️ **Club Infrastructure:** Upgrade your Stadium, Medical Center, Academy, and Training Camp to gain passive FanCoins (FC), tax exemptions, and recovery buffs.
-* 💎 **Prize Waterfall (TON Treasury):** Dynamic Asynchronous Treasury Drain! Every time a league season finishes, it takes a percentage of the Global TON Treasury (e.g., 10% for Tier 1) and distributes it directly to the wallets of the Top-3 managers.
+* 🤖 **Smart Telegram Notifications:** Get real-time alerts pushed straight to your Telegram DMs when a match finishes. See the final score, injuries, and your league standing directly in chat.
+* 🌐 **Immersive Cyberpunk UI & Dashboards:** A fully redesigned Next.js dashboard featuring smooth Framer Motion page transitions, unified global loading screens, dynamic "Next Match" countdowns, and a mini-standings widget.
+* 🌍 **Native Multilingual Support (i18n):** Seamlessly switch between English and Russian localizations, covering everything from the UI to match commentary and onboarding tutorials.
 * 🛡️ **Anti-P2W "Economy v2" System:**
   * **The Glass Ceiling:** You can train players with soft-currency (FanCoins) only up to 69 OVR. To train stats to 70+, you MUST use physical Sweat Points. Whales cannot simply buy their way to 99 OVR.
-  * **Form Decay:** Superstars (78+ OVR) require a daily physical maintenance fee in Sweat Points. If unpaid, their Pace and Physical stats decay automatically. Crypto-whales are forced to walk or lose their investment!
+  * **Form Decay:** Superstars (78+ OVR) require a daily physical maintenance fee in Sweat Points. If unpaid, their Pace and Physical stats decay automatically.
   * **Exponential Salaries:** High OVR players demand massive FC salaries per match, forcing managers to actively trade, walk, or upgrade infrastructure to avoid bankruptcy.
-* 🏆 **10-Tier Global Leagues:** Fight through 10 divisions with automatic Promotion and Relegation. Fully automated cron-job scheduling.
-* 📱 **Native Telegram Integration:** Frictionless onboarding via Telegram WebApp SDK. Seamless, cyberpunk UI built for mobile screens. Now featuring **Native Fullscreen Mode** for maximum immersion.
-* 💻 **Advanced Admin Console & Dev Tools:** Built-in dashboard for developers to monitor system logs in real-time, resolve errors, and utilize a powerful **Cheat Menu** (Inject FanCoins/XP, max out stamina, force match outcomes, generate top players, and seed bot leagues for stress testing).
+* 🏆 **10-Tier Global Leagues:** Fight through 10 divisions with automatic Promotion and Relegation. Fully automated cron-job scheduling handles daily matchdays and end-of-season rewards.
+* 📱 **Native Telegram Integration:** Frictionless onboarding via Telegram WebApp SDK. Seamless UI built for mobile screens. Now featuring **Native Fullscreen Mode** for maximum immersion.
+* 🎓 **Interactive Onboarding:** A step-by-step interactive tutorial that guides new managers through the UI upon their first login.
+* 💎 **Prize Waterfall (TON Treasury):** Dynamic Asynchronous Treasury Drain! Every time a league season finishes, it takes a percentage of the Global TON Treasury and distributes it to the Top-3 managers.
+* 💻 **Advanced Admin Console & Dev Tools:** Built-in dashboard for developers to monitor system logs in real-time, resolve errors, and utilize a powerful **Cheat Menu**.
 
 ## 🛠️ Architecture & Tech Stack
 
