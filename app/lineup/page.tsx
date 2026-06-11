@@ -199,14 +199,14 @@ export default function LineupPage() {
       
       const res = await updatePlayers(payload);
       if (res.success) {
-        toast.success('Database recovered. Reloading...');
+        toast.success(t.lineup_db_recovered || 'Database recovered. Reloading...');
         window.location.reload();
       } else {
-        toast.error(res.error || 'Failed to hard reset');
+        toast.error(res.error || (t.lineup_failed_reset || 'Failed to hard reset'));
         setIsSubmitting(false);
       }
     } catch (err: any) {
-      toast.error('Network error during hard reset');
+      toast.error(t.lineup_network_reset || 'Network error during hard reset');
       setIsSubmitting(false);
     }
   };
@@ -306,13 +306,13 @@ export default function LineupPage() {
         const res = await updatePlayers(payload);
         
         if (!res.success) {
-          toast.error(res.error || 'Failed to auto-save swap');
+          toast.error(res.error || (t.lineup_failed_swap || 'Failed to auto-save swap'));
         } else {
-          toast.success('Lineup Saved', { position: 'top-center', duration: 1500 });
+          toast.success(t.lineup_lineup_saved || 'Lineup Saved', { position: 'top-center', duration: 1500 });
         }
       }
     } catch (err: any) {
-      toast.error('Network error during swap.');
+      toast.error(t.lineup_network_swap || 'Network error during swap.');
     } finally {
       setIsSwapping(false);
       setSelectedPlayerId(null);
@@ -328,20 +328,20 @@ export default function LineupPage() {
       if (res.success) {
         const count = res.playersHealed ?? 0;
         if (count === 0) {
-          toast('All players are already healthy', { icon: '✅' });
+          toast(t.lineup_all_healthy || 'All players are already healthy', { icon: '✅' });
         } else {
-          toast.success(`Healed ${count} player${count > 1 ? 's' : ''}`);
-          setSubmitMessage({ text: `Healed ${count} players! Balance updated.`, type: 'success' });
+          toast.success(t.lineup_healed_count?.replace('{count}', String(count)) || `Healed ${count} player${count > 1 ? 's' : ''}`);
+          setSubmitMessage({ text: t.lineup_healed_balance?.replace('{count}', String(count)) || `Healed ${count} players! Balance updated.`, type: 'success' });
           setPlayers(prev => prev.map(p => ({ ...p, stamina: 100, is_injured: false })));
           window.dispatchEvent(new Event('balanceUpdated'));
         }
       } else {
-        toast.error(res.error || 'Failed to mass heal');
-        setSubmitMessage({ text: res.error || 'Failed to mass heal', type: 'error' });
+        toast.error(res.error || (t.lineup_failed_mass_heal || 'Failed to mass heal'));
+        setSubmitMessage({ text: res.error || (t.lineup_failed_mass_heal || 'Failed to mass heal'), type: 'error' });
       }
     } catch (err: any) {
-      toast.error('Network error during mass heal');
-      setSubmitMessage({ text: 'Network error during mass heal', type: 'error' });
+      toast.error(t.lineup_network_heal || 'Network error during mass heal');
+      setSubmitMessage({ text: t.lineup_network_heal || 'Network error during mass heal', type: 'error' });
     } finally {
       setIsHealingAll(false);
     }
@@ -358,14 +358,14 @@ export default function LineupPage() {
       const res = await updateTeamFormation(team.id, newFormation);
       if (res.success) {
         setTeam((prev: any) => prev ? { ...prev, formation: newFormation } : prev);
-        toast.success('Formation Saved', { position: 'top-center', duration: 1500 });
+        toast.success(t.lineup_formation_saved || 'Formation Saved', { position: 'top-center', duration: 1500 });
       } else {
-        toast.error(res.error || 'Failed to change formation');
+        toast.error(res.error || (t.lineup_failed_formation || 'Failed to change formation'));
         // Rollback on error
         setActiveFormation(team.formation || '4-4-2');
       }
     } catch (err: any) {
-      toast.error('Network error during formation change.');
+      toast.error(t.lineup_network_formation || 'Network error during formation change.');
       // Rollback on error
       setActiveFormation(team.formation || '4-4-2');
     } finally {
@@ -553,11 +553,10 @@ export default function LineupPage() {
         <div className="bg-red-900/20 border-2 border-red-500 rounded-xl p-8 max-w-md w-full text-center shadow-[0_0_30px_rgba(255,0,0,0.3)]">
           <div className="text-5xl mb-4 animate-pulse">⚠️</div>
           <h2 className="text-xl font-black text-white uppercase tracking-wider mb-3 text-red-500">
-            Data Corruption Detected
+            {t.lineup_data_corruption || 'Data Corruption Detected'}
           </h2>
           <p className="text-sm text-red-200 mb-6 font-mono">
-            Обнаружено повреждение данных состава. Позиции игроков не распознаны (NULL/Invalid).
-            Необходимо жестко восстановить базу данных.
+            {t.lineup_corruption_desc || 'Lineup data corruption detected. Player positions are invalid. A hard database reset is required.'}
           </p>
           <button
             onClick={handleEmergencyReset}
@@ -568,7 +567,7 @@ export default function LineupPage() {
                 : 'bg-red-600 text-white hover:bg-red-500 shadow-[0_0_20px_rgba(255,0,0,0.5)]'
             }`}
           >
-            {isSubmitting ? 'Восстановление...' : '🚑 Восстановить БД (Hard Reset)'}
+            {isSubmitting ? (t.lineup_recovering || 'Recovering...') : `🚑 ${t.lineup_recover_db || 'Recover DB (Hard Reset)'}`}
           </button>
         </div>
       </div>
@@ -589,9 +588,9 @@ export default function LineupPage() {
           <div className="flex items-center gap-2">
             <h1 className="text-sm font-black text-white tracking-wider uppercase leading-none font-orbitron">{team.name}</h1>
             {expectedTax > 0 ? (
-               <span className="text-[8px] bg-red-900/30 text-red-400 border border-red-500/40 px-1.5 py-0.5 rounded-full uppercase font-bold animate-pulse">Tax −{expectedTax}</span>
+               <span className="text-[8px] bg-red-900/30 text-red-400 border border-red-500/40 px-1.5 py-0.5 rounded-full uppercase font-bold animate-pulse">{t.lineup_tax || 'Tax'} −{expectedTax}</span>
             ) : (
-               <span className="text-[8px] bg-emerald-900/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full uppercase font-bold">Tax Free</span>
+               <span className="text-[8px] bg-emerald-900/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full uppercase font-bold">{t.lineup_tax_free || 'Tax Free'}</span>
             )}
           </div>
           <p className="text-[8px] text-violet-400/70 uppercase tracking-widest mt-0.5 font-bold">{t.squad_management}</p>
@@ -610,7 +609,7 @@ export default function LineupPage() {
             >
               <span>⚡</span>
               <span>
-                {isHealingAll ? '…' : `Heal (${players.filter(p => p.stamina < 100 || p.is_injured).length})`}
+                {isHealingAll ? '…' : (t.lineup_heal_count?.replace('{count}', String(players.filter(p => p.stamina < 100 || p.is_injured).length)) || `Heal (${players.filter(p => p.stamina < 100 || p.is_injured).length})`)}
               </span>
             </button>
           )}
@@ -640,17 +639,17 @@ export default function LineupPage() {
         <div className="flex-1 overflow-y-auto custom-scrollbar pb-28 px-3 flex flex-col gap-3 relative z-10">
           {/* Stats grid */}
           <div className="grid grid-cols-3 gap-2">
-            <StatCard label="General OVR" value={averageOvr} accent="violet" />
+            <StatCard label={t.lineup_general_ovr || 'General OVR'} value={averageOvr} accent="violet" />
             <StatCard label="ATT" value={avgAtt || '—'} accent="cyan" />
             <StatCard label="DEF" value={avgDef || '—'} accent="emerald" />
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <StatCard label="Squad Size" value={players.length} subLabel="players" accent="yellow" />
-            <StatCard label="Formation" value={currentFormation} accent="violet" />
+            <StatCard label={t.lineup_squad_size || 'Squad Size'} value={players.length} subLabel={t.lineup_players_label || 'players'} accent="yellow" />
+            <StatCard label={t.lineup_formation || 'Formation'} value={currentFormation} accent="violet" />
           </div>
 
           {/* Management — Web3 gradient cards */}
-          <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold px-0.5">Management</div>
+          <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold px-0.5">{t.lineup_management || 'Management'}</div>
           <div className="grid grid-cols-2 gap-2.5">
             {([
               { label: t.team_structures || 'STRUCTURES', sub: t.team_club_stadium || 'Club & Stadium',   href: '/base',   bg: 'from-teal-950 to-cyan-950',    border: 'border-teal-700/30',    hb: 'hover:border-teal-400/60',    glow: 'hover:shadow-[0_0_20px_rgba(20,184,166,0.18)]',  accent: 'text-teal-400',   Icon: Building2 },
@@ -689,8 +688,8 @@ export default function LineupPage() {
           <div className="flex-shrink-0 pb-2">
             <SubNavTabs
               tabs={[
-                { id: 'squad',   label: `SQUAD (${activePlayers.filter(p => p.age >= 18).length})` },
-                { id: 'academy', label: `ACADEMY (${activePlayers.filter(p => p.age < 18).length})` },
+                { id: 'squad',   label: t.lineup_squad_count?.replace('{count}', String(activePlayers.filter(p => p.age >= 18).length)) || `SQUAD (${activePlayers.filter(p => p.age >= 18).length})` },
+                { id: 'academy', label: t.lineup_academy_count?.replace('{count}', String(activePlayers.filter(p => p.age < 18).length)) || `ACADEMY (${activePlayers.filter(p => p.age < 18).length})` },
               ]}
               active={playersSubTab}
               onChange={(id) => setPlayersSubTab(id as 'squad' | 'academy')}
@@ -706,9 +705,9 @@ export default function LineupPage() {
                             shadow-[0_0_16px_rgba(239,68,68,0.12)]">
               <span className="text-lg flex-shrink-0">⚠️</span>
               <div className="min-w-0">
-                <div className="text-[9px] font-black text-red-400 uppercase tracking-widest">Squad cap exceeded</div>
+                <div className="text-[9px] font-black text-red-400 uppercase tracking-widest">{t.lineup_squad_cap || 'Squad cap exceeded'}</div>
                 <div className="text-[8px] text-red-400/70">
-                  Max 26 players · Release {activePlayers.length - 26} player{activePlayers.length - 26 > 1 ? 's' : ''} via Transfers
+                  {t.lineup_squad_cap_desc?.replace('{count}', String(activePlayers.length - 26)) || `Max 26 players · Release ${activePlayers.length - 26} player${activePlayers.length - 26 > 1 ? 's' : ''} via Transfers`}
                 </div>
               </div>
             </div>
@@ -720,9 +719,9 @@ export default function LineupPage() {
               <div className="flex flex-col items-center justify-center gap-3 py-16 px-6 text-center">
                 <div className="w-14 h-14 rounded-2xl glass-card flex items-center justify-center text-2xl">🎓</div>
                 <div>
-                  <div className="text-[10px] font-black text-white uppercase tracking-widest mb-1">No Academy Players</div>
+                  <div className="text-[10px] font-black text-white uppercase tracking-widest mb-1">{t.lineup_no_academy || 'No Academy Players'}</div>
                   <div className="text-[8px] text-gray-600 uppercase tracking-wider max-w-[180px] mx-auto">
-                    Players under 18 appear here after signing youth talent
+                    {t.lineup_no_academy_desc || 'Players under 18 appear here after signing youth talent'}
                   </div>
                 </div>
               </div>
@@ -794,7 +793,7 @@ export default function LineupPage() {
               viewMode === 'scout' ? 'text-red-400' : 'text-gray-500 hover:text-white'
             }`}
           >
-            Scout Intel
+            {t.lineup_scout_intel || 'Scout Intel'}
           </button>
         </div>
       </div>
@@ -810,8 +809,8 @@ export default function LineupPage() {
                   </div>
                 ) : !scoutReport || (scoutReport.players.length === 0 && scoutReport.fog_level !== 'hidden') ? (
                   <div className="flex-1 flex flex-col items-center justify-center py-12 text-gray-500">
-                    <p className="text-sm uppercase tracking-widest font-bold">Scouts found no intel</p>
-                    <p className="text-xs mt-2 text-center max-w-xs">Data is restricted or opponent roster is empty.</p>
+                    <p className="text-sm uppercase tracking-widest font-bold">{t.lineup_scouts_no_intel || 'Scouts found no intel'}</p>
+                    <p className="text-xs mt-2 text-center max-w-xs">{t.lineup_scouts_no_intel_desc || 'Data is restricted or opponent roster is empty.'}</p>
                   </div>
                 ) : (
                   <div className="flex flex-col">

@@ -199,16 +199,16 @@ export default function TransferMarketPage() {
   };
 
   const handleBuyFreeAgent = (agent: any) => {
-    const msg = `Sign ${agent.name} for ${agent.priceFc} FC?`;
+    const msg = (t.market_sign_confirm || 'Sign {name} for {price} FC?').replace('{name}', agent.name).replace('{price}', String(agent.priceFc));
     if (!confirm(msg)) return;
     startTransition(async () => {
       const res = await buyFreeAgentAction(agent.token);
       if (res.success) {
-        toast.success(`Signed ${agent.name}!`);
+        toast.success((t.market_signed || 'Signed {name}!').replace('{name}', agent.name));
         fetchBalance();
         window.dispatchEvent(new Event('balanceUpdated'));
         setFreeAgents(prev => prev.filter(a => a.token !== agent.token));
-      } else { toast.error(res.error || 'Failed to sign free agent'); }
+      } else { toast.error(res.error || (t.market_failed_sign || 'Failed to sign free agent')); }
     });
   };
 
@@ -244,10 +244,10 @@ export default function TransferMarketPage() {
               </div>
               <div>
                 <h1 className="text-sm font-black font-orbitron text-white uppercase tracking-widest">
-                  Transfer Market
+                  {t.market_transfer_market || 'Transfer Market'}
                 </h1>
                 <p className="text-[8px] text-cyan-400/60 uppercase tracking-wider">
-                  {activeTab === 'free_agents' ? 'Scout Pool' : t.p2p_transfers}
+                  {activeTab === 'free_agents' ? (t.market_scout_pool || 'Scout Pool') : t.p2p_transfers}
                 </p>
               </div>
             </div>
@@ -278,7 +278,7 @@ export default function TransferMarketPage() {
         <SubNavTabs
           tabs={[
             { id: 'market',      label: t.tab_market    },
-            { id: 'free_agents', label: 'FREE AGENTS'   },
+            { id: 'free_agents', label: t.market_free_agents || 'FREE AGENTS'   },
             { id: 'my_lots',     label: t.tab_my_lots   },
           ]}
           active={activeTab}
@@ -334,7 +334,7 @@ export default function TransferMarketPage() {
           <CyberLoader fullScreen={false} />
         ) : activeTab === 'free_agents' ? (
           freeAgents.length === 0 ? (
-            <EmptyState icon={<ShieldAlert className="w-10 h-10 text-gray-700" />} text="No Free Agents" />
+            <EmptyState icon={<ShieldAlert className="w-10 h-10 text-gray-700" />} text={t.market_no_free_agents || 'No Free Agents'} />
           ) : (
             <div className="flex flex-col gap-2">
               {freeAgents.map((agent, i) => (
@@ -356,7 +356,7 @@ export default function TransferMarketPage() {
                         <h3 className="text-sm font-black text-yellow-300 uppercase truncate">{agent.name}</h3>
                       </div>
                       <div className="text-[9px] text-gray-500 uppercase tracking-widest font-bold mb-2">
-                        Age {agent.age}
+                        {t.market_age?.replace('{age}', String(agent.age)) || `Age ${agent.age}`}
                       </div>
                       {agent.traits?.length > 0 && (
                         <div className="flex gap-1 flex-wrap">
@@ -381,7 +381,7 @@ export default function TransferMarketPage() {
                       className="px-4 py-2 rounded-lg border border-yellow-500/50 font-black uppercase text-[9px] tracking-widest
                                  bg-yellow-500/10 text-yellow-300 hover:bg-yellow-500 hover:text-black transition-all disabled:opacity-50"
                     >
-                      SIGN
+                      {t.market_sign || 'SIGN'}
                     </button>
                   </div>
                 </motion.div>
@@ -415,8 +415,8 @@ export default function TransferMarketPage() {
                       <h3 className="text-sm font-black text-white uppercase truncate">{listing.player.name}</h3>
                     </div>
                     <div className="text-[9px] text-gray-500 uppercase tracking-widest font-bold mb-2 flex gap-3">
-                      <span>Age {listing.player.age}</span>
-                      <span>S{listing.player.seasons_played}</span>
+                      <span>{t.market_age?.replace('{age}', String(listing.player.age)) || `Age ${listing.player.age}`}</span>
+                      <span>{t.market_seasons?.replace('{count}', String(listing.player.seasons_played)) || `S${listing.player.seasons_played}`}</span>
                     </div>
                     {listing.player.traits?.length > 0 && (
                       <div className="flex gap-1 flex-wrap">

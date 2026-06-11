@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createStarterFranchise } from '@/app/actions/teamActions';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
+import { LanguageContext } from '@/components/LanguageContext';
+import { dict } from '@/lib/dictionaries';
 
 import { Shield, Sword, Star, ChevronRight, CheckCircle, Zap } from 'lucide-react';
 import Link from 'next/link';
@@ -14,30 +16,30 @@ import Link from 'next/link';
 // ─────────────────────────────────────────────────────────────────────────────
 const POSITION_META: Record<string, {
   label: string; color: string; glow: string; borderColor: string;
-  Icon: any; strategy: string; keyStatLabel: string; keyStatKey: string;
+  Icon: any; strategyKey: string; keyStatLabel: string; keyStatKey: string;
 }> = {
   GK:  {
     label: 'Goalkeeper', color: 'from-amber-500 to-orange-600',
     glow: 'rgba(245,158,11,0.55)', borderColor: 'border-amber-500/50',
-    Icon: Shield, strategy: 'Строй игру от обороны',
+    Icon: Shield, strategyKey: 'onb_gk_strategy',
     keyStatLabel: 'PHY', keyStatKey: 'physical',
   },
   DEF: {
     label: 'Defender', color: 'from-blue-500 to-cyan-600',
     glow: 'rgba(59,130,246,0.55)', borderColor: 'border-blue-500/50',
-    Icon: Shield, strategy: 'Держи линию защиты',
+    Icon: Shield, strategyKey: 'onb_def_strategy',
     keyStatLabel: 'DEF', keyStatKey: 'defending',
   },
   MID: {
     label: 'Midfielder', color: 'from-purple-500 to-violet-600',
     glow: 'rgba(168,85,247,0.55)', borderColor: 'border-violet-500/50',
-    Icon: Star, strategy: 'Контролируй центр',
+    Icon: Star, strategyKey: 'onb_mid_strategy',
     keyStatLabel: 'PAS', keyStatKey: 'passing',
   },
   FWD: {
     label: 'Forward', color: 'from-red-500 to-rose-600',
     glow: 'rgba(239,68,68,0.55)', borderColor: 'border-red-500/50',
-    Icon: Sword, strategy: 'Сделай ставку на атаку',
+    Icon: Sword, strategyKey: 'onb_fwd_strategy',
     keyStatLabel: 'SHO', keyStatKey: 'shooting',
   },
 };
@@ -114,9 +116,9 @@ function StepDots({ current }: { current: number }) {
 
 // ─── Open Captain Card ────────────────────────────────────────────────────────
 function CaptainCard({
-  player, idx, chosenIdx, onChoose,
+  player, idx, chosenIdx, onChoose, t,
 }: {
-  player: any; idx: number; chosenIdx: number | null; onChoose: (i: number) => void;
+  player: any; idx: number; chosenIdx: number | null; onChoose: (i: number) => void; t: any;
 }) {
   const group  = positionGroup(player.position || 'MID');
   const meta   = POSITION_META[group];
@@ -124,6 +126,7 @@ function CaptainCard({
   const keyStat = getKeyStat(player.stats, meta.keyStatKey);
   const isChosen = chosenIdx === idx;
   const isDimmed = chosenIdx !== null && !isChosen;
+  const strategy = (t as any)[meta.strategyKey] || meta.strategyKey;
 
   return (
     <motion.div
@@ -183,7 +186,7 @@ function CaptainCard({
         <div className={`text-center text-[8px] font-bold uppercase tracking-wider py-1 rounded-lg
                          transition-colors duration-300
                          ${isChosen ? 'text-cyan-300 bg-cyan-500/10' : 'text-gray-700'}`}>
-          {meta.strategy}
+          {strategy}
         </div>
       </div>
     </motion.div>
@@ -196,6 +199,8 @@ function CaptainCard({
 export default function OnboardingPage() {
   const router = useRouter();
   const { userId } = useContext(TelegramAuthContext);
+  const { language } = useContext(LanguageContext);
+  const t = dict[language as keyof typeof dict] || dict['en'];
 
 
   const [screen,        setScreen]        = useState(0);
@@ -293,9 +298,7 @@ export default function OnboardingPage() {
               <div className="bg-black/50 backdrop-blur-md border border-cyan-500/20
                               p-4 rounded-2xl shadow-[0_0_20px_rgba(0,240,255,0.08)] mb-8 mt-4">
                 <p className="text-gray-300 text-sm leading-relaxed">
-                  Web3 симулятор футбольного менеджера нового поколения.
-                  Тренируй атлетов, торгуй на рынке за <span className="text-cyan-400 font-bold">TON</span> и
-                  покори Высшую Лигу.
+                  {t.onb_welcome_desc}
                 </p>
               </div>
 
@@ -304,7 +307,7 @@ export default function OnboardingPage() {
                            uppercase tracking-widest btn-shimmer active:scale-95
                            shadow-[0_0_25px_rgba(0,240,255,0.5)] transition-transform"
                 whileTap={{ scale: 0.96 }}>
-                Создать клуб <ChevronRight className="inline ml-1 -mt-0.5" size={16} />
+                {t.onb_create_club} <ChevronRight className="inline ml-1 -mt-0.5" size={16} />
               </motion.button>
             </motion.div>
           )}
@@ -319,9 +322,9 @@ export default function OnboardingPage() {
               <div className="flex flex-col items-center mb-5">
                 <StepDots current={1} />
                 <h2 className="text-2xl font-black font-orbitron text-white uppercase tracking-wide">
-                  Основать клуб
+                  {t.onb_found_club}
                 </h2>
-                <p className="text-gray-400 text-xs mt-1 tracking-wider">Дай имя своей легенде</p>
+                <p className="text-gray-400 text-xs mt-1 tracking-wider">{t.onb_captain_hint}</p>
               </div>
 
               <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6
@@ -330,10 +333,10 @@ export default function OnboardingPage() {
                   <div className="relative">
                     <label className="absolute -top-2.5 left-4 text-[10px] text-cyan-400
                                      uppercase tracking-[0.2em] font-bold">
-                      Название клуба
+                      {t.onb_club_name}
                     </label>
                     <input type="text" value={teamName} onChange={e => setTeamName(e.target.value)}
-                      placeholder="e.g. Neon City FC" required maxLength={25}
+                      placeholder={t.onb_club_name_placeholder || 'e.g. Neon City FC'} required maxLength={25}
                       className="w-full bg-black/60 border border-gray-700 text-white font-bold
                                  rounded-xl p-4 pt-5 focus:outline-none focus:border-cyan-400
                                  focus:ring-1 focus:ring-cyan-400 transition-all duration-300
@@ -367,10 +370,10 @@ export default function OnboardingPage() {
                       {agreedToTerms && <CheckCircle size={12} className="text-black" />}
                     </div>
                     <span className="text-xs text-gray-400 leading-relaxed">
-                      Я согласен с{' '}
-                      <Link href="/terms" className="text-cyan-400 hover:underline">Условиями</Link>
-                      {' '}и{' '}
-                      <Link href="/privacy" className="text-cyan-400 hover:underline">Политикой</Link>.
+                      {t.onb_agree_terms}{' '}
+                      <Link href="/terms" className="text-cyan-400 hover:underline">{t.onb_terms_link}</Link>
+                      {' '}{t.onb_and}{' '}
+                      <Link href="/privacy" className="text-cyan-400 hover:underline">{t.onb_privacy_link}</Link>.
                     </span>
                   </label>
 
@@ -386,9 +389,9 @@ export default function OnboardingPage() {
                     {isCreating ? (
                       <span className="flex items-center justify-center gap-2">
                         <span className="w-4 h-4 border-2 border-gray-500 border-t-white rounded-full animate-spin" />
-                        Создаём…
+                        {t.onb_founding_club}
                       </span>
-                    ) : 'Основать Клуб ⚡'}
+                    ) : `${t.onb_found_club} ⚡`}
                   </motion.button>
                 </form>
               </div>
@@ -405,10 +408,10 @@ export default function OnboardingPage() {
               <StepDots current={2} />
 
               <h2 className="text-xl font-black font-orbitron text-white uppercase tracking-wide mb-1">
-                Выбери капитана
+                {t.onb_choose_captain}
               </h2>
               <p className="text-gray-400 text-xs tracking-wider mb-4 text-center">
-                Твоя первая звезда определит стиль игры клуба
+                {t.onb_captain_hint}
               </p>
 
               {/* Hint badge */}
@@ -421,7 +424,7 @@ export default function OnboardingPage() {
                     exit={{ opacity: 0, y: -6 }}>
                     <Zap size={10} className="text-violet-400" />
                     <span className="text-[9px] text-violet-300 font-bold uppercase tracking-wider">
-                      Нажми на карточку чтобы выбрать
+                      {t.onb_captain_click}
                     </span>
                   </motion.div>
                 )}
@@ -432,7 +435,7 @@ export default function OnboardingPage() {
                 {displayPlayers.map((p, idx) => (
                   <CaptainCard
                     key={idx} player={p} idx={idx}
-                    chosenIdx={chosenIdx} onChoose={handleChoose}
+                    chosenIdx={chosenIdx} onChoose={handleChoose} t={t}
                   />
                 ))}
               </div>
@@ -450,7 +453,7 @@ export default function OnboardingPage() {
                       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}>
                       <span className="text-white text-xs font-bold">
-                        🎯 Стратегия: <span className="text-cyan-300">{meta.strategy}</span>
+                        🎯 {t.onb_strategy} <span className="text-cyan-300">{(t as any)[meta.strategyKey] || meta.strategyKey}</span>
                       </span>
                     </motion.div>
                   );
@@ -467,7 +470,7 @@ export default function OnboardingPage() {
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }} transition={{ duration: 0.3 }}
                     whileTap={{ scale: 0.97 }}>
-                    🚀 Начать сезон!
+                    🚀 {t.onb_start_season}
                   </motion.button>
                 )}
               </AnimatePresence>
