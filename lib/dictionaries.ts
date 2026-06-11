@@ -731,6 +731,7 @@ export const dict = {
     chemistry: "Синергия",
     match_journal_title: "Журнал Матчей",
     no_matches_yet: "Нет сыгранных матчей",
+    dashboard_new_matches: "НОВЫЕ МАТЧИ",
     simulating_in: "Симуляция через",
     upcoming_matches: "Предстоящие матчи",
 

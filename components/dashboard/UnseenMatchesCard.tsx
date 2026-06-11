@@ -30,7 +30,7 @@ export function UnseenMatchesCard({ count, onClick, language = 'en' }: Props) {
       )}
       <Eye size={16} className={count > 0 ? 'text-cyan-400' : 'text-gray-600'} />
       <span className={`text-[8px] font-black uppercase tracking-widest ${count > 0 ? 'text-cyan-300' : 'text-gray-600'}`}>
-        {t.unseen_accept_single || 'Matches'}
+        {t.dashboard_new_matches || 'NEW MATCHES'}
       </span>
     </button>
   );

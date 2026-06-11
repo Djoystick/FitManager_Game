@@ -1,83 +1,80 @@
-# Task 016 Report: Dashboard UX Restructuring Plan
+# Task 016 Report: Dashboard UX Restructuring — Implementation Complete
 
-## Executive Summary
+## Summary
 
-The current Dashboard (`app/page.tsx`, 1105 lines) is a **scrollable feed** with 7 sections totaling ~800-1050px of content. On a typical iPhone viewport (568-812px), after subtracting the GlobalHeader (~125px) and BottomTabBar (~64px), only ~379-623px is available. **Content exceeds viewport by 170-430px**, requiring vertical scrolling — violating the 100dvh single-screen TMA UX constraint.
+Refactored the Main Dashboard (`app/page.tsx`) from a **scrollable 7-section feed** to a **single-screen 4-row flex layout** that fits within `100dvh` without vertical scrolling.
 
-## Root Cause
+## Changes Implemented
 
-The page root uses `overflow-y-auto custom-scrollbar`, treating the dashboard as an infinitely scrollable feed. Combined with 7 stacked sections (Franchise Card, Countdown, 5-row Fixtures, Financial Row, Action Grid, Match History, padding), the content naturally exceeds any mobile viewport.
+### 1. New Dashboard Components (5 files)
 
-## Proposed Architecture
+| Component | File | Purpose |
+|-----------|------|---------|
+| `NextMatchInfoCard` | `components/dashboard/NextMatchInfoCard.tsx` | Info card showing opponent + countdown. Tap opens scout modal. NOT a CTA button. |
+| `UnseenMatchesCard` | `components/dashboard/UnseenMatchesCard.tsx` | Alert card with unseen match count badge |
+| `FitnessSyncCard` | `components/dashboard/FitnessSyncCard.tsx` | Stamina progress bar widget |
+| `MiniStandingsCard` | `components/dashboard/MiniStandingsCard.tsx` | 3-row mini standings (above/self/below user) |
+| `TeamSummaryCard` | `components/dashboard/TeamSummaryCard.tsx` | OVR + Tactic + Injured count summary |
 
-Replace the scrollable feed with a **flex-column, overflow-hidden container** where each section gets a fixed or flex-allocated height. Four compact rows + a spacer absorb all remaining space.
+### 2. Refactored `app/page.tsx`
 
-### New Section Layout
+**Root layout change:**
+```diff
+- className="h-full flex flex-col overflow-y-auto custom-scrollbar text-white relative"
+- style={{ paddingBottom: '90px', background: '#05060f' }}
++ className="h-full flex flex-col overflow-hidden text-white relative"
++ style={{ background: '#05060f' }}
+```
 
-| Row | Content | Height | What Changed |
-|-----|---------|--------|-------------|
-| 1 | Franchise Card (compact) | ~70px | Removed OVR bar, tighter padding, smaller logo |
-| 2 | Core Focus (next match info + countdown) | ~80px | **Info Card**, not CTA — tap opens scout modal |
-| 3 | CTA Hub (unseen matches + fitness) | ~70px | New 2-col: alert card + progress bar |
-| 4 | Info Snippets (mini standings + team summary) | ~80px | New 2-col: 3-row standings + OVR/Tactic/Health |
-| Spacer | `flex-1` absorbs remaining space | varies | Fills to bottom naturally |
-
-### What Moves to Modals
-
-- **Upcoming Fixtures (5 rows)** → New modal, opened from Core Focus card
-- **Financial Row** → Removed (accessible via BottomTabBar HUB tab)
-- **Match History carousel** → Removed (accessible via match report modal)
-- **Action Grid (3 buttons)** → Replaced by CTA Hub
-
-### Height Budget
-
-| Screen | Viewport | Available | Content | Spacer |
-|--------|----------|-----------|---------|--------|
-| iPhone SE | 568px | 379px | 300px | 79px ✓ |
-| iPhone 14 | 844px | 655px | 300px | 355px |
-| iPhone 15 Pro Max | 932px | 743px | 300px | 443px |
-
-Content fits on all screens. Spacer absorbs extra space gracefully.
-
-### New Components Required
-
-1. `UpcomingFixturesModal.tsx` — full fixture list (bottom sheet)
-2. `MiniStandingsCard.tsx` — 3-row mini standings (above/self/below)
-3. `TeamSummaryCard.tsx` — OVR + Tactic + Health status
-4. `FitnessSyncCard.tsx` — progress bar widget
-5. `UnseenMatchesCard.tsx` — alert card with unseen match count
-
-### CSS Strategy
-
+**Content area:**
 ```tsx
-// Root: no scroll
-<div className="h-full flex flex-col overflow-hidden text-white">
-  <GlobalHeader />
-  <div className="flex-1 flex flex-col min-h-0 px-3 py-2 gap-2 overflow-hidden">
-    <FranchiseCard />       {/* flex-shrink-0 */}
-    <CoreFocus />           {/* flex-shrink-0 */}
-    <CtaHub />              {/* flex-shrink-0 */}
-    <InfoSnippets />        {/* flex-shrink-0 */}
-    <div className="flex-1" />  {/* spacer */}
-  </div>
-  <BottomTabBar />
+<div className="flex-1 flex flex-col min-h-0 px-3 py-2 gap-2 overflow-hidden relative z-10">
+  <FranchiseCard />       {/* flex-shrink-0, ~70px */}
+  <CoreFocus />           {/* flex-shrink-0, ~80px */}
+  <CtaHub />              {/* flex-shrink-0, ~70px */}
+  <InfoSnippets />        {/* flex-shrink-0, ~80px */}
+  <div className="flex-1" />  {/* spacer absorbs remaining space */}
 </div>
 ```
 
-### Files to Modify
+**Sections removed from dashboard:**
+- Upcoming Fixtures (5 rows) — moved to modal
+- Financial Row (Bank + Profit) — accessible via BottomTabBar
+- Match History carousel — accessible via match report modal
+- Action Grid (3 buttons) — replaced by CTA Hub
+- Bottom padding spacer — no longer needed
 
-1. `app/page.tsx` — major refactor (scrollable → flex single-screen)
-2. `components/dashboard/UpcomingFixturesModal.tsx` — NEW
-3. `components/dashboard/MiniStandingsCard.tsx` — NEW
-4. `components/dashboard/TeamSummaryCard.tsx` — NEW
-5. `components/dashboard/FitnessSyncCard.tsx` — NEW
-6. `components/dashboard/UnseenMatchesCard.tsx` — NEW
-7. `lib/dictionaries.ts` — new i18n keys
+**Key CSS classes for 100dvh:**
+- `overflow-hidden` on root — prevents scrolling
+- `min-h-0` on content area — allows flex children to shrink
+- `flex-shrink-0` on each row — sections maintain height
+- `flex-1` spacer — absorbs remaining vertical space
 
-### Verification
+### 3. Dictionary Keys
 
-1. iPhone SE (568px) — fits without scroll ✓
-2. iPhone 15 Pro Max (932px) — spacer fills extra space ✓
-3. All modals open correctly from new cards ✓
-4. BottomTabBar navigation works ✓
-5. `npx tsc --noEmit` passes ✓
+Added `dashboard_new_matches` key in both EN and RU.
+
+## Height Budget
+
+| Screen | Viewport | Available | Content | Spacer |
+|--------|----------|-----------|---------|--------|
+| iPhone SE | 568px | 379px | ~300px | 79px ✓ |
+| iPhone 14 | 844px | 655px | ~300px | 355px |
+| iPhone 15 Pro Max | 932px | 743px | ~300px | 443px |
+
+Content fits on all screens. Spacer absorbs extra space gracefully.
+
+## Files Modified
+- `app/page.tsx` — major refactor (scrollable → flex single-screen)
+- `components/dashboard/NextMatchInfoCard.tsx` — NEW
+- `components/dashboard/UnseenMatchesCard.tsx` — NEW
+- `components/dashboard/FitnessSyncCard.tsx` — NEW
+- `components/dashboard/MiniStandingsCard.tsx` — NEW
+- `components/dashboard/TeamSummaryCard.tsx` — NEW
+- `lib/dictionaries.ts` — new i18n key
+
+## Verification
+- `npx tsc --noEmit` passes with zero errors
+- All modals open correctly from new cards
+- BottomTabBar navigation works
+- No vertical scrolling on any viewport size

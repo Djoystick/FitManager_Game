@@ -18,6 +18,11 @@ import {
 import { UnseenMatchesModal } from '@/components/UnseenMatchesModal';
 import { NextMatchCountdown } from '@/components/dashboard/NextMatchCountdown';
 import { OffseasonCard } from '@/components/dashboard/OffseasonCard';
+import { NextMatchInfoCard } from '@/components/dashboard/NextMatchInfoCard';
+import { UnseenMatchesCard } from '@/components/dashboard/UnseenMatchesCard';
+import { FitnessSyncCard } from '@/components/dashboard/FitnessSyncCard';
+import { MiniStandingsCard } from '@/components/dashboard/MiniStandingsCard';
+import { TeamSummaryCard } from '@/components/dashboard/TeamSummaryCard';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MatchReport, MatchReportModal } from '@/components/MatchReportModal';
 import { OpponentScoutModal } from '@/components/OpponentScoutModal';
@@ -633,8 +638,15 @@ export default function DashboardPage() {
         ? (nextMatch.away_team?.name || nextMatch.away_team_name)
         : (nextMatch.home_team?.name || nextMatch.home_team_name))
     : null;
+  const nextOpponentId = nextMatch
+    ? (isNextHome ? (nextMatch.away_team?.id) : (nextMatch.home_team?.id))
+    : null;
+  const nextOpponentLogo = nextMatch
+    ? (isNextHome ? (nextMatch.away_team?.logo_url) : (nextMatch.home_team?.logo_url))
+    : null;
+  const nextRound = nextMatch?.round_number ?? null;
 
-  // Profit formatting
+  // Financial formatting
   const formatProfit = (n: number) => {
     const abs = Math.abs(n);
     const str = abs >= 1000 ? `${(abs / 1000).toFixed(1)}k` : `${abs}`;
@@ -646,8 +658,8 @@ export default function DashboardPage() {
   const isOffseason = instanceStatus === 'filling' || instanceStatus === 'completed';
   return (
     <div
-      className="h-full flex flex-col overflow-y-auto custom-scrollbar text-white relative"
-      style={{ paddingBottom: '90px', background: '#05060f' }}
+      className="h-full flex flex-col overflow-hidden text-white relative"
+      style={{ background: '#05060f' }}
     >
       {/* ── Background decorations ─────────────────────────────────────────── */}
       <div className="fixed inset-0 pointer-events-none bg-grid-cyan opacity-100" />
@@ -682,386 +694,146 @@ export default function DashboardPage() {
       <UnseenMatchesModal matches={unseenMatches} onAcknowledge={handleAcknowledgeUnseen} />
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          SECTION 1 — FRANCHISE COMMAND CARD
-          Pulled up: pt-2 (tight) right under the global header
+          SINGLE-SCREEN DASHBOARD — 4 Rows + Spacer (100dvh, no scroll)
       ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="px-3 pt-2 pb-0 flex-shrink-0 relative z-10">
-        <motion.div
-          className="glass-card-violet relative overflow-hidden p-3"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-        >
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent" />
+      <div className="flex-1 flex flex-col min-h-0 px-3 py-2 gap-2 overflow-hidden relative z-10">
 
-          <div className="flex items-center gap-3">
-            {/* Team logo */}
-            <div className="flex-shrink-0">
-              <div
-                className="w-12 h-12 hex-clip flex items-center justify-center overflow-hidden violet-glow-pulse"
-                style={{ background: 'linear-gradient(135deg,rgba(147,51,234,0.3),rgba(0,240,255,0.2))' }}
-              >
-                {teamLogoUrl ? (
-                  <img src={teamLogoUrl} alt={teamName || 'Team'} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-lg font-black font-orbitron text-white">
-                    {teamName?.slice(0, 2).toUpperCase() || 'FC'}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Name + date + stats */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <h1 className="text-sm font-black font-orbitron text-white truncate uppercase tracking-wide">
-                  {teamName}
-                </h1>
-                {leagueTier && (
-                  <span className="flex-shrink-0 text-[8px] font-bold bg-violet-500/20 border border-violet-500/40
-                                   text-violet-300 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                    T{leagueTier}
-                  </span>
-                )}
-              </div>
-
-              {/* Date line */}
-              <div className="text-[8px] text-gray-600 uppercase tracking-[0.2em] font-bold mb-1">
-                {getTodayLabel()}
-              </div>
-
-              {/* Stats row */}
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1">
-                  <span className="text-[8px] text-gray-600 uppercase tracking-wider">OVR</span>
-                  <span className="text-sm font-black text-cyan-300 font-orbitron neon-text-cyan">{teamOvr}</span>
-                </div>
-                <div className="w-px h-3 bg-white/10" />
-                <div className="flex items-center gap-1">
-                  <span className="text-[8px] text-gray-600 uppercase tracking-wider">STA</span>
-                  <span className={`text-sm font-black font-orbitron ${avgStamina < 40 ? 'text-red-400' : 'text-emerald-400'}`}>
-                    {avgStamina}%
-                  </span>
-                </div>
-                {injuredCount > 0 && (
-                  <>
-                    <div className="w-px h-3 bg-white/10" />
-                    <span className="text-[9px] text-red-400 font-bold">🤕 {injuredCount}</span>
-                  </>
-                )}
-                <div className="w-px h-3 bg-white/10" />
-                <div className="flex items-center gap-1">
-                  <span className="text-[8px] text-gray-600 uppercase tracking-wider">LVL</span>
-                  <span className="text-sm font-black text-violet-300 font-orbitron">{managerLevel}</span>
+        {/* ── ROW 1: Franchise Card (compact) ──────────────────────────────── */}
+        <div className="flex-shrink-0">
+          <motion.div
+            className="glass-card-violet relative overflow-hidden p-2.5 rounded-xl"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35 }}
+          >
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent" />
+            <div className="flex items-center gap-2.5">
+              {/* Team logo — compact 36×36 */}
+              <div className="flex-shrink-0">
+                <div
+                  className="w-9 h-9 hex-clip flex items-center justify-center overflow-hidden violet-glow-pulse"
+                  style={{ background: 'linear-gradient(135deg,rgba(147,51,234,0.3),rgba(0,240,255,0.2))' }}
+                >
+                  {teamLogoUrl ? (
+                    <img src={teamLogoUrl} alt={teamName || 'Team'} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-sm font-black font-orbitron text-white">
+                      {teamName?.slice(0, 2).toUpperCase() || 'FC'}
+                    </span>
+                  )}
                 </div>
               </div>
-            </div>
 
-            {/* Profile link */}
-            <Link href="/profile"
-              className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0
-                         border border-violet-500/50 bg-violet-500/15 shadow-[0_0_15px_rgba(147,51,234,0.4)]
-                         hover:bg-violet-500/30 transition-all duration-200 active:scale-90 relative group">
-              <div className="absolute inset-0 rounded-full border border-violet-400/80 animate-ping opacity-30"></div>
-              <User size={16} className="text-violet-200 relative z-10 drop-shadow-[0_0_8px_rgba(167,139,250,0.8)]" />
-            </Link>
-          </div>
-
-          {/* OVR gradient bar */}
-          <div className="mt-2.5">
-            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full rounded-full"
-                style={{ background: 'linear-gradient(90deg,#9333ea,#00f0ff)', boxShadow: '0 0 8px rgba(147,51,234,0.6)' }}
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.min(100, teamOvr)}%` }}
-                transition={{ duration: 1.2, ease: 'easeOut' }}
-              />
-            </div>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════════════
-          SECTION 2 — SINGLE COUNTDOWN
-          Logic: Show Transfer Window if active, ELSE show Next Match countdown.
-          Never both at the same time.
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="px-3 mt-2 flex-shrink-0 relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.05 }}
-        >
-          {isOffseason ? (
-            /* Offseason or Transfer Window is open — show offseason card only */
-            <OffseasonCard
-              lastSeasonResult={lastSeasonResult}
-              instanceCreatedAt={instanceCreatedAt}
-              language={language}
-            />
-          ) : nextMatch ? (
-            /* Transfer window closed + we have a next match — show the CTA button */
-            <motion.button
-              onClick={() => {
-                const isHome = nextMatch.home_team?.name === teamName || nextMatch.home_team_name === teamName;
-                const opponentId   = isHome ? nextMatch.away_team?.id : nextMatch.home_team?.id;
-                const opponentName = isHome
-                  ? (nextMatch.away_team?.name || nextMatch.away_team_name)
-                  : (nextMatch.home_team?.name || nextMatch.home_team_name);
-                if (opponentId) {
-                  setSelectedOpponentId(opponentId);
-                  setSelectedOpponentName(opponentName);
-                }
-              }}
-              className="w-full relative overflow-hidden rounded-2xl py-4 flex flex-col items-center justify-center gap-1
-                         transition-all duration-300 active:scale-[0.98] group"
-              style={{
-                background: 'linear-gradient(135deg, rgba(0,240,255,0.12) 0%, rgba(147,51,234,0.15) 100%)',
-                border: '1px solid rgba(0,240,255,0.35)',
-                boxShadow: '0 0 30px rgba(0,240,255,0.15), inset 0 0 30px rgba(147,51,234,0.05)',
-              }}
-              whileTap={{ scale: 0.97 }}
-            >
-              <div className="absolute top-0 left-0 right-0 h-px"
-                   style={{ background: 'linear-gradient(90deg, transparent, rgba(0,240,255,0.8), rgba(147,51,234,0.8), transparent)' }} />
-              <div className="absolute inset-0 pointer-events-none"
-                   style={{ background: 'radial-gradient(ellipse 60% 60% at 50% 50%, rgba(0,240,255,0.05) 0%, transparent 70%)' }} />
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-1
-                              bg-cyan-500/15 border border-cyan-400/30
-                              group-hover:bg-cyan-500/25 group-hover:border-cyan-400/50
-                              transition-all duration-200">
-                <Swords size={20} className="text-cyan-300 drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]" />
+              {/* Name + stats — compact */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <h1 className="text-xs font-black font-orbitron text-white truncate uppercase tracking-wide">
+                    {teamName}
+                  </h1>
+                  {leagueTier && (
+                    <span className="flex-shrink-0 text-[7px] font-bold bg-violet-500/20 border border-violet-500/40
+                                     text-violet-300 px-1 py-0.5 rounded-full uppercase tracking-wider">
+                      T{leagueTier}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-0.5">
+                    <span className="text-[7px] text-gray-600 uppercase tracking-wider">OVR</span>
+                    <span className="text-xs font-black text-cyan-300 font-orbitron neon-text-cyan">{teamOvr}</span>
+                  </div>
+                  <div className="w-px h-2.5 bg-white/10" />
+                  <div className="flex items-center gap-0.5">
+                    <span className="text-[7px] text-gray-600 uppercase tracking-wider">STA</span>
+                    <span className={`text-xs font-black font-orbitron ${avgStamina < 40 ? 'text-red-400' : 'text-emerald-400'}`}>
+                      {avgStamina}%
+                    </span>
+                  </div>
+                  <div className="w-px h-2.5 bg-white/10" />
+                  <div className="flex items-center gap-0.5">
+                    <span className="text-[7px] text-gray-600 uppercase tracking-wider">LVL</span>
+                    <span className="text-xs font-black text-violet-300 font-orbitron">{managerLevel}</span>
+                  </div>
+                </div>
               </div>
-              <span className="text-xs font-black font-orbitron uppercase tracking-widest text-white"
-                    style={{ textShadow: '0 0 20px rgba(0,240,255,0.6)' }}>
-                {t.home_proceed || 'PROCEED TO NEXT MATCH'}
-              </span>
-              {nextOpponent && (
-                <span className="text-[9px] text-cyan-400/70 uppercase tracking-wider font-bold">
-                  {t.match_vs || 'vs'} {nextOpponent} · {t.match_round?.replace('{round}', String(nextMatch.round_number)) || `R${nextMatch.round_number}`}
-                </span>
-              )}
-              {/* Restored Progress Bar inside the CTA */}
-              <NextHourCountdown />
-            </motion.button>
-          ) : (
-            /* No next match data — show generic next-hour countdown */
-            <NextMatchCountdown language={language} />
-          )}
-        </motion.div>
-      </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          SECTION 3 — UPCOMING FIXTURES (no header link, expanded to 5 rows)
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="px-3 mt-2 flex-shrink-0 relative z-10">
-        <motion.div
-          className="glass-card overflow-hidden"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.08 }}
-        >
-          {/* Card header — no "League >" link */}
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.05]">
-            <Calendar size={12} className="text-cyan-400" />
-            <span className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">
-              {t.upcoming_fixtures || 'Upcoming Fixtures'}
-            </span>
-          </div>
-
-          {upcomingMatches.length > 0 ? (
-            <div>
-              {upcomingMatches.slice(0, 5).map((m, i) => (
-                <CalendarMatchRow
-                  key={m.id || i}
-                  match={m}
-                  teamName={teamName}
-                  index={i}
-                  onScout={() => {
-                    const isHome = m.home_team?.name === teamName || m.home_team_name === teamName;
-                    const opponentId   = isHome ? m.away_team?.id : m.home_team?.id;
-                    const opponentName = isHome
-                      ? (m.away_team?.name || m.away_team_name)
-                      : (m.home_team?.name || m.home_team_name);
-                    if (opponentId) {
-                      setSelectedOpponentId(opponentId);
-                      setSelectedOpponentName(opponentName);
-                    }
-                  }}
-                  t={t}
-                />
-              ))}
+              {/* Profile link — compact 32×32 */}
+              <Link href="/profile"
+                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
+                           border border-violet-500/50 bg-violet-500/15
+                           hover:bg-violet-500/30 transition-all duration-200 active:scale-90">
+                <User size={14} className="text-violet-200" />
+              </Link>
             </div>
-          ) : (
-            <div className="px-3 py-4 text-center">
-              <p className="text-gray-600 text-[10px] font-bold uppercase tracking-wider">{t.no_upcoming || 'No upcoming fixtures'}</p>
-            </div>
-          )}
-        </motion.div>
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════════════
-          SECTION 4 — FINANCIAL ROW
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="px-3 mt-2 flex-shrink-0 relative z-10">
-        <motion.div
-          className="grid grid-cols-2 gap-2"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.1 }}
-        >
-          {/* Bank Balance */}
-          <Link href="/bank"
-            className="relative overflow-hidden rounded-2xl border border-yellow-500/25 bg-yellow-900/10
-                       p-3 flex flex-col gap-0.5 hover:border-yellow-500/40 hover:bg-yellow-900/15
-                       transition-all duration-200 active:scale-95 group">
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-yellow-400/40 to-transparent" />
-            <div className="text-[7px] text-gray-600 uppercase tracking-[0.18em] font-bold">{t.bank_balance || 'Bank Balance'}</div>
-            <div className="text-lg font-black font-orbitron text-yellow-400 leading-none group-hover:text-yellow-300 transition-colors">
-              {fcBalance.toLocaleString()}
-            </div>
-            <div className="text-[7px] text-yellow-600 font-bold uppercase tracking-wider">{t.fancoin_label || 'FanCoin (FC)'}</div>
-          </Link>
-
-          {/* Yearly Profit */}
-          <div className="relative overflow-hidden rounded-2xl border
-                          p-3 flex flex-col gap-0.5
-                          transition-all duration-200"
-               style={{
-                 borderColor: profit.positive ? 'rgba(52,211,153,0.25)' : 'rgba(239,68,68,0.25)',
-                 background:  profit.positive ? 'rgba(52,211,153,0.06)' : 'rgba(239,68,68,0.06)',
-               }}>
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-            <div className="text-[7px] text-gray-600 uppercase tracking-[0.18em] font-bold">{t.yearly_profit || 'Yearly Profit'}</div>
-            <div className={`text-lg font-black font-orbitron leading-none flex items-center gap-1
-                            ${profit.positive ? 'text-emerald-400' : 'text-red-400'}`}>
-              <span className="text-sm">{profit.positive ? '▲' : '▼'}</span>
-              {profit.str}
-            </div>
-            <div className={`text-[7px] font-bold uppercase tracking-wider
-                             ${profit.positive ? 'text-emerald-700' : 'text-red-700'}`}>
-              {profit.positive ? (t.net_gain || 'Net Gain') : (t.net_loss || 'Net Loss')} · {t.season_label || 'Season'}
-            </div>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════════════
-          SECTION 5 — ACTION GRID (Standings Modal · Social Feed Modal · Fitness Sync Modal)
-          These buttons now open modals instead of navigating away.
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="px-3 mt-2 flex-shrink-0 relative z-10">
-        <motion.div
-          className="grid grid-cols-3 gap-2"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.15 }}
-        >
-          {/* Standings — opens modal */}
-          <button
-            onClick={handleOpenStandings}
-            className="relative overflow-hidden rounded-2xl border border-violet-500/25
-                       bg-gradient-to-br from-violet-900/20 to-black/40
-                       p-3 flex flex-col items-center justify-center gap-1.5
-                       hover:border-violet-500/50 hover:scale-[1.03]
-                       transition-all duration-200 active:scale-95 group"
-          >
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/40 to-transparent" />
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center
-                            bg-violet-500/15 border border-violet-500/30
-                            group-hover:bg-violet-500/25 transition-colors">
-              <Trophy size={16} className="text-violet-400" />
-            </div>
-            <span className="text-[8px] font-black uppercase tracking-widest text-violet-300">{t.home_standings || 'STANDINGS'}</span>
-          </button>
-
-          {/* ACTIVITY / NEWS — dispatches event to open GlobalHeader modal */}
-          <button
-            onClick={() => window.dispatchEvent(new Event('openNotifications'))}
-            className="relative overflow-hidden rounded-2xl border border-cyan-500/25
-                       bg-gradient-to-br from-cyan-900/20 to-black/40
-                       p-3 flex flex-col items-center justify-center gap-1.5
-                       hover:border-cyan-500/50 hover:scale-[1.03]
-                       transition-all duration-200 active:scale-95 group"
-          >
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center
-                            bg-cyan-500/15 border border-cyan-500/30
-                            group-hover:bg-cyan-500/25 transition-colors">
-              <Radio size={16} className="text-cyan-400" />
-            </div>
-            <span className="text-[8px] font-black uppercase tracking-widest text-cyan-300">{t.activity_news || 'ACTIVITY / NEWS'}</span>
-          </button>
-
-          {/* FITNESS HUB — navigates to bank page */}
-          <Link
-            href="/bank"
-            className="relative overflow-hidden rounded-2xl border border-emerald-500/25
-                       bg-gradient-to-br from-emerald-900/20 to-black/40
-                       p-3 flex flex-col items-center justify-center gap-1.5
-                       hover:border-emerald-500/50 hover:scale-[1.03]
-                       transition-all duration-200 active:scale-95 group"
-          >
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent" />
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center relative
-                            bg-emerald-500/15 border border-emerald-500/30
-                            group-hover:bg-emerald-500/25 transition-colors">
-              <Dumbbell size={16} className="text-emerald-400" />
-            </div>
-            <span className="text-[8px] font-black uppercase tracking-widest text-emerald-300 text-center">{t.fitness_center_tab || 'FITNESS CENTER'}</span>
-          </Link>
-        </motion.div>
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════════════
-          SECTION 6 — MATCH HISTORY (horizontal snap carousel, no "All >" link)
-          Expanded to show more cards when the second countdown is gone.
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="mt-2 flex-shrink-0 relative z-10">
-        <div className="px-3 mb-1.5">
-          <p className="text-[9px] font-bold text-gray-600 uppercase tracking-[0.2em]">
-            {t.match_journal}
-          </p>
+          </motion.div>
         </div>
 
-        {recentMatches.length > 0 ? (
-          <div className="snap-row px-3 pb-3">
-            {recentMatches.map((m, i) => (
-              <MatchCard
-                key={m.id || i}
-                match={m}
-                teamName={teamName}
-                onClick={() => setSelectedMatch({
-                  id: m.id,
-                  home_team_id:   m.home_team?.id || '',
-                  away_team_id:   m.away_team?.id || '',
-                  home_team_name: m.home_team?.name || m.home_team_name || 'Unknown',
-                  away_team_name: m.away_team?.name || m.away_team_name || 'Unknown',
-                  home_score:     m.home_score || 0,
-                  away_score:     m.away_score || 0,
-                  events:         m.events || [],
-                  round_number:   m.round_number,
-                  home_tactic:    m.home_tactic || 'Balanced',
-                  away_tactic:    m.away_tactic || 'Balanced',
-                })}
-                t={t}
+        {/* ── ROW 2: Core Focus — Next Match Info Card or Offseason ────────── */}
+        <div className="flex-shrink-0">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: 0.05 }}
+          >
+            {isOffseason ? (
+              <OffseasonCard
+                lastSeasonResult={lastSeasonResult}
+                instanceCreatedAt={instanceCreatedAt}
+                language={language}
               />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center text-center px-6 py-8 mb-2">
-            <div className="w-10 h-10 rounded-full glass-card flex items-center justify-center mb-2">
-              <Zap className="w-5 h-5 text-gray-700" />
-            </div>
-            <p className="text-gray-600 text-xs font-bold uppercase tracking-wider">{t.no_matches_yet || 'No matches yet'}</p>
-            <p className="text-gray-700 text-[10px] mt-1">{t.home_wait_next || 'Wait for the next league round'}</p>
-          </div>
-        )}
-      </div>
+            ) : nextMatch ? (
+              <NextMatchInfoCard
+                opponentName={nextOpponent}
+                opponentLogoUrl={nextOpponentLogo}
+                roundNumber={nextRound}
+                opponentId={nextOpponentId}
+                onScout={() => {
+                  if (nextOpponentId) {
+                    setSelectedOpponentId(nextOpponentId);
+                    setSelectedOpponentName(nextOpponent);
+                  }
+                }}
+                language={language}
+              />
+            ) : (
+              <NextMatchCountdown language={language} />
+            )}
+          </motion.div>
+        </div>
 
-      {/* Bottom padding for tab bar */}
-      <div className="pb-28 flex-shrink-0" />
+        {/* ── ROW 3: CTA Hub — Unseen Matches + Fitness ───────────────────── */}
+        <div className="flex-shrink-0">
+          <div className="grid grid-cols-2 gap-2">
+            <UnseenMatchesCard
+              count={unseenMatches.length}
+              onClick={() => unseenMatches.length > 0 && handleAcknowledgeUnseen(unseenMatches.map(m => m.id))}
+              language={language}
+            />
+            <FitnessSyncCard avgStamina={avgStamina} language={language} />
+          </div>
+        </div>
+
+        {/* ── ROW 4: Info Snippets — Mini Standings + Team Summary ─────────── */}
+        <div className="flex-shrink-0">
+          <div className="grid grid-cols-2 gap-2">
+            <MiniStandingsCard
+              standings={standingsData}
+              userTeamId={teamId}
+              language={language}
+            />
+            <TeamSummaryCard
+              teamOvr={teamOvr}
+              tactic="Balanced"
+              avgStamina={avgStamina}
+              injuredCount={injuredCount}
+              language={language}
+            />
+          </div>
+        </div>
+
+        {/* Spacer — absorbs remaining vertical space */}
+        <div className="flex-1" />
+      </div>
 
       {/* ── Match Report Modal ─────────────────────────────────────────────── */}
       {selectedMatch && teamId && (
