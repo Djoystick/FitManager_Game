@@ -27,6 +27,7 @@
     "react-dom": "19.2.4",
     "react-hot-toast": "^2.6.0",
     "recharts": "^3.8.1",
+    "tailwindcss-animate": "^1.0.7",
     "telegraf": "^4.16.3"
   },
   "devDependencies": {

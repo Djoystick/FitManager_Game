@@ -146,7 +146,7 @@ export function SquadManager({ initialPlayers, teamId }: SquadManagerProps) {
         </div>
         
         {starting.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 min-[400px]:grid-cols-3 min-[440px]:grid-cols-4 gap-3">
             {starting.map(player => (
               <div 
                 key={player.id} 
@@ -179,7 +179,7 @@ export function SquadManager({ initialPlayers, teamId }: SquadManagerProps) {
         </div>
         
         {bench.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 opacity-80 hover:opacity-100 transition-opacity">
+          <div className="grid grid-cols-2 min-[400px]:grid-cols-3 min-[440px]:grid-cols-4 gap-3 opacity-80 hover:opacity-100 transition-opacity">
             {bench.map(player => (
               <div 
                 key={player.id} 

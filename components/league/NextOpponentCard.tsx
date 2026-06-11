@@ -22,7 +22,7 @@ export function NextOpponentCard({ opponentTeamName, opponentLogoUrl, averageOvr
 
   return (
     <>
-      <div className="bg-black/60 border border-neon-cyan/30 rounded-xl p-5 mb-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_20px_rgba(0,240,255,0.1)] relative overflow-hidden">
+      <div className="bg-black/60 border border-neon-cyan/30 rounded-xl p-5 mb-6 flex flex-col min-[440px]:flex-row items-center justify-between gap-4 shadow-[0_0_20px_rgba(0,240,255,0.1)] relative overflow-hidden">
         {/* Background glow */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-neon-cyan/10 rounded-full blur-3xl" />
         
@@ -48,16 +48,16 @@ export function NextOpponentCard({ opponentTeamName, opponentLogoUrl, averageOvr
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 z-10 w-full md:w-auto">
+        <div className="flex flex-col min-[400px]:flex-row gap-3 z-10 w-full min-[440px]:w-auto">
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white rounded font-bold transition-all"
+            className="flex-1 min-[400px]:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white rounded font-bold transition-all"
           >
             <Users size={16} />
             Analyze Opponent
           </button>
           
-          <div className="flex-1 sm:flex-none flex items-center justify-center bg-gray-800 border border-gray-600 rounded px-4 py-2">
+          <div className="flex-1 min-[400px]:flex-none flex items-center justify-center bg-gray-800 border border-gray-600 rounded px-4 py-2">
             <span className="text-sm font-bold text-gray-400 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span>
               Match Pending...
