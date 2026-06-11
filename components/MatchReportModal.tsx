@@ -4,7 +4,7 @@
 import { useEffect, useState, useContext } from 'react';
 import { MatchEvent } from '@/app/utils/matchEngine';
 import { markMatchAsViewed } from '@/app/actions/matchActions';
-import { Activity, Shield, Target, AlertCircle, RefreshCcw } from 'lucide-react';
+import { Activity, Shield, Target, AlertCircle, RefreshCcw, Flag, CircleDot, AlertTriangle, CheckCircle, Square } from 'lucide-react';
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
 
@@ -18,6 +18,8 @@ export interface MatchReport {
   away_score: number;
   events: MatchEvent[];
   round_number?: number;
+  home_tactic?: string;
+  away_tactic?: string;
   stamina_drain?: {
     home: Record<string, number>;
     away: Record<string, number>;
@@ -58,9 +60,14 @@ export function MatchReportModal({ report, userTeamId, onClose }: MatchReportMod
     if (type === 'goal') return <Target className="w-4 h-4 text-neon-green" />;
     if (type === 'save') return <Shield className="w-4 h-4 text-neon-cyan" />;
     if (type === 'yellow_card') return <AlertCircle className="w-4 h-4 text-yellow-500" />;
-    if (type === 'red_card') return <AlertCircle className="w-4 h-4 text-red-500" />;
+    if (type === 'second_yellow') return <AlertCircle className="w-4 h-4 text-yellow-400" />;
+    if (type === 'red_card') return <Square className="w-4 h-4 text-red-500 fill-red-500" />;
     if (type === 'injury') return <Activity className="w-4 h-4 text-red-500" />;
     if (type === 'substitution') return <RefreshCcw className="w-4 h-4 text-blue-400" />;
+    if (type === 'offside') return <Flag className="w-4 h-4 text-yellow-400" />;
+    if (type === 'crossbar') return <CircleDot className="w-4 h-4 text-neon-cyan" />;
+    if (type === 'own_goal') return <AlertTriangle className="w-4 h-4 text-red-400" />;
+    if (type === 'penalty_save') return <CheckCircle className="w-4 h-4 text-neon-green" />;
     return <AlertCircle className="w-4 h-4 text-gray-500" />;
   };
 
@@ -87,9 +94,20 @@ export function MatchReportModal({ report, userTeamId, onClose }: MatchReportMod
               {report.away_team_name}
             </div>
           </div>
-        </div>
 
-        {/* Timeline */}
+          {/* Tactics display */}
+          {(report.home_tactic || report.away_tactic) && (
+            <div className="flex justify-between items-center px-4 mt-2">
+              <div className="text-[9px] text-neon-cyan/60 font-bold uppercase tracking-wider">
+                {report.home_tactic || 'Balanced'}
+              </div>
+              <div className="text-[8px] text-gray-600 uppercase tracking-widest">{t.report_tactic_label || 'Tactic'}</div>
+              <div className="text-[9px] text-neon-cyan/60 font-bold uppercase tracking-wider text-right">
+                {report.away_tactic || 'Balanced'}
+              </div>
+            </div>
+          )}
+        </div>
         <div className="flex-1 overflow-y-auto max-h-[40vh] p-4 bg-black/50 custom-scrollbar">
           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-800 pb-2 mb-4 text-center">
             {t.report_match_events || 'Match Events'}

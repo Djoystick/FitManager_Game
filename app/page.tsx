@@ -1048,6 +1048,8 @@ export default function DashboardPage() {
                   away_score:     m.away_score || 0,
                   events:         m.events || [],
                   round_number:   m.round_number,
+                  home_tactic:    m.home_tactic || 'Balanced',
+                  away_tactic:    m.away_tactic || 'Balanced',
                 })}
                 t={t}
               />

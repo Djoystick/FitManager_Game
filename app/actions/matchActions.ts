@@ -111,7 +111,9 @@ export async function getMatchHistory(userId: string): Promise<{ success: boolea
       away_team_name: teamNames[match.away_team_id] || 'Unknown Away Team',
       home_score: match.home_score || 0,
       away_score: match.away_score || 0,
-      events: match.events || []
+      events: match.events || [],
+      home_tactic: match.home_tactic || 'Balanced',
+      away_tactic: match.away_tactic || 'Balanced'
     }));
 
     return { success: true, data: history };
@@ -286,6 +288,12 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
     const { data: homeChem } = await supabaseAdmin.from('player_chemistry').select('*').eq('team_id', match.home_team_id);
     const { data: awayChem } = await supabaseAdmin.from('player_chemistry').select('*').eq('team_id', match.away_team_id);
 
+    // Загрузка тактик обеих команд
+    const { data: homeTeamData } = await supabaseAdmin.from('teams').select('tactic').eq('id', match.home_team_id).single();
+    const { data: awayTeamData } = await supabaseAdmin.from('teams').select('tactic').eq('id', match.away_team_id).single();
+    const homeTactic = homeTeamData?.tactic || 'Balanced';
+    const awayTactic = awayTeamData?.tactic || 'Balanced';
+
     // [P1 FIX] Green Links only activate if BOTH players are in the active lineup
     const getGreenLinks = (chemRecords: any[], lineupIds: Set<string>) => {
       const greenMap: Record<string, boolean> = {};
@@ -346,7 +354,7 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       };
     } else {
       console.log(`[resolveMatch] Running Core Match Engine...`);
-      result = runMatchEngine(homeLineup, awayLineup, homeBench, awayBench, homeGreen, awayGreen);
+      result = runMatchEngine(homeLineup, awayLineup, homeBench, awayBench, homeGreen, awayGreen, homeTactic, awayTactic);
     }
     console.log(`[resolveMatch] Core Engine output score: ${result.score.home}-${result.score.away}`);
 
@@ -360,7 +368,9 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
         is_played: true, // for backwards compatibility
         is_viewed: false,
         events: result.events,
-        stamina_drain: result.staminaDrain
+        stamina_drain: result.staminaDrain,
+        home_tactic: homeTactic,
+        away_tactic: awayTactic
       })
       .eq('id', matchId);
 
@@ -583,6 +593,8 @@ export async function getUnviewedMatch(userId: string) {
       home_score: match.home_score,
       away_score: match.away_score,
       events: match.events || [],
+      home_tactic: match.home_tactic || 'Balanced',
+      away_tactic: match.away_tactic || 'Balanced',
       stamina_drain: match.stamina_drain || { home: {}, away: {} }
     };
 

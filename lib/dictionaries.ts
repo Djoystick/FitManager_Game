@@ -395,6 +395,10 @@ export const dict = {
     lineup_bench_count: "({count}/5 bench)",
     lineup_lineup_saved: "Lineup Saved",
     lineup_formation_saved: "Formation Saved",
+    lineup_tactic: "TACTIC",
+    lineup_tactic_saved: "Tactic Saved",
+    lineup_failed_tactic: "Failed to change tactic",
+    lineup_network_tactic: "Network error during tactic change.",
     lineup_heal_count: "Heal ({count})",
     lineup_healed_count: "Healed {count} player(s)!",
     lineup_healed_balance: "Healed {count} players! Balance updated.",
@@ -478,6 +482,7 @@ export const dict = {
     report_stamina_drain: "Squad Stamina Drain: ~20%",
     report_processing: "Processing...",
     report_accept: "Accept Report",
+    report_tactic_label: "Tactic",
 
     // OpponentScoutModal (Task 014)
     scout_report: "SCOUT REPORT",
@@ -930,6 +935,10 @@ export const dict = {
     lineup_bench_count: "({count}/5 скам.)",
     lineup_lineup_saved: "Состав сохранён",
     lineup_formation_saved: "Схема сохранена",
+    lineup_tactic: "ТАКТИКА",
+    lineup_tactic_saved: "Тактика сохранена",
+    lineup_failed_tactic: "Не удалось изменить тактику",
+    lineup_network_tactic: "Ошибка сети при смене тактики.",
     lineup_heal_count: "Лечить ({count})",
     lineup_healed_count: "Вылечено {count} игрок(ов)!",
     lineup_healed_balance: "Вылечено {count} игроков! Баланс обновлён.",
@@ -1013,6 +1022,7 @@ export const dict = {
     report_stamina_drain: "Потеря стамины состава: ~20%",
     report_processing: "Обработка...",
     report_accept: "Принять отчёт",
+    report_tactic_label: "Тактика",
 
     // OpponentScoutModal (Task 014)
     scout_report: "ОТЧЁТ РАЗВЕДКИ",

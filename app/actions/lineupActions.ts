@@ -134,6 +134,48 @@ export async function updatePlayers(payload: { id: string; lineup_status: string
   }
 }
 
+const ALLOWED_TACTICS = ['Tiki-Taka', 'Counter Attack', 'High Press', 'Park the Bus', 'Wing Play', 'Balanced'];
+
+export async function updateTeamTactic(tactic: string) {
+  try {
+    const cookieStore = await cookies();
+    const tgUserId = cookieStore.get('tg_user_id')?.value;
+
+    if (!tgUserId) {
+      return { success: false, error: 'Unauthorized: Valid Telegram session required.' };
+    }
+
+    if (!ALLOWED_TACTICS.includes(tactic)) {
+      return { success: false, error: 'Invalid tactic' };
+    }
+
+    const { data: team, error: teamError } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('user_id', tgUserId)
+      .single();
+
+    if (teamError || !team) {
+      return { success: false, error: 'Team not found' };
+    }
+
+    const { error: updateError } = await supabase
+      .from('teams')
+      .update({ tactic })
+      .eq('id', team.id);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    revalidatePath('/lineup');
+    return { success: true };
+  } catch (error: any) {
+    console.error('Update team tactic failed:', error);
+    return { success: false, error: error.message || 'An unexpected error occurred.' };
+  }
+}
+
 export async function updateTeamFormation(teamId: string, formation: string) {
   try {
     const cookieStore = await cookies();

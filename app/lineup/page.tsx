@@ -3,7 +3,7 @@
 import { useContext, useEffect, useState } from 'react';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import { useRouter } from 'next/navigation';
-import { swapPlayers, updatePlayers, updateTeamFormation } from '@/app/actions/lineupActions';
+import { swapPlayers, updatePlayers, updateTeamFormation, updateTeamTactic } from '@/app/actions/lineupActions';
 import { healAllPlayers } from '@/app/actions/baseActions';
 import toast from 'react-hot-toast';
 import { CyberLoader } from '@/components/ui/CyberLoader';
@@ -52,6 +52,7 @@ interface Team {
   name: string;
   is_ready_for_match: boolean;
   formation?: string;
+  tactic?: string;
 }
 
 export default function LineupPage() {
@@ -75,6 +76,8 @@ export default function LineupPage() {
   const [scoutReport, setScoutReport] = useState<any>(null);
   const [isLoadingScout, setIsLoadingScout] = useState(false);
   const [activeFormation, setActiveFormation] = useState('4-4-2');
+  const [activeTactic, setActiveTactic] = useState('Balanced');
+  const [isTacticLoading, setIsTacticLoading] = useState(false);
   const [hasCheckedCorruption, setHasCheckedCorruption] = useState(false);
   const [activeHUD, setActiveHUD] = useState<{player: Player, x: number, y: number, isBelow?: boolean} | null>(null);
   const [profilePlayer, setProfilePlayer] = useState<Player | null>(null);
@@ -139,6 +142,7 @@ export default function LineupPage() {
           setTeam(data.team);
           setPlayers(data.players);
           setActiveFormation(data.team?.formation || '4-4-2');
+          setActiveTactic(data.team?.tactic || 'Balanced');
         }
       }
     } catch (error) {
@@ -370,6 +374,29 @@ export default function LineupPage() {
       setActiveFormation(team.formation || '4-4-2');
     } finally {
       setIsFormationLoading(false);
+    }
+  };
+
+  const handleTacticChange = async (newTactic: string) => {
+    if (!userId || !team || activeTactic === newTactic) return;
+
+    setIsTacticLoading(true);
+    setActiveTactic(newTactic);
+
+    try {
+      const res = await updateTeamTactic(newTactic);
+      if (res.success) {
+        setTeam((prev: any) => prev ? { ...prev, tactic: newTactic } : prev);
+        toast.success(t.lineup_tactic_saved || 'Tactic Saved', { position: 'top-center', duration: 1500 });
+      } else {
+        toast.error(res.error || (t.lineup_failed_tactic || 'Failed to change tactic'));
+        setActiveTactic(team.tactic || 'Balanced');
+      }
+    } catch (err: any) {
+      toast.error(t.lineup_network_tactic || 'Network error during tactic change.');
+      setActiveTactic(team.tactic || 'Balanced');
+    } finally {
+      setIsTacticLoading(false);
     }
   };
 
@@ -646,6 +673,31 @@ export default function LineupPage() {
           <div className="grid grid-cols-2 gap-2">
             <StatCard label={t.lineup_squad_size || 'Squad Size'} value={players.length} subLabel={t.lineup_players_label || 'players'} accent="yellow" />
             <StatCard label={t.lineup_formation || 'Formation'} value={currentFormation} accent="violet" />
+          </div>
+
+          {/* Tactic Selector */}
+          <div className="glass-card p-3 rounded-xl">
+            <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold mb-2 px-0.5">{t.lineup_tactic || 'TACTIC'}</div>
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+              {(['Balanced', 'Tiki-Taka', 'Counter Attack', 'High Press', 'Park the Bus', 'Wing Play'] as const).map(tactic => {
+                const isActive = activeTactic === tactic;
+                return (
+                  <button
+                    key={tactic}
+                    onClick={() => handleTacticChange(tactic)}
+                    disabled={isTacticLoading}
+                    className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-[9px] font-black
+                                uppercase tracking-widest transition-all border whitespace-nowrap ${
+                      isActive
+                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-[0_0_10px_rgba(0,240,255,0.4)]'
+                        : 'bg-black/30 border-gray-700/50 text-gray-500 hover:text-gray-300 hover:border-gray-600'
+                    } ${isTacticLoading ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  >
+                    {tactic}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Management — Web3 gradient cards */}

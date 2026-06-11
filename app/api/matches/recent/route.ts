@@ -28,6 +28,8 @@ export async function GET(request: Request) {
         away_score,
         is_played,
         events,
+        home_tactic,
+        away_tactic,
         home_team:teams!league_matches_home_team_id_fkey(id, name, logo_url),
         away_team:teams!league_matches_away_team_id_fkey(id, name, logo_url)
       `)
