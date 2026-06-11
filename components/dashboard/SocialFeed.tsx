@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { Newspaper, ChevronRight, Activity } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
+import { LanguageContext } from '@/components/LanguageContext';
+import { dict } from '@/lib/dictionaries';
 
 interface NewsItem {
   id: string;
@@ -15,6 +17,8 @@ interface NewsItem {
 export function SocialFeed() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const { language } = useContext(LanguageContext);
+  const t = dict[language as keyof typeof dict] || dict['en'];
   
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -60,7 +64,7 @@ export function SocialFeed() {
       <div className="flex items-center gap-2 px-1">
         <Newspaper className="text-cyan-400" size={16} />
         <h3 className="text-[10px] font-black uppercase tracking-widest text-white/70">
-          News Feed
+          {t.feed_news || 'News Feed'}
         </h3>
       </div>
       
@@ -92,7 +96,7 @@ export function SocialFeed() {
             </p>
             
             <button className="text-[10px] font-bold text-cyan-300 mt-2 flex items-center gap-1 hover:text-cyan-200 transition-colors w-fit">
-              Читать полностью <ChevronRight size={12} />
+              {t.feed_read_more || 'Читать полностью'} <ChevronRight size={12} />
             </button>
           </div>
         ))}

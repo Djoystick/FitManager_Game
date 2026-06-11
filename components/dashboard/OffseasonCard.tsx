@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Trophy, ArrowUpCircle, ArrowDownCircle, MinusCircle, Clock } from 'lucide-react';
+import { dict } from '@/lib/dictionaries';
 
 interface Props {
   lastSeasonResult: {
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function OffseasonCard({ lastSeasonResult, instanceCreatedAt, language = 'ru' }: Props) {
+  const t = dict[language as keyof typeof dict] || dict['en'];
   const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
   const [isStarted, setIsStarted] = useState(false);
 
@@ -51,7 +53,7 @@ export function OffseasonCard({ lastSeasonResult, instanceCreatedAt, language = 
   let statusBorder = "border-cyan-500/30";
   let statusShadow = "shadow-[0_0_20px_rgba(6,182,212,0.15)]";
   let Icon = MinusCircle;
-  let statusText = language === 'ru' ? "СЕЗОН ЗАВЕРШЕН" : "SEASON ENDED";
+  let statusText = t.season_ended || 'SEASON ENDED';
 
   if (lastSeasonResult) {
     if (lastSeasonResult.isChampion) {
@@ -60,21 +62,21 @@ export function OffseasonCard({ lastSeasonResult, instanceCreatedAt, language = 
       statusBorder = "border-yellow-500/50";
       statusShadow = "shadow-[0_0_30px_rgba(234,179,8,0.2)]";
       Icon = Trophy;
-      statusText = language === 'ru' ? "ЧЕМПИОН!" : "CHAMPION!";
+      statusText = t.season_champion || 'CHAMPION!';
     } else if (lastSeasonResult.isPromoted) {
       statusColor = "text-green-400";
       statusBg = "bg-green-500/10";
       statusBorder = "border-green-500/50";
       statusShadow = "shadow-[0_0_30px_rgba(34,197,94,0.2)]";
       Icon = ArrowUpCircle;
-      statusText = language === 'ru' ? "ПОВЫШЕНИЕ В КЛАССЕ" : "PROMOTED";
+      statusText = t.season_promoted || 'PROMOTED';
     } else if (lastSeasonResult.isRelegated) {
       statusColor = "text-red-400";
       statusBg = "bg-red-500/10";
       statusBorder = "border-red-500/50";
       statusShadow = "shadow-[0_0_30px_rgba(239,68,68,0.2)]";
       Icon = ArrowDownCircle;
-      statusText = language === 'ru' ? "ПОНИЖЕНИЕ" : "RELEGATED";
+      statusText = t.season_relegated || 'RELEGATED';
     }
   }
 
@@ -100,8 +102,8 @@ export function OffseasonCard({ lastSeasonResult, instanceCreatedAt, language = 
 
       {lastSeasonResult && (
         <div className="flex items-center justify-between text-[10px] text-gray-400 uppercase tracking-widest relative z-10 mb-1">
-          <span>{language === 'ru' ? 'Предыдущая лига' : 'Previous League'}: Tier {lastSeasonResult.tierLevel}</span>
-          <span>{lastSeasonResult.points} {language === 'ru' ? 'ОЧК' : 'PTS'}</span>
+          <span>{t.season_prev_league || 'Previous League'}: Tier {lastSeasonResult.tierLevel}</span>
+          <span>{lastSeasonResult.points} {t.season_pts || 'PTS'}</span>
         </div>
       )}
 
@@ -110,7 +112,7 @@ export function OffseasonCard({ lastSeasonResult, instanceCreatedAt, language = 
       <div className="flex justify-between items-center mt-1 relative z-10">
         <div className="flex items-center gap-1.5 text-gray-400">
           <Clock className="w-3.5 h-3.5" />
-          <span className="text-[9px] uppercase tracking-widest">{isStarted ? (language === 'ru' ? 'Сезон начался' : 'Season started') : (language === 'ru' ? 'ТРАНСФЕРНОЕ ОКНО' : 'TRANSFER WINDOW')}</span>
+          <span className="text-[9px] uppercase tracking-widest">{isStarted ? (t.season_started || 'Season started') : (t.season_transfer_window || 'TRANSFER WINDOW')}</span>
         </div>
         {!isStarted && (
           <span className={`text-xs font-bold ${statusColor} font-mono tracking-wider`}>

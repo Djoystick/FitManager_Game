@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import { getOpponentScoutReportByTeamId, ScoutReport } from '@/app/actions/scoutActions';
 import { CyberLoader } from '@/components/ui/CyberLoader';
 import { X, Target, Shield, Activity, Users } from 'lucide-react';
+import { LanguageContext } from '@/components/LanguageContext';
+import { dict } from '@/lib/dictionaries';
 
 interface OpponentScoutModalProps {
   userTeamId: string;
@@ -16,6 +18,8 @@ export function OpponentScoutModal({ userTeamId, opponentTeamId, opponentTeamNam
   const [report, setReport] = useState<ScoutReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { language } = useContext(LanguageContext);
+  const t = dict[language as keyof typeof dict] || dict['en'];
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -31,7 +35,7 @@ export function OpponentScoutModal({ userTeamId, opponentTeamId, opponentTeamNam
         if (res.success && res.data) {
           setReport(res.data);
         } else {
-          setError(res.error || 'Failed to load scout report');
+          setError(res.error || (t.scout_load_error || 'Failed to load scout report'));
         }
         setIsLoading(false);
       }
@@ -48,7 +52,7 @@ export function OpponentScoutModal({ userTeamId, opponentTeamId, opponentTeamNam
         <div className="bg-gradient-to-b from-neon-cyan/10 to-transparent p-4 border-b border-neon-cyan/20 flex items-center justify-between">
           <div className="flex flex-col">
             <span className="text-[10px] text-neon-cyan uppercase tracking-widest font-bold flex items-center gap-1">
-              <Activity size={12} /> SCOUT REPORT
+              <Activity size={12} /> {t.scout_report || 'SCOUT REPORT'}
             </span>
             <h2 className="text-xl font-black text-white uppercase tracking-wider">{opponentTeamName}</h2>
           </div>
@@ -62,11 +66,11 @@ export function OpponentScoutModal({ userTeamId, opponentTeamId, opponentTeamNam
           {isLoading ? (
             <div className="py-12 flex flex-col items-center justify-center">
               <CyberLoader />
-              <p className="text-neon-cyan mt-4 text-xs font-bold uppercase tracking-widest animate-pulse">Gathering Intel...</p>
+              <p className="text-neon-cyan mt-4 text-xs font-bold uppercase tracking-widest animate-pulse">{t.scout_gathering || 'Gathering Intel...'}</p>
             </div>
           ) : error || !report ? (
             <div className="py-12 text-center text-red-500 font-bold text-sm">
-              {error || 'No data available'}
+              {error || (t.scout_no_data || 'No data available')}
             </div>
           ) : (
             <div className="flex flex-col gap-4">
@@ -74,15 +78,15 @@ export function OpponentScoutModal({ userTeamId, opponentTeamId, opponentTeamNam
               {/* Stats Summary */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-black/50 border border-gray-800 rounded-lg p-3 flex flex-col items-center justify-center text-center">
-                  <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Est. Power</span>
+                  <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">{t.scout_est_power || 'Est. Power'}</span>
                   <span className="text-2xl font-black text-neon-green drop-shadow-[0_0_8px_rgba(57,255,20,0.5)]">
                     {report.fog_level === 'hidden' ? '???' : report.team_ovr_estimated}
                   </span>
                 </div>
                 <div className="bg-black/50 border border-gray-800 rounded-lg p-3 flex flex-col items-center justify-center text-center">
-                  <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Intel Quality</span>
+                  <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">{t.scout_intel_quality || 'Intel Quality'}</span>
                   <span className={`text-sm font-black uppercase mt-1 ${report.fog_level === 'full' ? 'text-neon-green' : report.fog_level === 'partial' ? 'text-yellow-500' : 'text-red-500'}`}>
-                    {report.fog_level === 'full' ? 'HIGH' : report.fog_level === 'partial' ? 'MEDIUM' : 'LOW'}
+                    {report.fog_level === 'full' ? (t.scout_quality_high || 'HIGH') : report.fog_level === 'partial' ? (t.scout_quality_medium || 'MEDIUM') : (t.scout_quality_low || 'LOW')}
                   </span>
                 </div>
               </div>
@@ -90,12 +94,12 @@ export function OpponentScoutModal({ userTeamId, opponentTeamId, opponentTeamNam
               {/* Roster */}
               <div className="bg-black/50 border border-gray-800 rounded-lg p-3">
                 <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <Users size={12} /> Detected Lineup
+                  <Users size={12} /> {t.scout_detected_lineup || 'Detected Lineup'}
                 </h3>
                 
                 {report.fog_level === 'hidden' ? (
                   <div className="text-center py-6 text-gray-600 text-xs uppercase tracking-widest">
-                    Upgrade Scouting Facility to reveal lineup
+                    {t.scout_upgrade_facility || 'Upgrade Scouting Facility to reveal lineup'}
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">

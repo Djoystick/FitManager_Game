@@ -468,6 +468,71 @@ export const dict = {
     onb_failed_create: "Failed to create franchise.",
     onb_full_name: "Full Name",
     onb_full_name_placeholder: "e.g. Neon City FC",
+
+    // MatchReportModal (Task 014)
+    report_draw: "DRAW",
+    report_victory: "VICTORY",
+    report_defeat: "DEFEAT",
+    report_match_events: "Match Events",
+    report_no_events: "No significant events",
+    report_stamina_drain: "Squad Stamina Drain: ~20%",
+    report_processing: "Processing...",
+    report_accept: "Accept Report",
+
+    // OpponentScoutModal (Task 014)
+    scout_report: "SCOUT REPORT",
+    scout_gathering: "Gathering Intel...",
+    scout_no_data: "No data available",
+    scout_load_error: "Failed to load scout report",
+    scout_est_power: "Est. Power",
+    scout_intel_quality: "Intel Quality",
+    scout_quality_high: "HIGH",
+    scout_quality_medium: "MEDIUM",
+    scout_quality_low: "LOW",
+    scout_detected_lineup: "Detected Lineup",
+    scout_upgrade_facility: "Upgrade Scouting Facility to reveal lineup",
+
+    // UnseenMatchesModal (Task 014)
+    unseen_single_title: "Матч завершен!",
+    unseen_multi_title: "Непросмотренные матчи",
+    unseen_vs: "VS",
+    unseen_win: "Победа",
+    unseen_loss: "Поражение",
+    unseen_draw: "Ничья",
+    unseen_view_stats: "Посмотреть статистику",
+    unseen_count_msg: "Пока вас не было, команда сыграла {count} матчей:",
+    unseen_accept_single: "Принять",
+    unseen_accept_multi: "Отметить все как прочитанные",
+
+    // LandingPage (Task 014)
+    landing_title: "FitManager Game",
+    landing_subtitle: "A next-generation Telegram Mini App that bridges real-world physical activity with immersive football management.",
+    landing_purpose_title: "Purpose of the Application",
+    landing_purpose_desc: "FitManager Game is designed to incentivize users to maintain an active lifestyle. By walking, running, and staying physically active in the real world, players earn in-game currency which can be used to upgrade their virtual football club, sign better players, and compete in leagues.",
+    landing_google_fit_title: "How we use Google Fit Data",
+    landing_google_fit_desc: "To securely verify physical activity, FitManager Game integrates with the Google Fitness API. When a user connects their Google account:",
+    landing_gf_bullet1: "We request read-only access to step count data (estimated steps).",
+    landing_gf_bullet2: "We only fetch the total daily steps to convert them into in-game Sweat Points (SP).",
+    landing_gf_bullet3: "We do not share, sell, or use this data for any targeted advertising.",
+    landing_gf_bullet4: "The integration is strictly used to validate gameplay mechanics and reward players fairly.",
+    landing_play_btn: "Play in Telegram",
+    landing_privacy: "Privacy Policy",
+    landing_terms: "Terms of Service",
+    landing_copyright: "© {year} FitManager Game. All rights reserved.",
+
+    // OffseasonCard (Task 014)
+    season_ended: "SEASON ENDED",
+    season_champion: "CHAMPION!",
+    season_promoted: "PROMOTED",
+    season_relegated: "RELEGATED",
+    season_prev_league: "Previous League",
+    season_pts: "PTS",
+    season_started: "Season started",
+    season_transfer_window: "TRANSFER WINDOW",
+
+    // SocialFeed (Task 014)
+    feed_news: "News Feed",
+    feed_read_more: "Читать полностью",
   },
   ru: {
     welcome: "Добро пожаловать",
@@ -938,5 +1003,70 @@ export const dict = {
     onb_failed_create: "Не удалось создать франшизу.",
     onb_full_name: "Полное имя",
     onb_full_name_placeholder: "напр. Neon City FC",
+
+    // MatchReportModal (Task 014)
+    report_draw: "НИЧЬЯ",
+    report_victory: "ПОБЕДА",
+    report_defeat: "ПОРАЖЕНИЕ",
+    report_match_events: "События матча",
+    report_no_events: "Нет значимых событий",
+    report_stamina_drain: "Потеря стамины состава: ~20%",
+    report_processing: "Обработка...",
+    report_accept: "Принять отчёт",
+
+    // OpponentScoutModal (Task 014)
+    scout_report: "ОТЧЁТ РАЗВЕДКИ",
+    scout_gathering: "Сбор данных...",
+    scout_no_data: "Нет данных",
+    scout_load_error: "Не удалось загрузить отчёт разведки",
+    scout_est_power: "Оц. мощь",
+    scout_intel_quality: "Качество разведки",
+    scout_quality_high: "ВЫСОКОЕ",
+    scout_quality_medium: "СРЕДНЕЕ",
+    scout_quality_low: "НИЗКОЕ",
+    scout_detected_lineup: "Обнаруженный состав",
+    scout_upgrade_facility: "Улучшите Разведку чтобы раскрыть состав",
+
+    // UnseenMatchesModal (Task 014)
+    unseen_single_title: "Матч завершен!",
+    unseen_multi_title: "Непросмотренные матчи",
+    unseen_vs: "ПРОТИВ",
+    unseen_win: "Победа",
+    unseen_loss: "Поражение",
+    unseen_draw: "Ничья",
+    unseen_view_stats: "Посмотреть статистику",
+    unseen_count_msg: "Пока вас не было, команда сыграла {count} матчей:",
+    unseen_accept_single: "Принять",
+    unseen_accept_multi: "Отметить все как прочитанные",
+
+    // LandingPage (Task 014)
+    landing_title: "FitManager Game",
+    landing_subtitle: "Telegram Mini App нового поколения, соединяющий реальную физическую активность с иммерсивным футбольным менеджментом.",
+    landing_purpose_title: "Назначение приложения",
+    landing_purpose_desc: "FitManager Game создан для мотивации пользователей вести активный образ жизни. Совершая прогулки, пробежки и оставаясь активными в реальном мире, игроки зарабатывают внутриигровую валюту, которую можно использовать для улучшения виртуального футбольного клуба, подписания лучших игроков и участия в лигах.",
+    landing_google_fit_title: "Как мы используем данные Google Fit",
+    landing_google_fit_desc: "Для безопасной проверки физической активности FitManager Game интегрируется с Google Fitness API. Когда пользователь привязывает свой аккаунт Google:",
+    landing_gf_bullet1: "Мы запрашиваем доступ только для чтения к данным о количестве шагов.",
+    landing_gf_bullet2: "Мы забираем только общее количество дневных шагов для конвертации в Sweat Points (SP).",
+    landing_gf_bullet3: "Мы не передаём, не продаём и не используем эти данные для таргетированной рекламы.",
+    landing_gf_bullet4: "Интеграция используется исключительно для валидации геймплейных механик и справедливого вознаграждения игроков.",
+    landing_play_btn: "Играть в Telegram",
+    landing_privacy: "Политика конфиденциальности",
+    landing_terms: "Условия использования",
+    landing_copyright: "© {year} FitManager Game. Все права защищены.",
+
+    // OffseasonCard (Task 014)
+    season_ended: "СЕЗОН ЗАВЕРШЕН",
+    season_champion: "ЧЕМПИОН!",
+    season_promoted: "ПОВЫШЕНИЕ В КЛАССЕ",
+    season_relegated: "ПОНИЖЕНИЕ",
+    season_prev_league: "Предыдущая лига",
+    season_pts: "ОЧК",
+    season_started: "Сезон начался",
+    season_transfer_window: "ТРАНСФЕРНОЕ ОКНО",
+
+    // SocialFeed (Task 014)
+    feed_news: "Лента новостей",
+    feed_read_more: "Читать полностью",
   }
 };

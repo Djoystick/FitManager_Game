@@ -1,10 +1,12 @@
 /* eslint-disable react/no-unescaped-entities */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import { MatchEvent } from '@/app/utils/matchEngine';
 import { markMatchAsViewed } from '@/app/actions/matchActions';
 import { Activity, Shield, Target, AlertCircle, RefreshCcw } from 'lucide-react';
+import { LanguageContext } from '@/components/LanguageContext';
+import { dict } from '@/lib/dictionaries';
 
 export interface MatchReport {
   id: string;
@@ -30,6 +32,8 @@ interface MatchReportModalProps {
 
 export function MatchReportModal({ report, userTeamId, onClose }: MatchReportModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { language } = useContext(LanguageContext);
+  const t = dict[language as keyof typeof dict] || dict['en'];
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -48,7 +52,7 @@ export function MatchReportModal({ report, userTeamId, onClose }: MatchReportMod
   const isDraw = report.home_score === report.away_score;
   
   const resultColor = isDraw ? 'text-gray-400' : isWin ? 'text-neon-green' : 'text-red-500';
-  const resultText = isDraw ? 'DRAW' : isWin ? 'VICTORY' : 'DEFEAT';
+  const resultText = isDraw ? (t.report_draw || 'DRAW') : isWin ? (t.report_victory || 'VICTORY') : (t.report_defeat || 'DEFEAT');
 
   const getEventIcon = (type: string) => {
     if (type === 'goal') return <Target className="w-4 h-4 text-neon-green" />;
@@ -88,11 +92,11 @@ export function MatchReportModal({ report, userTeamId, onClose }: MatchReportMod
         {/* Timeline */}
         <div className="flex-1 overflow-y-auto max-h-[40vh] p-4 bg-black/50 custom-scrollbar">
           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-800 pb-2 mb-4 text-center">
-            Match Events
+            {t.report_match_events || 'Match Events'}
           </h3>
 
           {report.events?.length === 0 ? (
-            <div className="text-center text-sm text-gray-600 font-mono py-8">No significant events</div>
+            <div className="text-center text-sm text-gray-600 font-mono py-8">{t.report_no_events || 'No significant events'}</div>
           ) : (
             <div className="flex flex-col gap-3 relative">
               <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-800 -translate-x-1/2" />
@@ -156,7 +160,7 @@ export function MatchReportModal({ report, userTeamId, onClose }: MatchReportMod
         <div className="px-4 py-3 bg-gray-900 border-t border-gray-800 flex justify-center">
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <Activity className="w-4 h-4 text-neon-pink" />
-            <span>Squad Stamina Drain: <strong className="text-neon-pink">~20%</strong></span>
+            <span>{t.report_stamina_drain || 'Squad Stamina Drain: ~20%'}</span>
           </div>
         </div>
 
@@ -167,7 +171,7 @@ export function MatchReportModal({ report, userTeamId, onClose }: MatchReportMod
             disabled={isSubmitting}
             className="w-full py-4 rounded-lg bg-neon-cyan text-black font-black uppercase tracking-widest hover:bg-white hover:shadow-[0_0_20px_rgba(0,240,255,0.5)] transition-all disabled:opacity-50"
           >
-            {isSubmitting ? 'Processing...' : 'Accept Report'}
+            {isSubmitting ? (t.report_processing || 'Processing...') : (t.report_accept || 'Accept Report')}
           </button>
         </div>
 
