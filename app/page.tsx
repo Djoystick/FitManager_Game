@@ -831,8 +831,16 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Spacer — absorbs remaining vertical space */}
-        <div className="flex-1" />
+        {/* Spacer / Social Hub Placeholder */}
+        <div className="flex-1 mt-2 min-h-[100px] flex items-center justify-center relative rounded-xl border border-dashed border-white/10 bg-white/5 overflow-hidden">
+          <div className="absolute inset-0 flex items-center justify-center opacity-[0.03]">
+            <Trophy size={120} className="text-white" />
+          </div>
+          <div className="z-10 flex flex-col items-center justify-center gap-1 opacity-60">
+            <span className="text-xs font-black font-orbitron uppercase tracking-widest text-white">Social Hub</span>
+            <span className="text-[9px] uppercase tracking-widest text-cyan-500">Coming Soon</span>
+          </div>
+        </div>
       </div>
 
       {/* ── Match Report Modal ─────────────────────────────────────────────── */}
