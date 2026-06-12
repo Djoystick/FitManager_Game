@@ -45,6 +45,7 @@ const TYPE_ICONS: Record<string, string> = {
   injury: '🚑',
   challenge: '⚔️',
   system: '📢',
+  friend_request: '👋',
 };
 
 function CrownIcon() {
