@@ -368,14 +368,13 @@ export async function buyFreeAgentAction(token: string) {
       decodedBot.name = `${decodedBot.name} ${String.fromCharCode(65 + getRandomInt(0, 25))}.`;
     }
 
-    // 4. Deduct FC
-    const newBalance = (user.balance_fancoins || 0) - decodedBot.priceFc;
-    const { error: deductErr } = await supabaseAdmin
-      .from('users')
-      .update({ balance_fancoins: newBalance })
-      .eq('id', userId);
+    // 4. Deduct FC atomically via RPC
+    const { data: newBalance, error: deductErr } = await supabaseAdmin.rpc('deduct_fancoins', {
+      user_id: userId,
+      amount: decodedBot.priceFc,
+    });
 
-    if (deductErr) return { success: false, error: 'Failed to process payment' };
+    if (deductErr) return { success: false, error: 'Insufficient FanCoins or payment failed' };
 
     // 5. Create Player
     const playerToInsert = {
@@ -400,7 +399,7 @@ export async function buyFreeAgentAction(token: string) {
 
     if (insertErr) {
       // Refund FC if insertion fails
-      await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins }).eq('id', userId);
+      await supabaseAdmin.rpc('increment_fancoins', { u_id: userId, amount: decodedBot.priceFc });
       return { success: false, error: 'Failed to recruit player' };
     }
 

@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { userId } = body;
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
 
     if (!userId) {
-      return NextResponse.json({ success: false, error: 'User ID is required' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabaseAdmin = createClient(

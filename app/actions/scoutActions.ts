@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,8 +27,12 @@ export interface ScoutReport {
   team_ovr_estimated: number;
 }
 
-export async function getUpcomingOpponentScoutReport(userId: string): Promise<{ success: boolean; data?: ScoutReport; error?: string }> {
+export async function getUpcomingOpponentScoutReport(): Promise<{ success: boolean; data?: ScoutReport; error?: string }> {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+
     // 0. Get user's team ID
     const { data: teamData, error: teamError } = await supabaseAdmin
       .from('teams')

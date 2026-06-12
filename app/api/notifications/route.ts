@@ -29,6 +29,13 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { notificationIds } = body;
 
@@ -39,7 +46,8 @@ export async function POST(request: Request) {
     const { error } = await supabaseAdmin
       .from('notifications')
       .update({ is_read: true })
-      .in('id', notificationIds);
+      .in('id', notificationIds)
+      .eq('user_id', userId);
 
     if (error) throw error;
 

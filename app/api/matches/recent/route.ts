@@ -1,22 +1,30 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// GET /api/matches/recent?teamId=<uuid>&limit=<n>
-// Returns the last N played matches for a team, enriched with team names.
-// Used by the Dashboard horizontal match history carousel.
+// GET /api/matches/recent?limit=<n>
+// Returns the last N played matches for the authenticated user's team.
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const teamId = searchParams.get('teamId');
-  const limit  = Math.min(parseInt(searchParams.get('limit') || '10', 10), 30);
-
-  if (!teamId) {
-    return NextResponse.json({ error: 'teamId is required' }, { status: 400 });
+  const cookieStore = await cookies();
+  const userId = cookieStore.get('tg_user_id')?.value;
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const { data: teamData } = await supabaseAdmin
+    .from('teams').select('id').eq('user_id', userId).maybeSingle();
+  if (!teamData) {
+    return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+  }
+  const teamId = teamData.id;
+
+  const { searchParams } = new URL(request.url);
+  const limit  = Math.min(parseInt(searchParams.get('limit') || '10', 10), 30);
 
   try {
     const { data: matches, error } = await supabaseAdmin

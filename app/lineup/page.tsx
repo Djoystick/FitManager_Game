@@ -834,7 +834,7 @@ export default function LineupPage() {
               if (!scoutReport) {
                 setIsLoadingScout(true);
                 import('@/app/actions/scoutActions').then(({ getUpcomingOpponentScoutReport }) => {
-                  getUpcomingOpponentScoutReport(userId!).then(res => {
+                  getUpcomingOpponentScoutReport().then(res => {
                     if (res.success && res.data) setScoutReport(res.data);
                     setIsLoadingScout(false);
                   });

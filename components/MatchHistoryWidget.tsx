@@ -23,8 +23,8 @@ export function MatchHistoryWidget({ userId, teamName, language = 'en' }: { user
       setIsLoading(true);
       try {
         const [histRes, schedRes] = await Promise.all([
-          getMatchHistory(userId),
-          getMatchSchedule(userId)
+          getMatchHistory(),
+          getMatchSchedule()
         ]);
 
         if (mounted) {

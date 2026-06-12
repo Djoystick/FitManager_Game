@@ -13,11 +13,9 @@ const DECAY_COOLDOWN_HOURS = 22;
 export async function GET(req: NextRequest) {
   // ── Auth ─────────────────────────────────────────────────────────────────────
   const authHeader  = req.headers.get('authorization');
-  const manualSecret = req.nextUrl?.searchParams?.get('secret');
   const validBearer  = authHeader === `Bearer ${process.env.CRON_SECRET}`;
-  const validSecret  = manualSecret === process.env.CRON_SECRET_MANUAL;
 
-  if (!validBearer && !validSecret) {
+  if (!validBearer) {
     console.warn('[form-decay] Unauthorized request blocked.');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

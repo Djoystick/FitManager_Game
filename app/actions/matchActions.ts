@@ -54,8 +54,12 @@ export async function markMatchAsViewed(matchId: string): Promise<{ success: boo
   }
 }
 
-export async function getMatchHistory(userId: string): Promise<{ success: boolean; data?: MatchReport[]; error?: string }> {
+export async function getMatchHistory(): Promise<{ success: boolean; data?: MatchReport[]; error?: string }> {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+
     const { data: teamData, error: teamError } = await supabaseAdmin
       .from('teams')
       .select('id')
@@ -123,8 +127,12 @@ export async function getMatchHistory(userId: string): Promise<{ success: boolea
   }
 }
 
-export async function getMatchSchedule(userId: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
+export async function getMatchSchedule(): Promise<{ success: boolean; data?: any[]; error?: string }> {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+
     const { data: teamData, error: teamError } = await supabaseAdmin
       .from('teams')
       .select('id')
@@ -372,7 +380,8 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
         home_tactic: homeTactic,
         away_tactic: awayTactic
       })
-      .eq('id', matchId);
+      .eq('id', matchId)
+      .eq('status', 'pending');
 
     if (updateMatchError) {
       console.error(`[resolveMatch] CRITICAL DB ERROR (league_matches):`, updateMatchError);
@@ -522,13 +531,9 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       });
 
       if (rpcError) {
-        console.error(`[resolveMatch] FC transaction RPC error for team ${teamId}:`, rpcError);
-        // Fallback: direct update (no RPC available)
-        const { data: fallbackUser } = await supabaseAdmin
-          .from('users').select('balance_fancoins').eq('id', userId).maybeSingle();
-        const currentBalance = Number(fallbackUser?.balance_fancoins ?? 0);
-        const newBalance = Math.max(0, currentBalance - totalSalary + totalReward);
-        await supabaseAdmin.from('users').update({ balance_fancoins: newBalance }).eq('id', userId);
+        console.error(`[resolveMatch] CRITICAL: FC transaction RPC failed for team ${teamId}:`, rpcError);
+        // Do NOT fallback to non-atomic read-modify-write — that causes race conditions.
+        // The RPC failure will be retried or investigated manually.
       }
 
       // Apply bankruptcy stamina penalty if balance hit zero
@@ -581,8 +586,12 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
   }
 }
 
-export async function getUnviewedMatch(userId: string) {
+export async function getUnviewedMatch() {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'Unauthorized' };
+
     const { data: teamData, error: teamError } = await supabaseAdmin
       .from('teams')
       .select('id')
@@ -705,8 +714,17 @@ export async function simulateNextPendingMatch() {
   }
 }
 
-export async function getUnseenMatches(teamId: string) {
+export async function getUnseenMatches() {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'Unauthorized' };
+
+    const { data: teamData } = await supabaseAdmin
+      .from('teams').select('id').eq('user_id', userId).maybeSingle();
+    if (!teamData) return { success: false, error: 'Team not found' };
+    const teamId = teamData.id;
+
     const { data, error } = await supabaseAdmin
       .from('league_matches')
       .select('id, round_number, home_score, away_score, home_team_id, away_team_id, teams!home_team_id(name), away_team:teams!away_team_id(name)')
@@ -740,9 +758,18 @@ export async function getUnseenMatches(teamId: string) {
   }
 }
 
-export async function markMatchesAsViewed(matchIds: string[], teamId: string) {
+export async function markMatchesAsViewed(matchIds: string[]) {
   try {
     if (!matchIds || matchIds.length === 0) return { success: true };
+
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'Unauthorized' };
+
+    const { data: teamData } = await supabaseAdmin
+      .from('teams').select('id').eq('user_id', userId).maybeSingle();
+    if (!teamData) return { success: false, error: 'Team not found' };
+    const teamId = teamData.id;
 
     // Find which are home vs away for this team
     const { data: matches } = await supabaseAdmin

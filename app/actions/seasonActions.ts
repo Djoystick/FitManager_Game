@@ -1,14 +1,24 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function getLastSeasonResult(teamId: string) {
+export async function getLastSeasonResult() {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) return { success: false, error: 'Unauthorized' };
+
+    const { data: teamData } = await supabaseAdmin
+      .from('teams').select('id').eq('user_id', userId).maybeSingle();
+    if (!teamData) return { success: false, error: 'Team not found' };
+    const teamId = teamData.id;
+
     // 1. Find the latest 'finished' league instance this team participated in
     const { data: standings } = await supabaseAdmin
       .from('league_standings')

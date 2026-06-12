@@ -1,13 +1,33 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET() {
   try {
-    // 1. Fetch latest 10 matches
-    const { data: matches, error: matchError } = await supabase
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('tg_user_id')?.value;
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { data: teamData } = await supabaseAdmin
+      .from('teams').select('id').eq('user_id', userId).maybeSingle();
+    if (!teamData) {
+      return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+    }
+    const teamId = teamData.id;
+
+    // 1. Fetch latest 10 matches for this user's team
+    const { data: matches, error: matchError } = await supabaseAdmin
       .from('league_matches')
       .select('id, home_team_id, away_team_id, home_score, away_score, created_at')
       .eq('status', 'completed')
+      .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
       .order('created_at', { ascending: false })
       .limit(10);
 
@@ -21,7 +41,7 @@ export async function GET() {
 
     // 2. Fetch corresponding team names efficiently
     const teamIds = [...new Set(matches.flatMap(m => [m.home_team_id, m.away_team_id]))];
-    const { data: teams, error: teamsError } = await supabase
+    const { data: teams, error: teamsError } = await supabaseAdmin
       .from('teams')
       .select('id, name')
       .in('id', teamIds);

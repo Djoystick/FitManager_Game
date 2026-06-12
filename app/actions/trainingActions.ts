@@ -407,15 +407,6 @@ export async function upgradeBuildingAction(
     const column = BUILDING_COLUMN_MAP[buildingType];
     if (!column) return { success: false, error: `Unknown building type: ${buildingType}` };
 
-    // Get user
-    const { data: user, error: userErr } = await supabaseAdmin
-      .from('users')
-      .select('id, balance_fancoins')
-      .eq('id', userId)
-      .single();
-
-    if (userErr || !user) return { success: false, error: 'User not found.' };
-
     // Get team
     const { data: team, error: teamErr } = await supabaseAdmin
       .from('teams')
@@ -425,52 +416,31 @@ export async function upgradeBuildingAction(
 
     if (teamErr || !team) return { success: false, error: 'Team not found.' };
 
-    // Get current infrastructure level
-    const { data: infra, error: infraErr } = await supabaseAdmin
+    // Get current level for cost calculation
+    const { data: infra } = await supabaseAdmin
       .from('infrastructure')
       .select(column)
       .eq('team_id', team.id)
       .single();
 
-    if (infraErr || !infra) return { success: false, error: 'Infrastructure record not found.' };
-
     const currentLevel = (infra as unknown as Record<string, number>)[column] ?? 1;
-    // Exponential cost formula: FLOOR(3000 × level^1.8) — raised from 800 in migration 00045
-    //   lvl 1→2:    3,000 FC  | lvl 2→3:   10,392 FC | lvl 3→4:   23,148 FC
-    //   lvl 5→6:   53,977 FC  | lvl 7→8:  107,650 FC | lvl 9→10: 182,900 FC
-    // При 2 матчах/день стадион LVL10 займёт 6+ месяцев — правильный темп.
-    const upgradeCost  = Math.floor(3000 * Math.pow(currentLevel, 1.8));
+    const nextLevel = currentLevel + 1;
+    const upgradeCost = Math.floor(3000 * Math.pow(nextLevel, 1.8));
 
-    if (user.balance_fancoins < upgradeCost) {
-      return {
-        success: false,
-        error: `Недостаточно FanCoins. Нужно: ${upgradeCost.toLocaleString()}, есть: ${user.balance_fancoins.toLocaleString()}`,
-      };
+    // Use atomic RPC — no race condition possible
+    const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc('purchase_infrastructure_upgrade', {
+      p_team_id: team.id,
+      p_building_type: buildingType,
+      p_cost: upgradeCost,
+    });
+
+    if (rpcError) {
+      return { success: false, error: rpcError.message || 'Upgrade failed.' };
     }
 
-    const newBalance = user.balance_fancoins - upgradeCost;
-
-    // Deduct FanCoins
-    const { error: deductErr } = await supabaseAdmin
-      .from('users')
-      .update({ balance_fancoins: newBalance })
-      .eq('id', userId);
-
-    if (deductErr) throw deductErr;
-
-    // Upgrade building level
-    const { error: upgradeErr } = await supabaseAdmin
-      .from('infrastructure')
-      .update({ [column]: currentLevel + 1 })
-      .eq('team_id', team.id);
-
-    if (upgradeErr) {
-      // Best-effort rollback
-      await supabaseAdmin
-        .from('users')
-        .update({ balance_fancoins: user.balance_fancoins })
-        .eq('id', userId);
-      throw upgradeErr;
+    const result = rpcResult as { success: boolean; new_level?: number; new_balance?: number; error?: string };
+    if (!result.success) {
+      return { success: false, error: result.error || 'Upgrade failed.' };
     }
 
     revalidatePath('/base');
@@ -478,7 +448,7 @@ export async function upgradeBuildingAction(
 
     await triggerInfrastructureAchievements(team.id);
 
-    return { success: true, new_level: currentLevel + 1, new_balance: newBalance };
+    return { success: true, new_level: result.new_level, new_balance: result.new_balance };
   } catch (err: any) {
     console.error('[upgradeBuildingAction] Error:', err);
     return { success: false, error: err.message ?? 'Failed to upgrade building.' };

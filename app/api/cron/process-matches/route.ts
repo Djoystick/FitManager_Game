@@ -44,11 +44,9 @@ export async function GET(req: NextRequest) {
   try {
     // ── Auth ──────────────────────────────────────────────────────────────────
     const authHeader  = req.headers.get('authorization');
-    const manualSecret = req.nextUrl?.searchParams?.get('secret');
     const validBearer = authHeader === `Bearer ${process.env.CRON_SECRET}`;
-    const validSecret = manualSecret === process.env.CRON_SECRET_MANUAL;
 
-    if (!validBearer && !validSecret) {
+    if (!validBearer) {
       console.warn('[process-matches] Unauthorized request blocked.');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

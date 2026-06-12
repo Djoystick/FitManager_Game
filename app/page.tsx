@@ -462,7 +462,7 @@ export default function DashboardPage() {
             setInstanceCreatedAt(teamJson.instanceCreatedAt);
 
             import('@/app/actions/seasonActions').then(mod => {
-              mod.getLastSeasonResult(teamJson.team.id).then(res => {
+              mod.getLastSeasonResult().then(res => {
                 if (res.success && res.data) setLastSeasonResult(res.data);
               });
             });
@@ -476,7 +476,7 @@ export default function DashboardPage() {
           }
 
           import('@/app/actions/matchActions').then(mod => {
-            mod.getUnseenMatches(teamJson.team.id).then(res => {
+            mod.getUnseenMatches().then(res => {
               if (res.success && res.matches) setUnseenMatches(res.matches);
             });
           });
@@ -622,7 +622,7 @@ export default function DashboardPage() {
     setUnseenMatches([]);
     if (teamId) {
       const mod = await import('@/app/actions/matchActions');
-      await mod.markMatchesAsViewed(matchIds, teamId);
+      await mod.markMatchesAsViewed(matchIds);
     }
   };
 
