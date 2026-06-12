@@ -34,11 +34,26 @@ export async function GET(request: Request) {
     const totalFc = users.reduce((sum, user) => sum + (user.balance_fancoins || 0), 0);
     const activeUsers = users.length;
 
-    // We'll calculate mock "minted/burned" today since we don't have transaction logs yet.
-    // In the future, this should sum from a `transactions` table.
-    // For now, we simulate recent activity to feed the AI.
-    const mintedToday = Math.floor(Math.random() * 50000) + 10000;
-    const burnedToday = Math.floor(Math.random() * 40000) + 5000;
+    // Query real FC mint/burn data from treasury_transactions for the last 24h
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: recentFcTx, error: fcTxError } = await supabase
+      .from('treasury_transactions')
+      .select('amount')
+      .eq('currency', 'FC')
+      .gte('created_at', twentyFourHoursAgo);
+
+    if (fcTxError) throw fcTxError;
+
+    const mintedToday = (recentFcTx ?? [])
+      .filter((tx) => tx.amount > 0)
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
+    const burnedToday = Math.abs(
+      (recentFcTx ?? [])
+        .filter((tx) => tx.amount < 0)
+        .reduce((sum, tx) => sum + tx.amount, 0)
+    );
     
     const today = new Date().toISOString().split('T')[0];
 

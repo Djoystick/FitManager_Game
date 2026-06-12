@@ -553,6 +553,26 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
     await triggerMatchAchievements(match.home_team_id, result.score.home > result.score.away, result.score.home, result.score.away);
     await triggerMatchAchievements(match.away_team_id, result.score.away > result.score.home, result.score.away, result.score.home);
 
+    // ── ШАГ З: Уведомления о травмах ─────────────────────────────────────────
+    const injuryEvents = result.events.filter((e: any) => e.type === 'injury' && 'team' in e && 'player_name' in e);
+    for (const inj of injuryEvents) {
+      const injEvent = inj as { team: 'home' | 'away'; player_name: string };
+      const injTeamId = injEvent.team === 'home' ? match.home_team_id : match.away_team_id;
+      const { data: injTeamOwner } = await supabaseAdmin
+        .from('teams').select('user_id').eq('id', injTeamId).maybeSingle();
+      if (injTeamOwner?.user_id) {
+        await supabaseAdmin.from('personal_notifications').insert({
+          user_id: injTeamOwner.user_id,
+          type: 'injury',
+          title: 'Player injury',
+          message: JSON.stringify({
+            en: `${injEvent.player_name} was injured in a match.`,
+            ru: `${injEvent.player_name} получил травму в матче.`,
+          }),
+        });
+      }
+    }
+
     console.log(`[resolveMatch] SUCCESS for matchId: ${matchId}`);
     return { success: true };
   } catch (error: any) {

@@ -51,6 +51,50 @@ export async function buyPlayerAction(listingId: string) {
     const userId = cookieStore.get('tg_user_id')?.value;
     if (!userId) return { success: false, error: 'User not authenticated' };
 
+    // Anti-cheat: check if buyer and seller played each other in last 48h
+    const { data: listing, error: listingErr } = await supabaseAdmin
+      .from('market_listings')
+      .select('seller_id, player_id')
+      .eq('id', listingId)
+      .eq('status', 'active')
+      .single();
+
+    if (listingErr || !listing) {
+      return { success: false, error: 'Listing not found' };
+    }
+
+    const { data: buyerTeam } = await supabaseAdmin
+      .from('teams')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+    const { data: sellerTeam } = await supabaseAdmin
+      .from('teams')
+      .select('id')
+      .eq('user_id', listing.seller_id)
+      .single();
+
+    if (buyerTeam && sellerTeam) {
+      const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+      const { data: recentMatch } = await supabaseAdmin
+        .from('league_matches')
+        .select('id')
+        .or(`and(home_team_id.eq.${buyerTeam.id},away_team_id.eq.${sellerTeam.id}),and(home_team_id.eq.${sellerTeam.id},away_team_id.eq.${buyerTeam.id})`)
+        .eq('is_played', true)
+        .gte('created_at', cutoff)
+        .limit(1)
+        .maybeSingle();
+
+      if (recentMatch) {
+        return {
+          success: false,
+          error: 'Purchase forbidden: you played against this manager recently',
+          errorKey: 'anticheat_recent_match',
+          errorRu: 'Покупка запрещена: вы играли с этим менеджером недавно',
+        };
+      }
+    }
+
     const { data, error } = await supabaseAdmin.rpc('buy_player_from_market', {
       p_buyer_id: userId,
       p_listing_id: listingId
@@ -63,6 +107,30 @@ export async function buyPlayerAction(listingId: string) {
 
     const { data: team } = await supabaseAdmin.from('teams').select('id').eq('user_id', userId).single();
     if (team) await triggerTransferAchievements(team.id, 'buy');
+
+    // Send transfer notification to seller
+    const { data: player } = await supabaseAdmin
+      .from('players')
+      .select('name')
+      .eq('id', listing.player_id)
+      .single();
+    const playerName = player?.name ?? 'Player';
+    const { data: listingData } = await supabaseAdmin
+      .from('market_listings')
+      .select('price_ton')
+      .eq('id', listingId)
+      .single();
+    const price = listingData?.price_ton ?? 0;
+
+    await supabaseAdmin.from('personal_notifications').insert({
+      user_id: listing.seller_id,
+      type: 'transfer',
+      title: 'Player sold',
+      message: JSON.stringify({
+        en: `Your player ${playerName} was sold for ${price} TON.`,
+        ru: `Ваш игрок ${playerName} продан за ${price} TON.`,
+      }),
+    });
 
     return { success: true, data };
   } catch (err: any) {

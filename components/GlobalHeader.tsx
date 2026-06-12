@@ -1,16 +1,17 @@
 'use client';
 
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
+import { resolveBilingual } from '@/lib/types';
 import Link from 'next/link';
 import { Settings } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GlobalHeader — Sticky top bar with:
-//   LEFT:   Manager Level pill + Notifications (Crown) + Quick Store (Energy)
+//   LEFT:   Manager Level pill + Notifications (Bell) + Quick Store (Energy)
 //   CENTER: Currency chips (TON · FC · SP)
 //   RIGHT:  Settings icon
 //
@@ -30,17 +31,36 @@ interface UserData {
   manager_xp:        number;
 }
 
-// Mock activity notifications — will be wired to a real activity feed in V4
-const MOCK_NOTIFICATIONS = [
-  { id: '1', icon: '⚽', title: 'Match Simulated',     desc: 'League round completed — check your results',     time: '2m ago',  read: false },
-  { id: '2', icon: '🔄', title: 'Transfer Window',     desc: 'Summer window opens in 3 days',                   time: '1h ago',  read: false },
-  { id: '3', icon: '🏆', title: 'Achievement Unlocked', desc: 'First Victory — Win your first match',            time: '3h ago',  read: true  },
-] as const;
+interface Notification {
+  id: string;
+  type: 'transfer' | 'injury' | 'challenge' | 'system';
+  title: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+const TYPE_ICONS: Record<string, string> = {
+  transfer: '💰',
+  injury: '🚑',
+  challenge: '⚔️',
+  system: '📢',
+};
 
 function CrownIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="text-yellow-400">
       <path d="M2 19l2-10 4 5 4-9 4 9 4-5 2 10H2z" />
+    </svg>
+  );
+}
+
+function BellIcon({ hasUnread }: { hasUnread: boolean }) {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={hasUnread ? 'text-cyan-400' : 'text-gray-400'}>
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      {hasUnread && <circle cx="18" cy="4" r="3" fill="#00f0ff" stroke="none" />}
     </svg>
   );
 }
@@ -53,6 +73,17 @@ function EnergyIcon() {
   );
 }
 
+function getTimeAgo(dateStr: string, lang: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return lang === 'ru' ? 'только что' : 'just now';
+  if (mins < 60) return `${mins}${lang === 'ru' ? 'м' : 'm'}`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}${lang === 'ru' ? 'ч' : 'h'}`;
+  const days = Math.floor(hrs / 24);
+  return `${days}${lang === 'ru' ? 'д' : 'd'}`;
+}
+
 export function GlobalHeader() {
   const { userId, isAuthenticated } = useContext(TelegramAuthContext);
   const { language } = useContext(LanguageContext);
@@ -62,6 +93,22 @@ export function GlobalHeader() {
   const [animatingFC, setAnimatingFC] = useState(false);
   const [animatingSP, setAnimatingSP] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const res = await fetch('/api/social/personal-notifications', { cache: 'no-store' });
+      if (!res.ok) return;
+      const json = await res.json();
+      const data: Notification[] = json.notifications ?? [];
+      setNotifications(data);
+      setUnreadCount(data.filter((n) => !n.is_read).length);
+    } catch (e) {
+      console.error('[GlobalHeader] fetchNotifications error:', e);
+    }
+  }, [userId]);
 
   const fetchBalances = async () => {
     if (!userId) return;
@@ -89,7 +136,10 @@ export function GlobalHeader() {
 
   useEffect(() => {
     if (isAuthenticated && userId) {
-      setTimeout(() => fetchBalances(), 0);
+      setTimeout(() => {
+        fetchBalances();
+        fetchNotifications();
+      }, 0);
     }
     const handleBalanceUpdate = () => setTimeout(() => fetchBalances(), 0);
     const handleOpenNotifications = () => setShowNotifications(true);
@@ -135,19 +185,25 @@ export function GlobalHeader() {
                 <span className="text-xs font-black font-orbitron text-cyan-300 leading-none">{lvl}</span>
               </div>
 
-              {/* Notifications / Activity Log (Crown icon) */}
+              {/* Notifications / Activity Log (Bell icon) */}
               <button
                 id="header-notifications-btn"
-                onClick={() => setShowNotifications(true)}
+                onClick={() => {
+                  setShowNotifications(true);
+                }}
                 className="relative w-6 h-6 rounded-full flex items-center justify-center
-                            bg-yellow-500/10 border border-yellow-500/25
-                            hover:bg-yellow-500/20 transition-colors active:scale-90"
-                aria-label="Activity log"
+                            bg-cyan-500/10 border border-cyan-500/25
+                            hover:bg-cyan-500/20 transition-colors active:scale-90"
+                aria-label="Notifications"
               >
-                <CrownIcon />
-                {/* Unread badge */}
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full
-                                 bg-red-500 border border-[#05060f] animate-pulse" />
+                <BellIcon hasUnread={unreadCount > 0} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] rounded-full
+                                   bg-cyan-400 border border-[#05060f] flex items-center justify-center
+                                   text-[7px] font-black text-[#05060f] animate-pulse">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </button>
 
               {/* Quick Store — routes to /bank for Diamond top-up */}
@@ -242,58 +298,84 @@ export function GlobalHeader() {
             {/* Sheet header */}
             <div className="px-5 pt-2 pb-3 flex items-center justify-between border-b border-white/5">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_6px_rgba(250,204,21,0.8)]" />
-                <span className="text-xs font-black font-orbitron text-white uppercase tracking-widest">{t?.activity_news || 'ACTIVITY / NEWS'}</span>
-                <span className="text-[8px] bg-red-500/20 border border-red-500/40 text-red-400
-                                 px-1.5 py-0.5 rounded-full font-bold uppercase">{t?.live_feed || 'LIVE'}</span>
+                <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_6px_rgba(0,240,255,0.8)]" />
+                <span className="text-xs font-black font-orbitron text-white uppercase tracking-widest">
+                  {t?.activity_news || 'Уведомления'}
+                </span>
+                {unreadCount > 0 && (
+                  <span className="text-[8px] bg-cyan-500/20 border border-cyan-500/40 text-cyan-400
+                                   px-1.5 py-0.5 rounded-full font-bold uppercase">
+                    {unreadCount}
+                  </span>
+                )}
               </div>
-              <button
-                onClick={() => setShowNotifications(false)}
-                className="w-7 h-7 rounded-full bg-white/5 border border-white/10
-                           flex items-center justify-center text-gray-400 text-xs
-                           hover:text-white transition-colors active:scale-90"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={async () => {
+                      await fetch('/api/social/personal-notifications', { method: 'POST' });
+                      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+                      setUnreadCount(0);
+                    }}
+                    className="text-[8px] text-cyan-400 hover:text-cyan-300 font-bold uppercase tracking-wider transition-colors"
+                  >
+                    {language === 'ru' ? 'Прочитать все' : 'Read all'}
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowNotifications(false)}
+                  className="w-7 h-7 rounded-full bg-white/5 border border-white/10
+                             flex items-center justify-center text-gray-400 text-xs
+                             hover:text-white transition-colors active:scale-90"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {/* Notification rows */}
             <div className="px-4 py-3 flex flex-col gap-2 pb-10">
-              {MOCK_NOTIFICATIONS.map((n) => {
-                const title = language === 'ru' 
-                  ? (n.id === '1' ? 'МАТЧ СИМУЛИРОВАН' : n.id === '2' ? 'ТРАНСФЕРНОЕ ОКНО' : 'ДОСТИЖЕНИЕ ПОЛУЧЕНО')
-                  : n.title;
-                const desc = language === 'ru'
-                  ? (n.id === '1' ? 'Тур лиги завершен — проверьте результаты' : n.id === '2' ? 'Летнее окно откроется через 3 дня' : 'Первая победа — Выиграйте свой первый матч')
-                  : n.desc;
-                  
+              {notifications.length === 0 && (
+                <p className="text-center text-[10px] text-gray-600 py-6">
+                  {language === 'ru' ? 'Нет уведомлений' : 'No notifications yet'}
+                </p>
+              )}
+              {notifications.slice(0, 10).map((n) => {
+                const icon = TYPE_ICONS[n.type] ?? '📢';
+                const timeAgo = getTimeAgo(n.created_at, language);
                 return (
                 <div
                   key={n.id}
                   className={`flex items-start gap-3 p-3 rounded-2xl border transition-all ${
-                    n.read
+                    n.is_read
                       ? 'bg-white/[0.02] border-white/5 opacity-55'
-                      : 'bg-yellow-500/5 border-yellow-500/20 shadow-[0_0_12px_rgba(250,204,21,0.04)]'
+                      : 'bg-cyan-500/5 border-cyan-500/20 shadow-[0_0_12px_rgba(0,240,255,0.04)]'
                   }`}
                 >
                   <div className="w-8 h-8 rounded-xl flex items-center justify-center
                                   bg-black/40 border border-white/8 flex-shrink-0 text-base">
-                    {n.icon}
+                    {icon}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-[10px] font-black text-white uppercase tracking-wide">{title}</span>
-                      {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 flex-shrink-0" />}
+                      <span className="text-[10px] font-black text-white uppercase tracking-wide">{n.title}</span>
+                      {!n.is_read && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 flex-shrink-0" />}
                     </div>
-                    <p className="text-[9px] text-gray-500 leading-snug">{desc}</p>
+                    <p className="text-[9px] text-gray-500 leading-snug">{resolveBilingual(n.message, language)}</p>
                   </div>
-                  <span className="text-[8px] text-gray-700 font-mono flex-shrink-0 pt-0.5">{n.time}</span>
+                  <span className="text-[8px] text-gray-700 font-mono flex-shrink-0 pt-0.5">{timeAgo}</span>
                 </div>
               )})}
 
-              <p className="text-center text-[8px] text-gray-700 uppercase tracking-widest font-bold mt-1">
-                {t?.coming_v4 || 'Live activity feed · coming in V4'}
-              </p>
+              {notifications.length > 0 && (
+                <Link
+                  href="/social"
+                  onClick={() => setShowNotifications(false)}
+                  className="text-center text-[9px] text-cyan-400 uppercase tracking-widest font-bold mt-2 hover:text-cyan-300 transition-colors"
+                >
+                  {language === 'ru' ? 'Все уведомления →' : 'All notifications →'}
+                </Link>
+              )}
             </div>
           </div>
 

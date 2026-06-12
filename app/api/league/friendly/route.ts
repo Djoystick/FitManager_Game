@@ -102,6 +102,17 @@ export async function POST(request: Request) {
         earned_tp: 0
       });
 
+    // 8. Send challenge notification
+    await supabaseAdmin.from('personal_notifications').insert({
+      user_id: userId,
+      type: 'challenge',
+      title: 'Friendly match',
+      message: JSON.stringify({
+        en: `You played a friendly match. Result: ${playerGoals}:${botGoals}.`,
+        ru: `Вы сыграли товарищеский матч. Результат: ${playerGoals}:${botGoals}.`,
+      }),
+    });
+
     return NextResponse.json({
       success: true,
       score: { home: playerGoals, away: botGoals },

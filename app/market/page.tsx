@@ -194,7 +194,12 @@ export default function TransferMarketPage() {
         fetchBalance();
         window.dispatchEvent(new Event('balanceUpdated'));
         fetchMarket();
-      } else { toast.error(res.error || t.buy_error); }
+      } else {
+        const errMsg = (language === 'ru' && (res as any).errorRu)
+          ? (res as any).errorRu
+          : (res.error || t.buy_error);
+        toast.error(errMsg);
+      }
     });
   };
 
