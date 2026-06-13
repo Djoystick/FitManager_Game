@@ -54,6 +54,7 @@ export interface MatchPlayer {
   stats: MatchPlayerStats;
   stamina: number;
   traits: string[];
+  morale?: number;
 }
 
 export type TacticalStyle = 'Tiki-Taka' | 'Counter Attack' | 'High Press' | 'Park the Bus' | 'Wing Play' | 'Balanced';
@@ -152,7 +153,8 @@ function eff(
   hasGreenLink: boolean,
   currentStamina: number,
   hasSynergy: boolean = false,
-  hasConflict: boolean = false
+  hasConflict: boolean = false,
+  morale: number = 70
 ): number {
   const base = safeNum(rawStat, 0);
   const stamMult = staminaMult(Math.max(0, currentStamina));
@@ -160,6 +162,9 @@ function eff(
   let buffMult = 1.0;
   if (hasGreenLink) buffMult += 0.10;
   if (hasSynergy)   buffMult += 0.10;
+  
+  if (morale < 40) buffMult -= 0.10;
+  else if (morale > 85) buffMult += 0.05;
 
   // Cap total buff before conflict resolution
   buffMult = Math.min(1.35, buffMult);
@@ -185,7 +190,8 @@ function makeStatGetter(links: TeamLinks, liveStamina: Record<string, number>) {
       links.greenLinks[player.id] ?? false,
       liveStamina[player.id] ?? player.stamina,
       links.synergies[player.id] ?? false,
-      links.conflicts[player.id] ?? false
+      links.conflicts[player.id] ?? false,
+      player.morale ?? 70
     );
 }
 

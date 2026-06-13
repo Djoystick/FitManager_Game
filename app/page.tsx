@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { UnseenMatchesModal } from '@/components/UnseenMatchesModal';
 import { NextMatchCountdown } from '@/components/dashboard/NextMatchCountdown';
+import { DailyQuestsWidget } from '@/components/dashboard/DailyQuestsWidget';
 import { OffseasonCard } from '@/components/dashboard/OffseasonCard';
 import { NextMatchInfoCard } from '@/components/dashboard/NextMatchInfoCard';
 import { UnseenMatchesCard } from '@/components/dashboard/UnseenMatchesCard';
@@ -799,6 +800,11 @@ export default function DashboardPage() {
               <NextMatchCountdown language={language} />
             )}
           </motion.div>
+        </div>
+
+        {/* ── ROW 2.5: Daily Quests ────────────────────────────────────────── */}
+        <div className="flex-shrink-0 mt-2">
+          {userId && <DailyQuestsWidget userId={userId} language={language} />}
         </div>
 
         {/* ── ROW 3: CTA Hub — Unseen Matches + Fitness ───────────────────── */}

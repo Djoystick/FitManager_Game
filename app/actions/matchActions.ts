@@ -343,7 +343,8 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
         position: resolvedPos,
         stats: safeStats(p.stats),
         stamina: Math.max(0, Math.min(100, Number(p.stamina ?? 70) || 70)),
-        traits: Array.isArray(p.traits) ? p.traits : []
+        traits: Array.isArray(p.traits) ? p.traits : [],
+        morale: Number(p.morale ?? 70) || 70
       };
     };
 
@@ -388,19 +389,52 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       throw new Error(`DB Write Failed: ${updateMatchError.message} (Details: ${updateMatchError.details})`);
     }
 
-    // ШАГ Г: Обновление стамины
-    const updateStamina = async (drainMap: Record<string, number>) => {
-      const promises = Object.entries(drainMap).map(async ([pId, newStam]) => {
-        const { error } = await supabaseAdmin.from('players').update({ stamina: Math.max(0, newStam) }).eq('id', pId);
-        if (error) {
-          console.error(`[resolveMatch] CRITICAL DB ERROR (players stamina):`, error);
-          throw new Error(`DB Write Failed for stamina: ${error.message}`);
+    // ШАГ Г: Обновление стамины и морали
+    const updatePlayerCondition = async (
+      playersData: any[],
+      drainMap: Record<string, number>,
+      isWinner: boolean,
+      isDraw: boolean
+    ) => {
+      const promises = playersData.map(async p => {
+        let updateData: any = {};
+        
+        if (drainMap[p.id] !== undefined) {
+          updateData.stamina = Math.max(0, drainMap[p.id]);
+        }
+        
+        let moraleChange = 0;
+        if (isWinner) moraleChange += 5;
+        else if (!isDraw) moraleChange -= 5;
+        
+        const isStarter = p.lineup_slot !== null && parseInt(p.lineup_slot) <= 10;
+        const isBench = p.lineup_status === 'bench' || p.lineup_status === 'reserve';
+        
+        if (isWinner && isStarter) moraleChange += 2;
+        if (!isWinner && isBench) moraleChange -= 3;
+        if (isWinner && isBench) moraleChange -= 1;
+        
+        if (moraleChange !== 0) {
+          updateData.morale = Math.max(0, Math.min(100, (p.morale ?? 70) + moraleChange));
+        }
+        
+        if (Object.keys(updateData).length > 0) {
+          const { error } = await supabaseAdmin.from('players').update(updateData).eq('id', p.id);
+          if (error) {
+            console.error(`[resolveMatch] CRITICAL DB ERROR (players condition):`, error);
+            throw new Error(`DB Write Failed for player condition: ${error.message}`);
+          }
         }
       });
       await Promise.all(promises);
     };
-    await updateStamina(result.staminaDrain.home);
-    await updateStamina(result.staminaDrain.away);
+
+    const isHomeWin = result.score.home > result.score.away;
+    const isAwayWin = result.score.away > result.score.home;
+    const isDrawMatch = result.score.home === result.score.away;
+
+    await updatePlayerCondition(homePlayersData, result.staminaDrain.home, isHomeWin, isDrawMatch);
+    await updatePlayerCondition(awayPlayersData, result.staminaDrain.away, isAwayWin, isDrawMatch);
 
     // ШАГ Д: Обновление Standings
     // ── L3 FIX: Filter by BOTH team_id AND league_instance_id ───────────────
@@ -557,6 +591,21 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
     // ── ШАГ Ж: Ачивки (Achievements) ──────────────────────────────────────────
     await triggerMatchAchievements(match.home_team_id, result.score.home > result.score.away, result.score.home, result.score.away);
     await triggerMatchAchievements(match.away_team_id, result.score.away > result.score.home, result.score.away, result.score.home);
+
+    // ── ШАГ Ж.1: Квесты (Quests) ──────────────────────────────────────────────
+    try {
+      const { data: homeTeam } = await supabaseAdmin.from('teams').select('user_id').eq('id', match.home_team_id).maybeSingle();
+      const { data: awayTeam } = await supabaseAdmin.from('teams').select('user_id').eq('id', match.away_team_id).maybeSingle();
+      
+      if (homeTeam?.user_id) {
+        await supabaseAdmin.rpc('increment_quest_progress', { p_user_id: homeTeam.user_id, p_type: 'play_match', p_amount: 1 });
+      }
+      if (awayTeam?.user_id) {
+        await supabaseAdmin.rpc('increment_quest_progress', { p_user_id: awayTeam.user_id, p_type: 'play_match', p_amount: 1 });
+      }
+    } catch (e) {
+      console.error('[resolveMatch] Failed to increment play_match quest:', e);
+    }
 
     // ── ШАГ З: Уведомления о травмах ─────────────────────────────────────────
     const injuryEvents = result.events.filter((e: any) => e.type === 'injury' && 'team' in e && 'player_name' in e);

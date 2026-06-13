@@ -73,6 +73,8 @@ export async function issueChallenge(targetUserId: string) {
       }),
     });
 
+    await supabaseAdmin.rpc('increment_quest_progress', { p_user_id: userId, p_type: 'social_action', p_amount: 1 });
+
     return { success: true, challengeId: challenge.id };
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to issue challenge' };
@@ -275,6 +277,13 @@ export async function resolvePvPChallenge(challengeId: string, accept: boolean) 
         ru: `Вы ${opponentResultRu} против ${challengerName}! Счёт: ${resultScore}. +${opponentReward.fc} FC${opponentReward.sp > 0 ? ` +${opponentReward.sp} SP` : ''}`,
       }),
     });
+
+    try {
+      await supabaseAdmin.rpc('increment_quest_progress', { p_user_id: challenge.challenger_id, p_type: 'play_match', p_amount: 1 });
+      await supabaseAdmin.rpc('increment_quest_progress', { p_user_id: challenge.opponent_id, p_type: 'play_match', p_amount: 1 });
+    } catch (e) {
+      console.error('Failed to increment play_match quest for PvP:', e);
+    }
 
     return {
       success: true,

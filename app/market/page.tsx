@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition, useContext } from 'react';
 import { CyberLoader } from '@/components/ui/CyberLoader';
 import { getMarketListingsAction, buyPlayerAction, cancelListingAction, getFreeAgentsAction, buyFreeAgentAction } from '@/app/actions/marketActions';
+import { getIncomingOffers, getOutgoingOffers, acceptOffer, rejectOffer } from '@/app/actions/transferOfferActions';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
@@ -81,7 +82,7 @@ export default function TransferMarketPage() {
   const { startTour, hasSeenTour, areAllToursSkipped } = usePageTour();
   const router = useRouter();
 
-  const [activeTab,       setActiveTab]      = useState<'market' | 'my_lots' | 'free_agents'>('market');
+  const [activeTab,       setActiveTab]      = useState<'market' | 'my_lots' | 'free_agents' | 'incoming_offers' | 'outgoing_offers'>('market');
 
   const triggerTour = () => {
     if (areAllToursSkipped()) return;
@@ -116,6 +117,8 @@ export default function TransferMarketPage() {
   }, [hasSeenTour, areAllToursSkipped, startTour]);
   const [listings,        setListings]       = useState<MarketListing[]>([]);
   const [freeAgents,      setFreeAgents]     = useState<any[]>([]);
+  const [incomingOffers,  setIncomingOffers] = useState<any[]>([]);
+  const [outgoingOffers,  setOutgoingOffers] = useState<any[]>([]);
   const [isLoading,       setIsLoading]      = useState(true);
   const [isPending,       startTransition]   = useTransition();
   const [tonBalance,      setTonBalance]     = useState<number>(0);
@@ -152,6 +155,26 @@ export default function TransferMarketPage() {
     finally { setIsLoading(false); }
   };
 
+  const fetchIncomingOffers = async () => {
+    setIsLoading(true);
+    try {
+      const res = await getIncomingOffers();
+      if (res.success && res.data) setIncomingOffers(res.data);
+      else toast.error(res.error || 'Failed to fetch incoming offers');
+    } catch (e) { console.error(e); }
+    finally { setIsLoading(false); }
+  };
+
+  const fetchOutgoingOffers = async () => {
+    setIsLoading(true);
+    try {
+      const res = await getOutgoingOffers();
+      if (res.success && res.data) setOutgoingOffers(res.data);
+      else toast.error(res.error || 'Failed to fetch outgoing offers');
+    } catch (e) { console.error(e); }
+    finally { setIsLoading(false); }
+  };
+
   const fetchBalance = async () => {
     if (!userId) return;
     try {
@@ -168,6 +191,10 @@ export default function TransferMarketPage() {
       setTimeout(() => {
         if (activeTab === 'free_agents') {
           if (freeAgents.length === 0) fetchFreeAgents();
+        } else if (activeTab === 'incoming_offers') {
+          fetchIncomingOffers();
+        } else if (activeTab === 'outgoing_offers') {
+          fetchOutgoingOffers();
         } else {
           fetchMarket();
         }
@@ -257,7 +284,12 @@ export default function TransferMarketPage() {
               </div>
             </div>
             <button
-              onClick={activeTab === 'free_agents' ? fetchFreeAgents : fetchMarket}
+              onClick={() => {
+                if (activeTab === 'free_agents') fetchFreeAgents();
+                else if (activeTab === 'incoming_offers') fetchIncomingOffers();
+                else if (activeTab === 'outgoing_offers') fetchOutgoingOffers();
+                else fetchMarket();
+              }}
               disabled={isLoading || isPending}
               className="w-8 h-8 rounded-full glass-card flex items-center justify-center text-gray-400
                          hover:text-cyan-300 hover:border-cyan-500/40 transition-all"
@@ -285,6 +317,8 @@ export default function TransferMarketPage() {
             { id: 'market',      label: t.tab_market    },
             { id: 'free_agents', label: t.market_free_agents || 'FREE AGENTS'   },
             { id: 'my_lots',     label: t.tab_my_lots   },
+            { id: 'incoming_offers', label: 'IN OFFERS' },
+            { id: 'outgoing_offers', label: 'OUT OFFERS' }
           ]}
           active={activeTab}
           onChange={(id) => setActiveTab(id as any)}
@@ -337,6 +371,69 @@ export default function TransferMarketPage() {
         {/* ── LISTINGS ───────────────────────────────────────────── */}
         {isLoading ? (
           <CyberLoader fullScreen={false} />
+        ) : activeTab === 'incoming_offers' ? (
+          incomingOffers.length === 0 ? (
+            <EmptyState icon={<ShieldAlert className="w-10 h-10 text-gray-700" />} text="No Incoming Offers" />
+          ) : (
+            <div className="flex flex-col gap-2">
+              {incomingOffers.map((offer, i) => (
+                <motion.div key={offer.id} className="glass-card p-3 flex flex-col gap-2">
+                  <div className="text-sm font-bold text-white">From: {offer.sender.name}</div>
+                  <div className="text-sm text-cyan-300">Target: {offer.target_player.name} (OVR {offer.target_player.ovr})</div>
+                  <div className="text-xs text-yellow-400">Offered FC: {offer.offered_fc}</div>
+                  {offer.offered_player && (
+                    <div className="text-xs text-blue-300">Offered Player: {offer.offered_player.name} (OVR {offer.offered_player.ovr})</div>
+                  )}
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => {
+                        startTransition(async () => {
+                          const res = await acceptOffer(offer.id);
+                          if (res.success) { toast.success('Offer accepted'); fetchIncomingOffers(); fetchBalance(); }
+                          else toast.error(res.error || 'Failed to accept offer');
+                        });
+                      }}
+                      disabled={isPending}
+                      className="px-3 py-1 bg-green-500/20 text-green-400 border border-green-500/40 rounded text-xs"
+                    >
+                      ACCEPT
+                    </button>
+                    <button
+                      onClick={() => {
+                        startTransition(async () => {
+                          const res = await rejectOffer(offer.id);
+                          if (res.success) { toast.success('Offer rejected'); fetchIncomingOffers(); }
+                          else toast.error(res.error || 'Failed to reject offer');
+                        });
+                      }}
+                      disabled={isPending}
+                      className="px-3 py-1 bg-red-500/20 text-red-400 border border-red-500/40 rounded text-xs"
+                    >
+                      REJECT
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )
+        ) : activeTab === 'outgoing_offers' ? (
+          outgoingOffers.length === 0 ? (
+            <EmptyState icon={<ShieldAlert className="w-10 h-10 text-gray-700" />} text="No Outgoing Offers" />
+          ) : (
+            <div className="flex flex-col gap-2">
+              {outgoingOffers.map((offer, i) => (
+                <motion.div key={offer.id} className="glass-card p-3 flex flex-col gap-2">
+                  <div className="text-sm font-bold text-white">To: {offer.receiver.name}</div>
+                  <div className="text-sm text-cyan-300">Target: {offer.target_player.name} (OVR {offer.target_player.ovr})</div>
+                  <div className="text-xs text-yellow-400">Offered FC: {offer.offered_fc}</div>
+                  {offer.offered_player && (
+                    <div className="text-xs text-blue-300">Offered Player: {offer.offered_player.name} (OVR {offer.offered_player.ovr})</div>
+                  )}
+                  <div className="text-xs text-gray-400 uppercase">Status: {offer.status}</div>
+                </motion.div>
+              ))}
+            </div>
+          )
         ) : activeTab === 'free_agents' ? (
           freeAgents.length === 0 ? (
             <EmptyState icon={<ShieldAlert className="w-10 h-10 text-gray-700" />} text={t.market_no_free_agents || 'No Free Agents'} />

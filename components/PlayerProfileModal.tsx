@@ -46,6 +46,7 @@ interface Player {
   is_injured?:          boolean;
   injury_matches_left?: number;
   lineup_status:        string;
+  morale?:              number;
   is_for_sale?:         boolean;
   is_retired?:          boolean;
   seasons_played?:      number;
@@ -347,6 +348,18 @@ export function PlayerProfileModal({ player, userId, onClose, onTrainSuccess }: 
                       />
                     </div>
                     <span className="text-[9px] font-mono text-gray-500">{player.stamina}%</span>
+                  </div>
+
+                  {/* Morale */}
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="text-[10px] leading-none" title="Morale">😊</span>
+                    <div className="flex-1 h-1 bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${(player.morale ?? 70) > 85 ? 'bg-emerald-400' : (player.morale ?? 70) < 40 ? 'bg-red-400' : 'bg-yellow-400'}`}
+                        style={{ width: `${player.morale ?? 70}%` }}
+                      />
+                    </div>
+                    <span className="text-[9px] font-mono text-gray-500">{player.morale ?? 70}%</span>
                   </div>
 
                   {/* Potential */}

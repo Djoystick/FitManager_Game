@@ -38,6 +38,7 @@ export interface Player {
   traits?: string[];
   lineup_status: string;
   is_nft_coach: boolean;
+  morale: number;
 }
 
 export interface ScoutResult {
@@ -82,7 +83,7 @@ const AVAILABLE_PERKS = [
 //   Level 1 → 15%,  Level 5 → 35%,  Level 10 → 60%
 // ─────────────────────────────────────────────────────────────────────────────
 
-function generateRandomPlayer(
+export function generateRandomPlayer(
   teamId: string,
   academyLevel: number = 1,
   scoutLevel: number   = 1,
@@ -159,6 +160,7 @@ function generateRandomPlayer(
     is_nft_coach:  false, // Kept for legacy, now we also use is_retired in DB
     traits,
     perk_granted,
+    morale:        70,
   };
 }
 
@@ -225,6 +227,60 @@ export async function scoutYouthPlayer(): Promise<ScoutResult> {
     return { success: false, error: error.message || 'An unexpected error occurred during scouting.' };
   }
 }
+
+export async function signYouthIntake(intakeId: string): Promise<ScoutResult> {
+  try {
+    const cookieStore = await cookies();
+    const tgUserId = cookieStore.get('tg_user_id')?.value;
+    if (!tgUserId) return { success: false, error: 'Unauthorized' };
+
+    const { data: teamData } = await supabaseAdmin.from('teams').select('id').eq('user_id', tgUserId).single();
+    if (!teamData) return { success: false, error: 'Team not found' };
+
+    const { data: intake } = await supabaseAdmin.from('youth_intakes').select('*').eq('id', intakeId).eq('team_id', teamData.id).single();
+    if (!intake) return { success: false, error: 'Intake not found' };
+
+    const { data: user } = await supabaseAdmin.from('users').select('balance_fancoins').eq('id', tgUserId).single();
+    const cost = 2000;
+    if (!user || (user.balance_fancoins || 0) < cost) return { success: false, error: `Need ${cost} FC to sign youth.` };
+
+    // Deduct FC
+    await supabaseAdmin.from('users').update({ balance_fancoins: (user.balance_fancoins || 0) - cost }).eq('id', tgUserId);
+
+    // Insert player
+    const { data: newPlayer, error } = await supabaseAdmin.from('players').insert({
+      team_id: teamData.id,
+      name: intake.name,
+      age: intake.age,
+      position: intake.position,
+      ovr: intake.ovr,
+      potential_limit: intake.potential_limit,
+      stats: intake.stats,
+      traits: intake.traits,
+      lineup_status: 'bench',
+      stamina: 100,
+      morale: 80,
+      is_nft_coach: false
+    }).select('*').single();
+
+    if (error) {
+       await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins }).eq('id', tgUserId);
+       return { success: false, error: 'Failed to sign' };
+    }
+
+    // Delete intake
+    await supabaseAdmin.from('youth_intakes').delete().eq('id', intakeId);
+
+    revalidatePath('/academy');
+    revalidatePath('/squad');
+
+    return { success: true, player: newPlayer as Player };
+
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // QUERY: getNextOpponentData

@@ -111,6 +111,8 @@ export async function sendFriendRequest(targetUserId: string) {
       }),
     });
 
+    await supabaseAdmin.rpc('increment_quest_progress', { p_user_id: userId, p_type: 'social_action', p_amount: 1 });
+
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to send friend request' };

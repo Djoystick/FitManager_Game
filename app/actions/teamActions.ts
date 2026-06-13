@@ -85,7 +85,8 @@ function generatePlayer(
     stamina: 100,
     lineup_status,
     lineup_slot,
-    traits
+    traits,
+    morale: 70
   };
 }
 

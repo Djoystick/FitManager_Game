@@ -4,6 +4,7 @@ import { GraduationCap, Users } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { YouthIntakeList } from '@/components/academy/YouthIntakeList';
 
 export default async function AcademyDashboard() {
   const cookieStore = await cookies();
@@ -21,12 +22,21 @@ export default async function AcademyDashboard() {
     .single();
 
   let playerCount = 0;
+  let intakes: any[] = [];
   if (teamData) {
     const { count } = await supabase
       .from('players')
       .select('*', { count: 'exact', head: true })
       .eq('team_id', teamData.id);
     playerCount = count || 0;
+
+    const { data: intakesData } = await supabase
+      .from('youth_intakes')
+      .select('*')
+      .eq('team_id', teamData.id)
+      .order('created_at', { ascending: false });
+    
+    if (intakesData) intakes = intakesData;
   }
 
   return (
@@ -61,6 +71,11 @@ export default async function AcademyDashboard() {
       {/* Interactive Scouting Area */}
       <section className="flex-1 flex flex-col items-center justify-center">
         <ScoutPlayerButton />
+      </section>
+
+      {/* Youth Intakes */}
+      <section className="mt-4">
+         <YouthIntakeList intakes={intakes} />
       </section>
     </div>
   );

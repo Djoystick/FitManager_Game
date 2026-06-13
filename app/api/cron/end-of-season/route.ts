@@ -195,6 +195,36 @@ export async function GET(request: Request) {
             .eq('team_id', finalStandings[i].team_id)
             .eq('league_instance_id', instance.id);
 
+          // ── YOUTH ACADEMY INTAKE ────────────────────────────────────────────
+          const { data: infra } = await supabaseAdmin
+            .from('infrastructure')
+            .select('academy_level, scout_level, academy_perks')
+            .eq('team_id', teamData.id)
+            .maybeSingle();
+            
+          const academyLevel = infra?.academy_level ?? 1;
+          const scoutLevel = infra?.scout_level ?? 1;
+          const academyPerks = infra?.academy_perks ?? [];
+
+          // Generate 1-3 youth players
+          const numIntakes = Math.floor(Math.random() * 3) + 1;
+          const { generateRandomPlayer } = await import('@/app/actions/scoutingActions');
+          const intakes = [];
+          for (let y = 0; y < numIntakes; y++) {
+            const { perk_granted, lineup_status, is_nft_coach, morale, ...newPlayerData } = generateRandomPlayer(teamData.id, academyLevel, scoutLevel, academyPerks);
+            intakes.push({
+              team_id: teamData.id,
+              name: newPlayerData.name,
+              age: newPlayerData.age,
+              position: newPlayerData.position,
+              ovr: newPlayerData.ovr,
+              potential_limit: newPlayerData.potential_limit,
+              stats: newPlayerData.stats,
+              traits: newPlayerData.traits || [],
+            });
+          }
+          await supabaseAdmin.from('youth_intakes').insert(intakes);
+
           const { checkAndUnlockAchievement } = await import('@/app/services/achievementService');
           if (position === 1) await checkAndUnlockAchievement(teamData.id, 'LEAGUE_CHAMP');
           if (nextTier < instance.tier_level) await checkAndUnlockAchievement(teamData.id, 'PROMOTION');

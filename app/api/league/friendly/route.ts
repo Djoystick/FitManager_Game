@@ -114,6 +114,10 @@ export async function POST(request: Request) {
       }),
     });
 
+    // Quest progress
+    await supabaseAdmin.rpc('increment_quest_progress', { p_user_id: userId, p_type: 'friendly_match', p_amount: 1 });
+    await supabaseAdmin.rpc('increment_quest_progress', { p_user_id: userId, p_type: 'play_match', p_amount: 1 });
+
     return NextResponse.json({
       success: true,
       score: { home: playerGoals, away: botGoals },

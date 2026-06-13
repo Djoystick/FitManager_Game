@@ -13,6 +13,17 @@ export interface BilingualText {
   ru: string;
 }
 
+export interface TransferOffer {
+  id: string;
+  sender_team_id: string;
+  receiver_team_id: string;
+  target_player_id: string;
+  offered_fc: number;
+  offered_player_id?: string | null;
+  status: 'pending' | 'accepted' | 'rejected' | 'countered';
+  created_at: string;
+}
+
 export function resolveBilingual(raw: string, lang: string): string {
   try {
     const parsed = JSON.parse(raw) as BilingualText;
