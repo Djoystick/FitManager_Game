@@ -356,7 +356,7 @@ export async function GET(request: Request) {
 
           // Generate 1-3 youth players
           const numIntakes = Math.floor(Math.random() * 3) + 1;
-          const { generateRandomPlayer } = await import('@/app/actions/scoutingActions');
+          const { generateRandomPlayer } = await import('@/lib/playerUtils');
           const intakes = [];
           for (let y = 0; y < numIntakes; y++) {
             const { perk_granted, lineup_status, is_nft_coach, morale, ...newPlayerData } = await generateRandomPlayer(teamData.id, academyLevel, scoutLevel, academyPerks);

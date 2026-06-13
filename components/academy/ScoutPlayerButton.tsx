@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
-import { scoutYouthPlayer, Player } from '@/app/actions/scoutingActions';
+import { scoutYouthPlayer } from '@/app/actions/scoutingActions';
+import { Player } from '@/lib/playerUtils';
 import { Loader2, Search, Sparkles, X } from 'lucide-react';
 import { PlayerCard } from '@/components/squad/PlayerCard';
 

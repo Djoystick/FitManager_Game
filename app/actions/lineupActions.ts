@@ -1,6 +1,11 @@
 'use server';
 
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 
@@ -18,7 +23,7 @@ export async function swapPlayers(playerOutId: string, playerInId: string) {
     }
 
     // 1. Verify user's team
-    const { data: team, error: teamError } = await supabase
+    const { data: team, error: teamError } = await supabaseAdmin
       .from('teams')
       .select('id, is_ready_for_match')
       .eq('user_id', tgUserId)
@@ -29,7 +34,7 @@ export async function swapPlayers(playerOutId: string, playerInId: string) {
     }
 
     // 2. Fetch both players to verify ownership and current status
-    const { data: players, error: playersError } = await supabase
+    const { data: players, error: playersError } = await supabaseAdmin
       .from('players')
       .select('id, team_id, lineup_status, lineup_slot, position')
       .in('id', [playerOutId, playerInId]);
@@ -55,7 +60,7 @@ export async function swapPlayers(playerOutId: string, playerInId: string) {
 
     // 3. Perform the swap via two updates
     // We swap both `lineup_status` and `lineup_slot`
-    const { error: update1Error } = await supabase
+    const { error: update1Error } = await supabaseAdmin
       .from('players')
       .update({ 
         lineup_status: playerIn.lineup_status,
@@ -63,7 +68,7 @@ export async function swapPlayers(playerOutId: string, playerInId: string) {
       })
       .eq('id', playerOut.id);
 
-    const { error: update2Error } = await supabase
+    const { error: update2Error } = await supabaseAdmin
       .from('players')
       .update({ 
         lineup_status: tempStatus,
@@ -94,7 +99,7 @@ export async function updatePlayers(payload: { id: string; lineup_status: string
     }
 
     // 1. Verify user's team
-    const { data: team, error: teamError } = await supabase
+    const { data: team, error: teamError } = await supabaseAdmin
       .from('teams')
       .select('id')
       .eq('user_id', tgUserId)
@@ -107,7 +112,7 @@ export async function updatePlayers(payload: { id: string; lineup_status: string
     console.log('Sending payload to Supabase:', JSON.stringify(payload, null, 2));
 
     const updatePromises = payload.map(p => 
-      supabase
+      supabaseAdmin
         .from('players')
         .update({
           lineup_status: p.lineup_status,
@@ -149,7 +154,7 @@ export async function updateTeamTactic(tactic: string) {
       return { success: false, error: 'Invalid tactic' };
     }
 
-    const { data: team, error: teamError } = await supabase
+    const { data: team, error: teamError } = await supabaseAdmin
       .from('teams')
       .select('id')
       .eq('user_id', tgUserId)
@@ -159,7 +164,7 @@ export async function updateTeamTactic(tactic: string) {
       return { success: false, error: 'Team not found' };
     }
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('teams')
       .update({ tactic })
       .eq('id', team.id);
@@ -186,7 +191,7 @@ export async function updateTeamFormation(teamId: string, formation: string) {
     }
 
     // 1. Verify user's team ownership
-    const { data: teamAuth, error: teamAuthError } = await supabase
+    const { data: teamAuth, error: teamAuthError } = await supabaseAdmin
       .from('teams')
       .select('id')
       .eq('id', teamId)
@@ -203,7 +208,7 @@ export async function updateTeamFormation(teamId: string, formation: string) {
       return { success: false, error: 'Invalid formation' };
     }
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('teams')
       .update({ formation })
       .eq('id', teamId);

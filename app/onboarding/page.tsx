@@ -46,8 +46,8 @@ const POSITION_META: Record<string, {
 
 function positionGroup(pos: string): keyof typeof POSITION_META {
   if (pos === 'GK') return 'GK';
-  if (['CB','LB','RB','LWB','RWB'].includes(pos)) return 'DEF';
-  if (['CM','CDM','CAM','LM','RM'].includes(pos)) return 'MID';
+  if (pos === 'DEF' || ['CB','LB','RB','LWB','RWB'].includes(pos)) return 'DEF';
+  if (pos === 'MID' || ['CM','CDM','CAM','LM','RM'].includes(pos)) return 'MID';
   return 'FWD';
 }
 
