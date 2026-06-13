@@ -12,6 +12,8 @@ vi.mock('@supabase/supabase-js', () => ({
         update: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({ data: {}, error: null })
       };
       
