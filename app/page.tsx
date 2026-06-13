@@ -655,7 +655,7 @@ export default function DashboardPage() {
   const profit = formatProfit(yearlyProfit);
 
   // Show Offseason Card when league is over or waiting for a new one to start
-  const isOffseason = instanceStatus === 'filling' || instanceStatus === 'completed';
+  const isOffseason = ['filling', 'completed', 'finished', 'finishing'].includes(instanceStatus ?? '');
   return (
     <div
       className="h-full flex flex-col overflow-hidden text-white relative"

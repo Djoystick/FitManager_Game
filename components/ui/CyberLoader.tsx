@@ -34,8 +34,7 @@ export function CyberLoader({ fullScreen = false, text = 'LOADING...' }: { fullS
   if (fullScreen) {
     return (
       <div 
-        className="fixed inset-0 z-[999] flex flex-col items-center justify-end pb-12 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('/loading_bg.jpg')" }}
+        className="fixed inset-0 z-[999] flex flex-col items-center justify-end pb-12 bg-[#05060f]"
       >
         <div className="bg-black/40 backdrop-blur-sm px-8 py-4 rounded-3xl border border-white/5 shadow-[0_0_30px_rgba(0,0,0,0.8)]">
           {loaderContent}

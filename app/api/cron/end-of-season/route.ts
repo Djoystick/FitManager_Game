@@ -253,13 +253,13 @@ export async function GET(request: Request) {
           targetInstanceId = newInstance!.id;
         }
 
-        await supabaseAdmin.from('league_standings').insert({
+        await supabaseAdmin.from('league_standings').upsert({
           team_id: assignment.team_id,
           league_instance_id: targetInstanceId,
           points: 0, matches_played: 0, wins: 0, draws: 0, losses: 0,
           goals_for: 0, goals_against: 0,
           season_reward_paid: false // reset for the new season
-        });
+        }, { onConflict: 'team_id, league_instance_id' });
       }
 
       // ── Mark instance as fully finished ────────────────────────────────────

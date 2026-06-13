@@ -1,7 +1,7 @@
 export interface PersonalNotification {
   id: string;
   user_id: string;
-  type: 'transfer' | 'injury' | 'challenge' | 'system';
+  type: 'transfer' | 'injury' | 'challenge' | 'system' | 'friend_request' | 'pvp_challenge';
   title: string;
   message: string;
   is_read: boolean;

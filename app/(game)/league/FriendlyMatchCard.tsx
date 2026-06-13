@@ -75,11 +75,7 @@ export function FriendlyMatchCard({ userId, initialMatchesPlayed }: FriendlyMatc
         Сыграйте разминочный матч против ИИ, пока идет трансферное окно. За победу вы получите стартовые ресурсы для прокачки команды!
       </p>
 
-      {matchesPlayed >= maxMatches ? (
-        <button disabled className="w-full py-3 rounded-xl bg-black/40 border border-gray-700/50 text-gray-500 text-[11px] font-black uppercase tracking-widest">
-          Лимит исчерпан
-        </button>
-      ) : (
+      {matchesPlayed >= maxMatches ? null : (
         <button
           id="friendly-match-btn"
           onClick={playMatch}

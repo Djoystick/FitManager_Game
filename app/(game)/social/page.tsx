@@ -156,6 +156,7 @@ export default function SocialPage() {
   };
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
+  const [friendsSubTab, setFriendsSubTab] = useState<'list' | 'requests' | 'history'>('list');
 
   return (
     <div className="min-h-screen bg-[#05060f] pb-24">
@@ -187,7 +188,7 @@ export default function SocialPage() {
             <div className="w-6 h-6 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin" />
           </div>
         ) : tab === 'notifications' ? (
-          <NotificationsTab notifications={notifications} onMarkAllRead={markAllRead} unreadCount={unreadCount} language={language} />
+          <NotificationsTab notifications={notifications} onMarkAllRead={markAllRead} unreadCount={unreadCount} language={language} onNavigate={(subTab) => { setFriendsSubTab(subTab); setTab('friends'); }} />
         ) : tab === 'friends' ? (
           <FriendsTab
             friends={friends}
@@ -196,6 +197,8 @@ export default function SocialPage() {
             challengeHistory={challengeHistory}
             language={language}
             onRefresh={fetchFriends}
+            subTab={friendsSubTab}
+            setSubTab={setFriendsSubTab}
           />
         ) : tab === 'search' ? (
           <SearchTab language={language} />
@@ -249,8 +252,8 @@ function TabButton({ active, onClick, color, icon, label, badge }: {
 // ============================================================
 // NOTIFICATIONS TAB
 // ============================================================
-function NotificationsTab({ notifications, onMarkAllRead, unreadCount, language }: {
-  notifications: PersonalNotification[]; onMarkAllRead: () => void; unreadCount: number; language: string;
+function NotificationsTab({ notifications, onMarkAllRead, unreadCount, language, onNavigate }: {
+  notifications: PersonalNotification[]; onMarkAllRead: () => void; unreadCount: number; language: string; onNavigate: (subTab: 'list' | 'requests' | 'history') => void;
 }) {
   if (notifications.length === 0) {
     return (
@@ -282,6 +285,20 @@ function NotificationsTab({ notifications, onMarkAllRead, unreadCount, language 
                 {!n.is_read && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 flex-shrink-0" />}
               </div>
               <p className="text-[10px] text-gray-400 leading-snug">{resolveBilingual(n.message, language)}</p>
+              {n.type === 'friend_request' && (
+                <div className="mt-1.5">
+                  <button onClick={() => onNavigate('requests')} className="text-[9px] font-bold text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-full border border-yellow-500/20 active:scale-95 transition-transform">
+                    {language === 'ru' ? 'Перейти во вкладку Запросы →' : 'Go to Requests →'}
+                  </button>
+                </div>
+              )}
+              {n.type === 'pvp_challenge' && (
+                <div className="mt-1.5">
+                  <button onClick={() => onNavigate('list')} className="text-[9px] font-bold text-violet-500 bg-violet-500/10 px-2 py-0.5 rounded-full border border-violet-500/20 active:scale-95 transition-transform">
+                    {language === 'ru' ? 'Перейти к Вызовам →' : 'Go to Challenges →'}
+                  </button>
+                </div>
+              )}
             </div>
             <span className="text-[8px] text-gray-700 font-mono flex-shrink-0 pt-0.5">{getTimeAgo(n.created_at, language)}</span>
           </div>
@@ -294,12 +311,11 @@ function NotificationsTab({ notifications, onMarkAllRead, unreadCount, language 
 // ============================================================
 // FRIENDS TAB
 // ============================================================
-function FriendsTab({ friends, pendingRequests, pendingChallenges, challengeHistory, language, onRefresh }: {
+function FriendsTab({ friends, pendingRequests, pendingChallenges, challengeHistory, language, onRefresh, subTab, setSubTab }: {
   friends: FriendItem[]; pendingRequests: PendingRequest[]; pendingChallenges: PendingChallenge[];
   challengeHistory: ChallengeHistoryItem[]; language: string; onRefresh: () => void;
+  subTab: 'list' | 'requests' | 'history'; setSubTab: (s: 'list' | 'requests' | 'history') => void;
 }) {
-  const [subTab, setSubTab] = useState<'list' | 'requests' | 'history'>('list');
-
   return (
     <div className="flex flex-col gap-4">
       {/* Sub-tabs */}
