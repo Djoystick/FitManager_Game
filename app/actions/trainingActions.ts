@@ -711,3 +711,123 @@ export async function upgradeStadiumFacilityAction(
     return { success: false, error: err.message ?? 'Failed to upgrade facility.' };
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// E2: Infrastructure Maintenance — Calculate cost & pay/defer
+// ─────────────────────────────────────────────────────────────────────────────
+
+const WEEKLY_TAX_RATE = 0.02;
+const WEEKS_PER_SEASON = 26;
+
+function buildingUpgradeCost(level: number): number {
+  return Math.floor(800 * Math.pow(level, 1.8));
+}
+
+export interface MaintenanceInfo {
+  buildings: { key: string; label: string; level: number; wearPct: number; repairCost: number }[];
+  totalRepairCost: number;
+  overallWearPct: number;
+}
+
+export async function getMaintenanceInfo(): Promise<{ success: boolean; data?: MaintenanceInfo; error?: string }> {
+  try {
+    const userId = await getAuthUserId();
+    if (!userId) return { success: false, error: 'Unauthorized' };
+
+    const { data: team } = await supabaseAdmin
+      .from('teams')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    if (!team) return { success: false, error: 'Team not found' };
+
+    const { data: infra } = await supabaseAdmin
+      .from('infrastructure')
+      .select('stadium_level, medical_center_level, academy_level, scout_level, seating_level, services_level')
+      .eq('team_id', team.id)
+      .maybeSingle();
+
+    if (!infra) return { success: false, error: 'Infrastructure not found' };
+
+    const buildingDefs = [
+      { key: 'stadium',  label: 'Стадион',    col: 'stadium_level' },
+      { key: 'medical',  label: 'Медпункт',   col: 'medical_center_level' },
+      { key: 'academy',  label: 'Академия',   col: 'academy_level' },
+      { key: 'scout',    label: 'Скауты',     col: 'scout_level' },
+      { key: 'seating',  label: 'Трибуны',    col: 'seating_level' },
+      { key: 'services', label: 'Сервисы',    col: 'services_level' },
+    ];
+
+    let totalBuildingValue = 0;
+    const buildings = buildingDefs.map(b => {
+      const level = (infra as any)[b.col] ?? 1;
+      let value = 0;
+      for (let i = 1; i < level; i++) value += buildingUpgradeCost(i);
+      totalBuildingValue += value;
+      // Wear is inversely proportional to level (higher level = more wear)
+      const wearPct = Math.min(95, Math.max(20, 100 - level * 5));
+      return { key: b.key, label: b.label, level, wearPct, repairCost: 0 };
+    });
+
+    const totalRepairCost = Math.floor(totalBuildingValue * WEEKLY_TAX_RATE * WEEKS_PER_SEASON);
+    const avgWear = buildings.reduce((s, b) => s + b.wearPct, 0) / buildings.length;
+
+    // Distribute cost proportionally
+    buildings.forEach(b => {
+      b.repairCost = totalBuildingValue > 0
+        ? Math.floor((b.level / buildings.reduce((s, x) => s + x.level, 0)) * totalRepairCost)
+        : 0;
+    });
+
+    return {
+      success: true,
+      data: {
+        buildings,
+        totalRepairCost,
+        overallWearPct: Math.round(avgWear),
+      },
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function payMaintenance(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const userId = await getAuthUserId();
+    if (!userId) return { success: false, error: 'Unauthorized' };
+
+    const info = await getMaintenanceInfo();
+    if (!info.success || !info.data) return { success: false, error: info.error ?? 'Failed to calculate maintenance' };
+
+    const cost = info.data.totalRepairCost;
+    if (cost <= 0) return { success: true };
+
+    // Check balance
+    const { data: userData } = await supabaseAdmin
+      .from('users')
+      .select('balance_fancoins')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!userData || (userData.balance_fancoins ?? 0) < cost) {
+      return { success: false, error: `Недостаточно FC. Нужно: ${cost} FC` };
+    }
+
+    // Deduct via atomic RPC
+    const { error } = await supabaseAdmin.rpc('update_fancoins_after_match', {
+      p_user_id: userId,
+      p_salary: cost,
+      p_reward: 0
+    });
+
+    if (error) throw error;
+
+    revalidatePath('/base');
+    revalidatePath('/');
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}

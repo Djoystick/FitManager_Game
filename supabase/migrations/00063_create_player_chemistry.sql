@@ -1,7 +1,7 @@
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS public.player_chemistry (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     team_id UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
     player_1_id UUID NOT NULL REFERENCES public.players(id) ON DELETE CASCADE,
     player_2_id UUID NOT NULL REFERENCES public.players(id) ON DELETE CASCADE,

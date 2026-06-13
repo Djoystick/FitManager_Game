@@ -142,6 +142,7 @@ function StaffCard({ member, onFire }: { member: StaffMember; onFire: (id: strin
                              bg-white/5 border border-white/10 text-gray-400
                              text-[9px] font-black uppercase tracking-wider
                              hover:bg-white/10 transition-colors active:scale-95"
+                  onClick={() => import('react-hot-toast').then(m => m.toast('Скоро будет доступно!', { icon: '🔒' }))}
                 >
                   Renew Contract
                 </button>

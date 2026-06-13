@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,6 +18,152 @@ async function sendTelegramMessage(telegramId: string, message: string): Promise
   } catch (err) {
     console.error('[end-of-season] Telegram send error:', err);
   }
+}
+
+async function calculateSeasonAwards(instanceId: string, supabase: SupabaseClient) {
+  console.log(`[SeasonAwards] Calculating awards for instance ${instanceId}...`);
+
+  // Get all matches for this instance
+  const { data: matches } = await supabase
+    .from('league_matches')
+    .select('id')
+    .eq('league_instance_id', instanceId)
+    .eq('is_played', true);
+
+  if (!matches || matches.length === 0) return;
+
+  const matchIds = matches.map(m => m.id);
+
+  // Golden Boot: Top scorer
+  const { data: goalScorers } = await supabase
+    .from('match_events')
+    .select('player_id, team_id')
+    .in('match_id', matchIds)
+    .eq('type', 'goal');
+
+  if (goalScorers && goalScorers.length > 0) {
+    const goalCounts: Record<string, { count: number; team_id: string }> = {};
+    for (const event of goalScorers) {
+      if (!goalCounts[event.player_id]) {
+        goalCounts[event.player_id] = { count: 0, team_id: event.team_id };
+      }
+      goalCounts[event.player_id].count++;
+    }
+
+    const topScorer = Object.entries(goalCounts)
+      .sort(([, a], [, b]) => b.count - a.count)[0];
+
+    if (topScorer) {
+      const [playerId, data] = topScorer;
+      const { data: teamData } = await supabase
+        .from('teams')
+        .select('user_id')
+        .eq('id', data.team_id)
+        .maybeSingle();
+
+      if (teamData?.user_id) {
+        // Award 200 SP
+        const { data: userData } = await supabase
+          .from('users')
+          .select('balance_fancoins')
+          .eq('id', teamData.user_id)
+          .maybeSingle();
+
+        await supabase
+          .from('users')
+          .update({ balance_fancoins: (userData?.balance_fancoins ?? 0) + 200 })
+          .eq('id', teamData.user_id);
+
+        // Add trait to player
+        const { data: playerData } = await supabase
+          .from('players')
+          .select('traits')
+          .eq('id', playerId)
+          .maybeSingle();
+
+        const currentTraits = Array.isArray(playerData?.traits) ? playerData.traits : [];
+        if (!currentTraits.includes('SEASON_AWARD_WINNER')) {
+          await supabase
+            .from('players')
+            .update({ traits: [...currentTraits, 'SEASON_AWARD_WINNER'] })
+            .eq('id', playerId);
+        }
+
+        // Record award
+        await supabase.from('season_awards').upsert({
+          season_id: instanceId,
+          award_type: 'GOLDEN_BOOT',
+          player_id: playerId,
+          team_id: data.team_id,
+          user_id: teamData.user_id,
+        }, { onConflict: 'season_id, award_type' });
+
+        console.log(`[SeasonAwards] Golden Boot: player ${playerId} (${data.count} goals)`);
+      }
+    }
+  }
+
+  // Golden Glove: Fewest goals conceded (team with best defensive record)
+  const { data: standings } = await supabase
+    .from('league_standings')
+    .select('team_id, goals_against')
+    .eq('league_instance_id', instanceId)
+    .order('goals_against', { ascending: true })
+    .limit(1);
+
+  if (standings && standings.length > 0) {
+    const bestDefense = standings[0];
+    const { data: teamData } = await supabase
+      .from('teams')
+      .select('user_id')
+      .eq('id', bestDefense.team_id)
+      .maybeSingle();
+
+    if (teamData?.user_id) {
+      // Award 200 SP
+      const { data: userData } = await supabase
+        .from('users')
+        .select('balance_fancoins')
+        .eq('id', teamData.user_id)
+        .maybeSingle();
+
+      await supabase
+        .from('users')
+        .update({ balance_fancoins: (userData?.balance_fancoins ?? 0) + 200 })
+        .eq('id', teamData.user_id);
+
+      // Find the team's goalkeeper
+      const { data: gk } = await supabase
+        .from('players')
+        .select('id, traits')
+        .eq('team_id', bestDefense.team_id)
+        .eq('position', 'GK')
+        .limit(1)
+        .maybeSingle();
+
+      if (gk) {
+        const currentTraits = Array.isArray(gk.traits) ? gk.traits : [];
+        if (!currentTraits.includes('SEASON_AWARD_WINNER')) {
+          await supabase
+            .from('players')
+            .update({ traits: [...currentTraits, 'SEASON_AWARD_WINNER'] })
+            .eq('id', gk.id);
+        }
+
+        await supabase.from('season_awards').upsert({
+          season_id: instanceId,
+          award_type: 'GOLDEN_GLOVE',
+          player_id: gk.id,
+          team_id: bestDefense.team_id,
+          user_id: teamData.user_id,
+        }, { onConflict: 'season_id, award_type' });
+
+        console.log(`[SeasonAwards] Golden Glove: GK ${gk.id} (${bestDefense.goals_against} GA)`);
+      }
+    }
+  }
+
+  console.log(`[SeasonAwards] Awards calculation complete for instance ${instanceId}`);
 }
 
 export async function GET(request: Request) {
@@ -172,9 +318,11 @@ export async function GET(request: Request) {
           else if (i === 2) tonWon = instancePrizeTon * 0.20; // 3rd Place
 
           // FC reward (scales inversely with tier — higher tiers earn more base FC)
-          if (position === 1)      fcWon = 15000 + ((11 - t) * 2000);
-          else if (position <= 3)  fcWon = 10000 + ((11 - t) * 1500);
-          else                     fcWon = 3000  + ((11 - t) * 500);
+          // E1: SEASON_PAYOUT_MULT = 0.55 (45% reduction)
+          const SEASON_PAYOUT_MULT = 0.55;
+          if (position === 1)      fcWon = Math.floor((15000 + ((11 - t) * 2000)) * SEASON_PAYOUT_MULT);
+          else if (position <= 3)  fcWon = Math.floor((10000 + ((11 - t) * 1500)) * SEASON_PAYOUT_MULT);
+          else                     fcWon = Math.floor((3000  + ((11 - t) * 500))  * SEASON_PAYOUT_MULT);
 
           const newTon = (userData?.balance_ton || 0) + tonWon;
           const newFc  = (userData?.balance_fancoins || 0) + fcWon;
@@ -244,6 +392,63 @@ export async function GET(request: Request) {
         }
       }
 
+      // ── E1: WEALTH TAX (Board Dividends) ──────────────────────────────────────
+      // Maintenance Tax is now player-driven via Infrastructure Report modal.
+      // Only Wealth Tax is deducted automatically at season end.
+      const WEALTH_TAX_RATE = 0.06;
+
+      for (let i = 0; i < finalStandings.length; i++) {
+        const { data: teamData } = await supabaseAdmin
+          .from('teams')
+          .select('id, user_id, name')
+          .eq('id', finalStandings[i].team_id)
+          .single();
+
+        if (!teamData?.user_id) continue;
+
+        const { data: userData } = await supabaseAdmin
+          .from('users')
+          .select('telegram_id, balance_fancoins')
+          .eq('id', teamData.user_id)
+          .maybeSingle();
+
+        if (!userData || userData.telegram_id?.startsWith('bot_')) continue;
+
+        // Wealth Tax = currentBalance × WEALTH_TAX_RATE
+        const currentBalance = userData.balance_fancoins ?? 0;
+        const wealthTax = Math.floor(currentBalance * WEALTH_TAX_RATE);
+
+        if (wealthTax > 0) {
+          // Deduct wealth tax via atomic RPC
+          const { error: taxError } = await supabaseAdmin.rpc('update_fancoins_after_match', {
+            p_user_id: teamData.user_id,
+            p_salary: wealthTax,
+            p_reward: 0
+          });
+
+          if (taxError) {
+            console.error(`[CRON EndOfSeason] Wealth tax deduction error for ${teamData.name}:`, taxError);
+          } else {
+            console.log(
+              `[CRON EndOfSeason] Wealth tax for ${teamData.name}: ${wealthTax} FC`
+            );
+          }
+
+          // E2: Send Board Dividends notification via Telegram
+          if (userData.telegram_id) {
+            const netProfit = Math.floor(wealthTax / 0.06 * 0.94); // approximate net profit
+            const reserveFund = 500;
+            let dividendsMsg = `🏛️ *Отчёт Совета Директоров*\n\n`;
+            dividendsMsg += `📊 Финансовые показатели сезона:\n`;
+            dividendsMsg += `• Чистая прибыль: *+${netProfit.toLocaleString()} FC*\n`;
+            dividendsMsg += `• Дивиденды Совета (6%): *-${wealthTax.toLocaleString()} FC*\n`;
+            dividendsMsg += `• Резервный фонд: *+${reserveFund} FC*\n\n`;
+            dividendsMsg += `_«Совет директоров благодарит за стабильный рост клуба. Часть прибыли направлена на развитие инфраструктуры.»_`;
+            await sendTelegramMessage(userData.telegram_id, dividendsMsg);
+          }
+        }
+      }
+
       // ── R2/R5 FIX: Atomic Treasury deduction via RPC (no read-modify-write race) ──
       if (usedTon > 0) {
         const { error: drainError } = await supabaseAdmin.rpc('safe_deduct_treasury', {
@@ -290,6 +495,13 @@ export async function GET(request: Request) {
           goals_for: 0, goals_against: 0,
           season_reward_paid: false // reset for the new season
         }, { onConflict: 'team_id, league_instance_id' });
+      }
+
+      // ── CALCULATE SEASON AWARDS ─────────────────────────────────────────────
+      try {
+        await calculateSeasonAwards(instance.id, supabaseAdmin);
+      } catch (awardError) {
+        console.error(`[CRON EndOfSeason] Award calculation failed for instance ${instance.id}:`, awardError);
       }
 
       // ── Mark instance as fully finished ────────────────────────────────────

@@ -60,7 +60,7 @@ export interface MatchPlayer {
 export type TacticalStyle = 'Tiki-Taka' | 'Counter Attack' | 'High Press' | 'Park the Bus' | 'Wing Play' | 'Balanced';
 
 export interface MatchEvent {
-  type: 'goal' | 'breakthrough_failed' | 'save' | 'yellow_card' | 'second_yellow' | 'red_card' | 'injury' | 'info' | 'substitution' | 'offside' | 'crossbar' | 'own_goal' | 'penalty_save';
+  type: 'goal' | 'breakthrough_failed' | 'save' | 'yellow_card' | 'second_yellow' | 'red_card' | 'injury' | 'info' | 'substitution' | 'offside' | 'crossbar' | 'own_goal' | 'penalty_save' | 'penalty_goal' | 'penalty_miss';
   minute: number;
   player_id: string;
   player_name: string;
@@ -75,6 +75,7 @@ export interface MatchResult {
     home: Record<string, number>;
     away: Record<string, number>;
   };
+  penalties?: { home: number; away: number } | null;
 }
 
 import { hasTraitSynergy, hasTraitConflict } from './chemistry';
@@ -118,16 +119,16 @@ function safeNum(val: unknown, fallback = 50): number {
 
 /**
  * Logistic duel — win probability follows an S-curve.
- * P = clamp(sigmoid(k × diff) + bias, 0.03, 0.97)
- *   k = 0.045 → at +40 diff: ~96% win; at -40 diff: ~4% (upsets stay possible)
- *   attackerBias = +0.08 default (replaces old flat +12 constant)
+ * P = clamp(sigmoid(k × diff) + bias, 0.05, 0.95)
+ *   k = 0.022 → at +10 diff: ~62%; at +20: ~73%; at +40: ~88%
+ *   attackerBias = +0.06 slight edge for attacker (was 0.08)
  */
-function duel(atkStat: number, defStat: number, attackerBias = 0.08): boolean {
+function duel(atkStat: number, defStat: number, attackerBias = 0.06): boolean {
   const a = safeNum(atkStat, 50);
   const d = safeNum(defStat, 50);
   const diff = a - d;
-  const raw = 1 / (1 + Math.exp(-0.045 * diff)) + attackerBias;
-  const p = Math.min(0.97, Math.max(0.03, raw));
+  const raw = 1 / (1 + Math.exp(-0.022 * diff)) + attackerBias;
+  const p = Math.min(0.95, Math.max(0.05, raw));
   return Math.random() < p;
 }
 
@@ -154,7 +155,8 @@ function eff(
   currentStamina: number,
   hasSynergy: boolean = false,
   hasConflict: boolean = false,
-  morale: number = 70
+  morale: number = 70,
+  traits: string[] = []
 ): number {
   const base = safeNum(rawStat, 0);
   const stamMult = staminaMult(Math.max(0, currentStamina));
@@ -162,6 +164,7 @@ function eff(
   let buffMult = 1.0;
   if (hasGreenLink) buffMult += 0.10;
   if (hasSynergy)   buffMult += 0.10;
+  if (traits.includes('SEASON_AWARD_WINNER')) buffMult += 0.02;
   
   if (morale < 40) buffMult -= 0.10;
   else if (morale > 85) buffMult += 0.05;
@@ -191,7 +194,8 @@ function makeStatGetter(links: TeamLinks, liveStamina: Record<string, number>) {
       liveStamina[player.id] ?? player.stamina,
       links.synergies[player.id] ?? false,
       links.conflicts[player.id] ?? false,
-      player.morale ?? 70
+      player.morale ?? 70,
+      player.traits ?? []
     );
 }
 
@@ -205,7 +209,17 @@ function weightedPick<T extends { id: string; stats: MatchPlayerStats; stamina: 
   fallback: T[]
 ): T {
   const source = pool.length > 0 ? pool : fallback;
-  if (source.length === 0) throw new Error('[matchEngine] weightedPick: both pool and fallback are empty');
+  if (source.length === 0) {
+    // P0 safety: return synthetic dummy player to prevent crash on non-standard formations
+    return {
+      id: 'synthetic_fallback',
+      name: 'Unknown',
+      position: 'MID',
+      stats: { pace: 50, shooting: 50, passing: 50, dribbling: 50, defending: 50, physical: 50 },
+      stamina: 50,
+      traits: [],
+    } as unknown as T;
+  }
   if (source.length === 1) return source[0];
 
   const weights = source.map(p => {
@@ -502,10 +516,10 @@ function resolveAttack(ctx: AttackContext) {
   const atkPenet = atkGet(atkFwd, atkPaceVal) * ctx.momentumAtkBonus;
   const defPenet = defGet(defDef, defDefVal) * ctx.momentumDefBonus;
 
-  // 5% foul chance — Enforcer trait adds +5% to foul probability
-  const foulChance = defDef.traits.includes('Enforcer') ? 0.10 : 0.05;
+  // 3.5% foul chance — Enforcer trait adds +2.5% to foul probability
+  const foulChance = defDef.traits.includes('Enforcer') ? 0.06 : 0.035;
   if (Math.random() < foulChance) {
-    const isInBox = Math.random() < 0.35; // 35% of fouls are in the penalty area
+    const isInBox = Math.random() < 0.20; // 20% of fouls are in the penalty area (was 35%)
 
     if (isInBox) {
       // Red card + penalty
@@ -563,8 +577,8 @@ function resolveAttack(ctx: AttackContext) {
     return;
   }
 
-  // ── Offside check (~10% after successful penetration) ──────────────────────
-  if (Math.random() < 0.10) {
+  // ── Offside check (~4% after successful penetration) ──────────────────────
+  if (Math.random() < 0.04) {
     events.push({
       type: 'offside', minute,
       player_id: atkFwd.id, player_name: atkFwd.name, team: attackingTeamKey,
@@ -724,6 +738,123 @@ function buildTimeline(
 }
 
 // =============================================================================
+// Penalty Shootout — Cup match tiebreaker
+// =============================================================================
+
+/**
+ * Simulates a penalty shootout between two teams.
+ * Each team takes up to 5 penalties; if still tied, sudden death.
+ * Takers are randomly selected from FWD/MID/DEF (best shooting).
+ * Formula: (Shooting * 0.7 + Pace * 0.3 + Random) vs (GK_Defending * 0.8 + Physical * 0.2 + Random)
+ */
+function simulatePenaltyShootout(
+  homeTeam: MatchPlayer[],
+  awayTeam: MatchPlayer[],
+  events: MatchEvent[]
+): { home: number; away: number } {
+  const homeGK = homeTeam.find(p => p.position === 'GK') ?? homeTeam[0];
+  const awayGK = awayTeam.find(p => p.position === 'GK') ?? awayTeam[0];
+
+  // Pick penalty takers: up to 5 from FWD/MID/DEF, sorted by shooting
+  const pickShooters = (team: MatchPlayer[]): MatchPlayer[] => {
+    const pool = team.filter(p => isFWD(p.position) || isMID(p.position) || isDEF(p.position));
+    return pool
+      .sort((a, b) => (safeNum(b.stats.shooting) * 0.7 + safeNum(b.stats.pace) * 0.3) -
+                       (safeNum(a.stats.shooting) * 0.7 + safeNum(a.stats.pace) * 0.3))
+      .slice(0, 5);
+  };
+
+  const homeShooters = pickShooters(homeTeam);
+  const awayShooters = pickShooters(awayTeam);
+
+  let homeScore = 0;
+  let awayScore = 0;
+  let round = 0;
+  const maxRounds = 5;
+
+  events.push({
+    type: 'info', minute: 91,
+    player_id: 'sys', player_name: 'Referee', team: 'home',
+    details: `⚽ НАЧИНАЕТСЯ СЕРИЯ ПЕНАЛЬТИ! Счёт после основного времени: ${events.filter(e => e.type === 'goal' && e.team === 'home').length}:${events.filter(e => e.type === 'goal' && e.team === 'away').length}`,
+  });
+
+  while (round < maxRounds || homeScore === awayScore) {
+    const isSuddenDeath = round >= maxRounds;
+    const homeTaker = homeShooters[round % homeShooters.length] ?? homeShooters[0];
+    const awayTaker = awayShooters[round % awayShooters.length] ?? awayShooters[0];
+
+    // Home penalty
+    if (homeTaker) {
+      const shotPower = safeNum(homeTaker.stats.shooting) * 0.7 + safeNum(homeTaker.stats.pace) * 0.3 + (Math.random() * 20 - 10);
+      const gkPower = safeNum(awayGK.stats.defending) * 0.8 + safeNum(awayGK.stats.physical) * 0.2 + (Math.random() * 15 - 7.5);
+
+      if (shotPower > gkPower) {
+        homeScore++;
+        events.push({
+          type: 'penalty_goal', minute: 91 + round,
+          player_id: homeTaker.id, player_name: homeTaker.name, team: 'home',
+          details: `⚽ ПЕНАЛЬТИ ЗАБИТ! ${homeTaker.name} реализует! (${homeScore}:${awayScore})`,
+        });
+      } else {
+        events.push({
+          type: 'penalty_miss', minute: 91 + round,
+          player_id: homeTaker.id, player_name: homeTaker.name, team: 'home',
+          details: `❌ ПЕНАЛЬТИ НЕ ЗАБИТ! ${homeTaker.name} промахивается! (${homeScore}:${awayScore})`,
+        });
+      }
+    }
+
+    // Away penalty
+    if (awayTaker) {
+      const shotPower = safeNum(awayTaker.stats.shooting) * 0.7 + safeNum(awayTaker.stats.pace) * 0.3 + (Math.random() * 20 - 10);
+      const gkPower = safeNum(homeGK.stats.defending) * 0.8 + safeNum(homeGK.stats.physical) * 0.2 + (Math.random() * 15 - 7.5);
+
+      if (shotPower > gkPower) {
+        awayScore++;
+        events.push({
+          type: 'penalty_goal', minute: 91 + round + 0.5,
+          player_id: awayTaker.id, player_name: awayTaker.name, team: 'away',
+          details: `⚽ ПЕНАЛЬТИ ЗАБИТ! ${awayTaker.name} реализует! (${homeScore}:${awayScore})`,
+        });
+      } else {
+        events.push({
+          type: 'penalty_miss', minute: 91 + round + 0.5,
+          player_id: awayTaker.id, player_name: awayTaker.name, team: 'away',
+          details: `❌ ПЕНАЛЬТИ НЕ ЗАБИТ! ${awayTaker.name} промахивается! (${homeScore}:${awayScore})`,
+        });
+      }
+    }
+
+    // Check early termination (if one team can't catch up)
+    if (round < maxRounds - 1) {
+      const homeRemaining = maxRounds - (round + 1);
+      if (homeScore > awayScore + homeRemaining) break;
+      if (awayScore > homeScore + homeRemaining) break;
+    }
+
+    round++;
+
+    // Sudden death: if after 5 rounds still tied, continue one-by-one
+    if (round >= maxRounds && homeScore === awayScore) {
+      events.push({
+        type: 'info', minute: 96,
+        player_id: 'sys', player_name: 'Referee', team: 'home',
+        details: `⚡ ВНЕЗАПНАЯ СМЕРТЬ! Счёт ${homeScore}:${awayScore} — продолжаем!`,
+      });
+    }
+  }
+
+  const winner = homeScore > awayScore ? 'home' : 'away';
+  events.push({
+    type: 'info', minute: 99,
+    player_id: 'sys', player_name: 'Referee', team: 'home',
+    details: `🏆 ПОБЕДА В СЕРИИ ПЕНАЛЬТИ: ${winner === 'home' ? events[0]?.details.includes('🏠') ? 'Home' : 'Home' : 'Away'} ${homeScore}:${awayScore}!`,
+  });
+
+  return { home: homeScore, away: awayScore };
+}
+
+// =============================================================================
 // simulateMatch — main export
 // =============================================================================
 
@@ -737,7 +868,8 @@ export function simulateMatch(
   homeTactic: TacticalStyle = 'Balanced',
   awayTactic: TacticalStyle = 'Balanced',
   homeForm: string[] = [],
-  awayForm: string[] = []
+  awayForm: string[] = [],
+  isCupMatch: boolean = false
 ): MatchResult {
   const events: MatchEvent[] = [];
   const score = { home: 0, away: 0 };
@@ -846,18 +978,18 @@ export function simulateMatch(
   homePoss = Math.max(0.15, Math.min(0.85, homePoss + getTacticPossMod(homeTactic)));
   awayPoss = 1 - homePoss;
 
-  // Attack count: base 5 + possession bonus ± jitter + tactic modifier + home advantage + form
-  let homeAttackBase = 5 + homePoss * 8 + Math.random() * 4 - 2 + getTacticAttackMod(homeTactic);
-  let awayAttackBase = 5 + awayPoss * 8 + Math.random() * 4 - 2 + getTacticAttackMod(awayTactic);
-  // Home advantage: +1 attack
-  homeAttackBase += 1;
-  // Form bonus: ±0.5 attack (rounded)
-  if (homeFormBonus === 1.05) homeAttackBase += 0.5;
-  if (homeFormBonus === 0.95) homeAttackBase -= 0.5;
-  if (awayFormBonus === 1.05) awayAttackBase += 0.5;
-  if (awayFormBonus === 0.95) awayAttackBase -= 0.5;
-  const homeAttacks = Math.min(12, Math.max(3, Math.round(homeAttackBase) || 3));
-  const awayAttacks = Math.min(12, Math.max(3, Math.round(awayAttackBase) || 3));
+  // Attack count: base 3 + possession bonus ± jitter + tactic modifier (reduced for realistic scoring)
+  let homeAttackBase = 3 + homePoss * 4 + Math.random() * 3 - 1.5 + getTacticAttackMod(homeTactic) * 0.5;
+  let awayAttackBase = 3 + awayPoss * 4 + Math.random() * 3 - 1.5 + getTacticAttackMod(awayTactic) * 0.5;
+  // Home advantage: +0.5 attack
+  homeAttackBase += 0.5;
+  // Form bonus: ±0.3 attack (rounded)
+  if (homeFormBonus === 1.05) homeAttackBase += 0.3;
+  if (homeFormBonus === 0.95) homeAttackBase -= 0.3;
+  if (awayFormBonus === 1.05) awayAttackBase += 0.3;
+  if (awayFormBonus === 0.95) awayAttackBase -= 0.3;
+  const homeAttacks = Math.min(6, Math.max(3, Math.round(homeAttackBase) || 3));
+  const awayAttacks = Math.min(6, Math.max(3, Math.round(awayAttackBase) || 3));
 
   // ── OVR disparity score cap ────────────────────────────────────────────────
   const avgOVR = (team: MatchPlayer[]) =>
@@ -867,10 +999,10 @@ export function simulateMatch(
     0) / (team.length || 1);
 
   const ovrDiff = Math.abs(avgOVR(homeTeam) - avgOVR(awayTeam));
-  const maxGoals = ovrDiff >= 20 ? 8
-                 : ovrDiff >= 10 ? 6
-                 : ovrDiff >= 5  ? 5
-                 : 4;
+  const maxGoals = ovrDiff >= 30 ? 5
+                 : ovrDiff >= 15 ? 4
+                 : ovrDiff >= 5  ? 3
+                 : 2;
 
   // ── Kickoff event ──────────────────────────────────────────────────────────
   events.push({
@@ -1047,6 +1179,12 @@ export function simulateMatch(
     details: `🏁 Финальный свисток! ${score.home}:${score.away} — ${resultStr}`,
   });
 
+  // ── Penalty Shootout (Cup matches only, if tied) ─────────────────────────
+  let penalties: { home: number; away: number } | null = null;
+  if (isCupMatch && score.home === score.away) {
+    penalties = simulatePenaltyShootout(homeTeam, awayTeam, events);
+  }
+
   events.sort((a, b) => a.minute - b.minute);
-  return { score, events, staminaDrain };
+  return { score, events, staminaDrain, penalties };
 }

@@ -4,7 +4,7 @@
 import { useEffect, useState, useContext } from 'react';
 import { MatchEvent } from '@/app/utils/matchEngine';
 import { markMatchAsViewed } from '@/app/actions/matchActions';
-import { Activity, Shield, Target, AlertCircle, RefreshCcw, Flag, CircleDot, AlertTriangle, CheckCircle, Square } from 'lucide-react';
+import { Activity, Shield, Target, AlertCircle, RefreshCcw, Flag, CircleDot, AlertTriangle, CheckCircle, Square, Flame, Radio, Loader2 } from 'lucide-react';
 import { LanguageContext } from '@/components/LanguageContext';
 import { dict } from '@/lib/dictionaries';
 
@@ -34,6 +34,9 @@ interface MatchReportModalProps {
 
 export function MatchReportModal({ report, userTeamId, onClose }: MatchReportModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [commentary, setCommentary] = useState<string | null>(null);
+  const [highlights, setHighlights] = useState<string[]>([]);
+  const [commentaryLoading, setCommentaryLoading] = useState(true);
   const { language } = useContext(LanguageContext);
   const t = dict[language as keyof typeof dict] || dict['en'];
 
@@ -41,6 +44,29 @@ export function MatchReportModal({ report, userTeamId, onClose }: MatchReportMod
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = 'auto'; };
   }, []);
+
+  // Fetch AI commentary on mount
+  useEffect(() => {
+    const fetchCommentary = async () => {
+      try {
+        const res = await fetch('/api/ai/match-commentary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ matchId: report.id }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setCommentary(data.commentary);
+          setHighlights(data.highlights || []);
+        }
+      } catch (err) {
+        console.error('Commentary fetch failed:', err);
+      } finally {
+        setCommentaryLoading(false);
+      }
+    };
+    fetchCommentary();
+  }, [report.id]);
 
   const handleAccept = async () => {
     setIsSubmitting(true);
@@ -77,8 +103,10 @@ export function MatchReportModal({ report, userTeamId, onClose }: MatchReportMod
         
         {/* Header */}
         <div className="bg-gradient-to-b from-neon-cyan/20 to-transparent p-6 text-center border-b border-neon-cyan/30 relative">
-          <div className={`text-sm font-black uppercase tracking-widest mb-2 ${resultColor} drop-shadow-[0_0_10px_currentColor]`}>
-            {resultText}
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <div className={`text-sm font-black uppercase tracking-widest ${resultColor} drop-shadow-[0_0_10px_currentColor]`}>
+              {resultText}
+            </div>
           </div>
           
           <div className="flex justify-between items-center px-4">
@@ -107,8 +135,42 @@ export function MatchReportModal({ report, userTeamId, onClose }: MatchReportMod
               </div>
             </div>
           )}
+
+          {/* Derby badge */}
+          {(report as any).is_derby && (
+            <div className="flex items-center justify-center gap-1 mt-2">
+              <Flame className="text-orange-500" size={12} />
+              <span className="text-[9px] text-orange-400 font-black uppercase tracking-widest">DERBY</span>
+              <Flame className="text-orange-500" size={12} />
+            </div>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto max-h-[40vh] p-4 bg-black/50 custom-scrollbar">
+          {/* AI Commentary Section */}
+          {commentaryLoading ? (
+            <div className="p-3 text-center mb-3">
+              <Loader2 className="animate-spin text-cyan-400 mx-auto" size={14} />
+              <p className="text-[9px] text-gray-500 mt-1">Комментарий загружается...</p>
+            </div>
+          ) : commentary ? (
+            <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-cyan-500/5 to-violet-500/5 border border-cyan-500/10">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Radio className="text-cyan-400" size={10} />
+                <span className="text-[8px] text-cyan-400 font-black uppercase tracking-widest">Live Commentary</span>
+              </div>
+              <p className="text-[10px] text-gray-300 leading-relaxed whitespace-pre-line">{commentary}</p>
+              {highlights.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-cyan-500/10">
+                  {highlights.map((h, i) => (
+                    <p key={i} className="text-[9px] text-gray-400 flex items-start gap-1.5 mt-1">
+                      <span className="text-cyan-400">▸</span> {h}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : null}
+
           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-800 pb-2 mb-4 text-center">
             {t.report_match_events || 'Match Events'}
           </h3>

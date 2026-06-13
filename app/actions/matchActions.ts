@@ -195,9 +195,23 @@ export async function getMatchSchedule(): Promise<{ success: boolean; data?: any
   }
 }
 
-export async function resolveMatch(matchId: string): Promise<{ success: boolean; error?: string }> {
+export async function resolveMatch(
+  matchId: string,
+  isCupMatch: boolean = false,
+  deferredTeamIds: Set<string> = new Set()
+): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log(`[resolveMatch] START for matchId: ${matchId}`);
+    console.log(`[resolveMatch] START for matchId: ${matchId} isCupMatch: ${isCupMatch}`);
+
+    // Auto-detect cup match if not explicitly passed
+    if (!isCupMatch) {
+      const { data: cupMatch } = await supabaseAdmin
+        .from('tournament_matches')
+        .select('id')
+        .eq('id', matchId)
+        .maybeSingle();
+      if (cupMatch) isCupMatch = true;
+    }
     // ШАГ А: Загрузка данных матча
     const { data: match, error: matchError } = await supabaseAdmin
       .from('league_matches')
@@ -363,24 +377,32 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       };
     } else {
       console.log(`[resolveMatch] Running Core Match Engine...`);
-      result = runMatchEngine(homeLineup, awayLineup, homeBench, awayBench, homeGreen, awayGreen, homeTactic, awayTactic);
+      result = runMatchEngine(homeLineup, awayLineup, homeBench, awayBench, homeGreen, awayGreen, homeTactic, awayTactic, [], [], isCupMatch);
     }
     console.log(`[resolveMatch] Core Engine output score: ${result.score.home}-${result.score.away}`);
 
     // ШАГ В: Обновление матча
+    const updateData: any = {
+      home_score: result.score.home,
+      away_score: result.score.away,
+      status: 'completed',
+      is_played: true,
+      is_viewed: false,
+      events: result.events,
+      stamina_drain: result.staminaDrain,
+      home_tactic: homeTactic,
+      away_tactic: awayTactic,
+    };
+
+    // Store penalty shootout results for cup matches
+    if (result.penalties) {
+      updateData.penalty_home = result.penalties.home;
+      updateData.penalty_away = result.penalties.away;
+    }
+
     const { error: updateMatchError } = await supabaseAdmin
-      .from('league_matches')
-      .update({
-        home_score: result.score.home,
-        away_score: result.score.away,
-        status: 'completed',
-        is_played: true, // for backwards compatibility
-        is_viewed: false,
-        events: result.events,
-        stamina_drain: result.staminaDrain,
-        home_tactic: homeTactic,
-        away_tactic: awayTactic
-      })
+      .from(isCupMatch ? 'tournament_matches' : 'league_matches')
+      .update(updateData)
       .eq('id', matchId)
       .eq('status', 'pending');
 
@@ -436,10 +458,8 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
     await updatePlayerCondition(homePlayersData, result.staminaDrain.home, isHomeWin, isDrawMatch);
     await updatePlayerCondition(awayPlayersData, result.staminaDrain.away, isAwayWin, isDrawMatch);
 
-    // ШАГ Д: Обновление Standings
-    // ── L3 FIX: Filter by BOTH team_id AND league_instance_id ───────────────
-    // Previously queried only by team_id with .single(), which would throw if
-    // a team appeared in multiple league_standings rows (e.g. historical seasons).
+    // ШАГ Д: Обновление Standings (league matches only)
+    if (!isCupMatch) {
     const updateStandings = async (teamId: string, instanceId: string, gf: number, ga: number) => {
       const { data: st, error: stError } = await supabaseAdmin
         .from('league_standings')
@@ -481,6 +501,7 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
 
     await updateStandings(match.home_team_id, match.league_instance_id, result.score.home, result.score.away);
     await updateStandings(match.away_team_id, match.league_instance_id, result.score.away, result.score.home);
+    } // end !isCupMatch
 
     // ── ШАГ Е: FC Transaction (Salary + Match Reward) — атомарная операция ────
     // ── R6 FIX: Replaced separate deductSquadSalary() + awardMatchFc() calls ─
@@ -537,13 +558,19 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       const multiplier  = Number(userData?.prestige_multiplier ?? 1.0);
       const matchReward = Math.floor(rawReward * multiplier);
 
-      // ── Ticket Revenue (migration 00045 formula) ──────────────────────────
-      // Attendance: simulate 60–90% fill rate with slight randomness
-      const capacity    = stadiumLevel * 5000;
-      const fillRate    = 0.60 + Math.random() * 0.30;        // 60%–90% stochastic
-      const attendance  = Math.min(Math.floor(capacity * fillRate), capacity);
-      const baseTickets = Math.floor((attendance * ticketPrice) / 100);
-      const ticketRevenue = Math.floor(baseTickets * (1 + seatingLevel * 0.05));
+      // ── Ticket Revenue (E1: logarithmic diminishing returns) ────────────────
+      // Diminishing returns: L1→L2 is a big jump, L9→L10 is tiny.
+      // Formula: LOG_TICKET_BASE × ln(stadiumLevel + 1) × (1 + seatingLevel × 0.05)
+      const LOG_TICKET_BASE = 1800;
+      let ticketRevenue = Math.floor(
+        LOG_TICKET_BASE * Math.log(stadiumLevel + 1) * (1 + seatingLevel * 0.05)
+      );
+
+      // ── E2: Deferred Maintenance Penalty — 20% ticket revenue reduction ────
+      if (deferredTeamIds.has(teamId)) {
+        ticketRevenue = Math.floor(ticketRevenue * 0.80);
+        console.log(`[resolveMatch] Deferred maintenance penalty applied to ${teamId}: -20% tickets`);
+      }
 
       // ── Services passive income: services_level × 30 FC ──────────────────
       const servicesLevel   = (infra as any)?.services_level ?? 1;
@@ -554,7 +581,7 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       console.log(
         `[resolveMatch] FC tx team ${teamId}: ` +
         `-${totalSalary} salary | +${matchReward} match (${matchResult}) | ` +
-        `+${ticketRevenue} tickets (${attendance} fans) | +${servicesRevenue} services`
+        `+${ticketRevenue} tickets | +${servicesRevenue} services`
       );
 
       // ── R6: Single atomic RPC — no race condition possible ─────────────────
@@ -585,12 +612,230 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       }
     };
 
-    await applyFcTransaction(match.home_team_id, homePlayersData, result.score.home, result.score.away);
-    await applyFcTransaction(match.away_team_id, awayPlayersData, result.score.away, result.score.home);
+    // Cup matches use different reward logic (handled in cup section below)
+    if (!isCupMatch) {
+      await applyFcTransaction(match.home_team_id, homePlayersData, result.score.home, result.score.away);
+      await applyFcTransaction(match.away_team_id, awayPlayersData, result.score.away, result.score.home);
+    }
 
     // ── ШАГ Ж: Ачивки (Achievements) ──────────────────────────────────────────
     await triggerMatchAchievements(match.home_team_id, result.score.home > result.score.away, result.score.home, result.score.away);
     await triggerMatchAchievements(match.away_team_id, result.score.away > result.score.home, result.score.away, result.score.home);
+
+    // ── ШАГ Ж.1.5: Обновление соперничества (Rivalries) ───────────────────────
+    try {
+      const { data: homeTeamOwner } = await supabaseAdmin.from('teams').select('user_id').eq('id', match.home_team_id).maybeSingle();
+      const { data: awayTeamOwner } = await supabaseAdmin.from('teams').select('user_id').eq('id', match.away_team_id).maybeSingle();
+
+      if (homeTeamOwner?.user_id && awayTeamOwner?.user_id) {
+        const userA = homeTeamOwner.user_id < awayTeamOwner.user_id ? homeTeamOwner.user_id : awayTeamOwner.user_id;
+        const userB = homeTeamOwner.user_id < awayTeamOwner.user_id ? awayTeamOwner.user_id : homeTeamOwner.user_id;
+        const isHomeWinner = result.score.home > result.score.away;
+        const isAwayWinner = result.score.away > result.score.home;
+        const isDraw = result.score.home === result.score.away;
+
+        // Upsert rivalry
+        const { data: existingRivalry } = await supabaseAdmin
+          .from('manager_rivalries')
+          .select('*')
+          .eq('user_a_id', userA)
+          .eq('user_b_id', userB)
+          .maybeSingle();
+
+        if (existingRivalry) {
+          const newMatchesPlayed = existingRivalry.matches_played + 1;
+          const updateData: any = {
+            matches_played: newMatchesPlayed,
+            updated_at: new Date().toISOString(),
+          };
+
+          if (isDraw) {
+            updateData.draws = existingRivalry.draws + 1;
+          } else if (isHomeWinner) {
+            // Determine if home team is user_a or user_b
+            if (homeTeamOwner.user_id === userA) {
+              updateData.user_a_wins = existingRivalry.user_a_wins + 1;
+            } else {
+              updateData.user_b_wins = existingRivalry.user_b_wins + 1;
+            }
+          } else {
+            if (awayTeamOwner.user_id === userA) {
+              updateData.user_a_wins = existingRivalry.user_a_wins + 1;
+            } else {
+              updateData.user_b_wins = existingRivalry.user_b_wins + 1;
+            }
+          }
+
+          // Mark as derby if 3+ matches played
+          if (newMatchesPlayed >= 3) {
+            updateData.is_derby = true;
+          }
+
+          await supabaseAdmin
+            .from('manager_rivalries')
+            .update(updateData)
+            .eq('id', existingRivalry.id);
+
+          // Derby bonus: +500 FC to winner, +15 morale to all players
+          if (newMatchesPlayed >= 3) {
+            const winnerTeamId = isHomeWinner ? match.home_team_id : match.away_team_id;
+            const loserTeamId = isHomeWinner ? match.away_team_id : match.home_team_id;
+
+            // Winner gets +500 FC
+            const { data: winnerTeam } = await supabaseAdmin.from('teams').select('user_id').eq('id', winnerTeamId).maybeSingle();
+            if (winnerTeam?.user_id) {
+              await supabaseAdmin.rpc('update_fancoins_after_match', {
+                p_user_id: winnerTeam.user_id,
+                p_salary: 0,
+                p_reward: 500
+              });
+            }
+
+            // Winner gets +15 morale to all players
+            const { data: winnerPlayers } = await supabaseAdmin.from('players').select('id, morale').eq('team_id', winnerTeamId);
+            if (winnerPlayers) {
+              await Promise.all(winnerPlayers.map(p =>
+                supabaseAdmin.from('players')
+                  .update({ morale: Math.min(100, (p.morale ?? 70) + 15) })
+                  .eq('id', p.id)
+              ));
+            }
+
+            // Loser gets -15 morale
+            const { data: loserPlayers } = await supabaseAdmin.from('players').select('id, morale').eq('team_id', loserTeamId);
+            if (loserPlayers) {
+              await Promise.all(loserPlayers.map(p =>
+                supabaseAdmin.from('players')
+                  .update({ morale: Math.max(0, (p.morale ?? 70) - 15) })
+                  .eq('id', p.id)
+              ));
+            }
+          }
+        } else {
+          // Create new rivalry
+          await supabaseAdmin.from('manager_rivalries').insert({
+            user_a_id: userA,
+            user_b_id: userB,
+            matches_played: 1,
+            user_a_wins: (!isDraw && userA === (isHomeWinner ? homeTeamOwner.user_id : awayTeamOwner.user_id)) ? 1 : 0,
+            user_b_wins: (!isDraw && userB === (isHomeWinner ? homeTeamOwner.user_id : awayTeamOwner.user_id)) ? 1 : 0,
+            draws: isDraw ? 1 : 0,
+          });
+        }
+      }
+    } catch (rivalryError) {
+      console.error('[resolveMatch] Rivalry update failed:', rivalryError);
+    }
+
+    // ── ШАГ Ж.2: Кубок — награды и продвижение ────────────────────────────────
+    if (isCupMatch) {
+      const homeWon = result.score.home > result.score.away ||
+                      (result.penalties && result.penalties.home > result.penalties.away);
+      const awayWon = result.score.away > result.score.home ||
+                      (result.penalties && result.penalties.away > result.penalties.home);
+      const winnerTeamId = homeWon ? match.home_team_id : match.away_team_id;
+      const loserTeamId  = homeWon ? match.away_team_id : match.home_team_id;
+
+      // Determine if this is the final
+      const { data: cupMatch } = await supabaseAdmin
+        .from('tournament_matches')
+        .select('round')
+        .eq('id', matchId)
+        .single();
+
+      const isFinal = cupMatch?.round === 'final';
+
+      // Award FC to winner
+      const { data: winnerTeam } = await supabaseAdmin
+        .from('teams').select('user_id').eq('id', winnerTeamId).maybeSingle();
+      if (winnerTeam?.user_id) {
+        const winnerReward = isFinal ? 5000 : 2000;
+        await supabaseAdmin.rpc('update_fancoins_after_match', {
+          p_user_id: winnerTeam.user_id,
+          p_salary: 0,
+          p_reward: winnerReward
+        });
+      }
+
+      // Advance winner to next round (if not the final)
+      if (!isFinal && winnerTeamId && loserTeamId) {
+        const roundOrder = ['round_of_16', 'quarter_final', 'semi_final', 'final'];
+        const currentRoundIdx = roundOrder.indexOf(cupMatch?.round ?? 'round_of_16');
+        const nextRound = roundOrder[currentRoundIdx + 1];
+
+        if (nextRound) {
+          // Find the next match slot in the next round that needs a team
+          const { data: nextMatch } = await supabaseAdmin
+            .from('tournament_matches')
+            .select('id, team_home, team_away')
+            .eq('tournament_id', match.tournament_id)
+            .eq('round', nextRound)
+            .is('team_home', null)
+            .order('match_order', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+          if (nextMatch) {
+            // Fill the first empty slot
+            const updateField = nextMatch.team_home === null ? 'team_home' : 'team_away';
+            await supabaseAdmin
+              .from('tournament_matches')
+              .update({ [updateField]: winnerTeamId })
+              .eq('id', nextMatch.id);
+          } else {
+            // No empty slot found — create a new match in the next round
+            const { count: matchCount } = await supabaseAdmin
+              .from('tournament_matches')
+              .select('*', { count: 'exact', head: true })
+              .eq('tournament_id', match.tournament_id)
+              .eq('round', nextRound);
+
+            await supabaseAdmin.from('tournament_matches').insert({
+              tournament_id: match.tournament_id,
+              round: nextRound,
+              match_order: (matchCount ?? 0),
+              team_home: winnerTeamId,
+              status: 'pending'
+            });
+          }
+        }
+      }
+
+      // Mark loser as eliminated
+      await supabaseAdmin
+        .from('tournament_participants')
+        .update({ status: 'eliminated' })
+        .eq('tournament_id', match.tournament_id)
+        .eq('team_id', loserTeamId);
+
+      // If this is the final, mark tournament as completed and award trophies
+      if (isFinal) {
+        await supabaseAdmin
+          .from('tournaments')
+          .update({ status: 'completed' })
+          .eq('id', match.tournament_id);
+
+        // Award trophy to winner
+        const { data: winnerTeamOwner } = await supabaseAdmin.from('teams').select('user_id').eq('id', winnerTeamId).maybeSingle();
+        if (winnerTeamOwner?.user_id) {
+          await supabaseAdmin.from('trophy_cabinet').insert({
+            user_id: winnerTeamOwner.user_id,
+            type: 'CUP_GOLD',
+            description: 'Cup Tournament Winner',
+          });
+        }
+
+        // Award trophy to finalist (loser)
+        const { data: loserTeamOwner } = await supabaseAdmin.from('teams').select('user_id').eq('id', loserTeamId).maybeSingle();
+        if (loserTeamOwner?.user_id) {
+          await supabaseAdmin.from('trophy_cabinet').insert({
+            user_id: loserTeamOwner.user_id,
+            type: 'CUP_SILVER',
+            description: 'Cup Tournament Finalist',
+          });
+        }
+      }
+    }
 
     // ── ШАГ Ж.1: Квесты (Quests) ──────────────────────────────────────────────
     try {
@@ -605,6 +850,44 @@ export async function resolveMatch(matchId: string): Promise<{ success: boolean;
       }
     } catch (e) {
       console.error('[resolveMatch] Failed to increment play_match quest:', e);
+    }
+
+    // ── ШАГ И: Достижения по победам (каждая 10-я победа) ───────────────────────
+    try {
+      const checkWinAchievement = async (teamId: string, isWinner: boolean) => {
+        if (!isWinner) return;
+        const { data: team } = await supabaseAdmin.from('teams').select('user_id').eq('id', teamId).maybeSingle();
+        if (!team?.user_id) return;
+
+        const { data: standings } = await supabaseAdmin
+          .from('league_standings')
+          .select('wins')
+          .eq('team_id', teamId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (standings?.wins && standings.wins > 0 && standings.wins % 10 === 0) {
+          // Award 1000 FC
+          const { data: userData } = await supabaseAdmin.from('users').select('balance_fancoins').eq('id', team.user_id).maybeSingle();
+          await supabaseAdmin
+            .from('users')
+            .update({ balance_fancoins: (userData?.balance_fancoins ?? 0) + 1000 })
+            .eq('id', team.user_id);
+
+          // Add trophy
+          await supabaseAdmin.from('trophy_cabinet').insert({
+            user_id: team.user_id,
+            type: 'ACHIEVEMENT',
+            description: `${standings.wins} wins milestone`,
+          });
+        }
+      };
+
+      await checkWinAchievement(match.home_team_id, isHomeWin);
+      await checkWinAchievement(match.away_team_id, isAwayWin);
+    } catch (achError) {
+      console.error('[resolveMatch] Win achievement check failed:', achError);
     }
 
     // ── ШАГ З: Уведомления о травмах ─────────────────────────────────────────
@@ -683,11 +966,13 @@ export async function getUnviewedMatch() {
   }
 }
 
-export async function simulateNextPendingMatch() {
+export async function simulateNextPendingMatch(deferredTeamIds: string[] = []) {
   try {
     const cookieStore = await cookies();
     const userId = cookieStore.get('tg_user_id')?.value;
     if (!userId) return { success: false, error: 'Unauthorized' };
+
+    const deferredSet = new Set(deferredTeamIds);
 
     console.log('[simulateNextPendingMatch] START for user:', userId);
     const { data: teamData, error: teamError } = await supabaseAdmin
@@ -751,7 +1036,7 @@ export async function simulateNextPendingMatch() {
 
     // Simulate each match sequentially (safer for DB consistency than Promise.all)
     for (const rm of roundMatches) {
-      await resolveMatch(rm.id);
+      await resolveMatch(rm.id, false, deferredSet);
     }
 
     revalidatePath('/', 'page');

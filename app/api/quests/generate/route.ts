@@ -42,7 +42,7 @@ export async function POST(req: Request) {
       date: today,
       quest_type: q.type,
       target_value: q.target,
-      reward_fc: q.fc,
+      reward_fc: Math.floor(q.fc * 0.55), // E1: 45% quest FC nerf
       reward_sp: q.sp
     }));
 

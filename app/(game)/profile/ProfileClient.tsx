@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { dict } from '@/lib/dictionaries';
 import { renameTeamAction } from '@/app/actions/teamActions';
 import { getManagerObjectivesAction, type ManagerObjective } from '@/app/actions/objectivesActions';
+import { TrophyCabinetClient } from './TrophyCabinetClient';
 import {
   Edit3, FileText, AlertTriangle, Award, ChevronRight, Unlink,
   Globe, Bell, Shield, X, Target, TrendingUp, UserMinus, Star, Maximize, Minimize, Settings as SettingsIcon
@@ -432,12 +433,8 @@ export default function ProfileClient({
               <ChevronRight size={16} className="text-gray-600 group-hover:text-yellow-400 transition-colors" />
             </Link>
 
-            {/* Trophy placeholders */}
-            <div className="glass-card p-4 text-center">
-              <Star className="text-gray-700 mx-auto mb-2" size={28} />
-              <div className="text-[10px] text-gray-600 uppercase tracking-widest font-bold">{t.trophies_soon || 'Trophies Coming Soon'}</div>
-              <div className="text-[9px] text-gray-700 mt-1">{t.win_comps || 'Win competitions to earn cups & medals'}</div>
-            </div>
+            {/* Trophy Cabinet */}
+            {userId && <TrophyCabinetClient userId={userId} />}
           </div>
         )}
 
@@ -520,9 +517,12 @@ export default function ProfileClient({
 
             {/* Resign */}
             <div className="mt-2">
-              <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
-                bg-red-500/5 border border-red-500/20 text-red-500/60
-                text-[9px] font-bold uppercase tracking-widest hover:bg-red-500/10 transition-colors">
+              <button
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
+                  bg-red-500/5 border border-red-500/20 text-red-500/60
+                  text-[9px] font-bold uppercase tracking-widest hover:bg-red-500/10 transition-colors"
+                onClick={() => import('react-hot-toast').then(m => m.toast('Скоро будет доступно!', { icon: '🔒' }))}
+              >
                 <UserMinus size={11} /> {t.prof_resign || 'Resign as Manager'}
               </button>
             </div>

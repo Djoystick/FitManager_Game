@@ -33,7 +33,7 @@ ON CONFLICT (level) DO NOTHING;
 
 -- 2. Create league_instances
 CREATE TABLE IF NOT EXISTS public.league_instances (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tier_level INTEGER REFERENCES public.league_tiers(level) ON DELETE RESTRICT,
     name VARCHAR(255) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'filling' CHECK (status IN ('filling', 'active', 'finished')),

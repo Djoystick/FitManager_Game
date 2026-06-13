@@ -1,7 +1,7 @@
 -- 00021_create_league_matches.sql
 
 CREATE TABLE IF NOT EXISTS public.league_matches (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     round_number INTEGER NOT NULL,
     home_team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE,
     away_team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE,

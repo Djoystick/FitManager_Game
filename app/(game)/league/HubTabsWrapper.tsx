@@ -4,9 +4,11 @@ import { useState } from 'react';
 import { SubNavTabs } from '@/components/ui/SubNavTabs';
 import { HubSocialClient } from './HubSocialClient';
 import { FriendlyMatchCard } from './FriendlyMatchCard';
-import { Trophy, Medal, Loader2, TrendingUp, TrendingDown, Users, Globe, BarChart2 } from 'lucide-react';
+import { Trophy, Medal, Loader2, TrendingUp, TrendingDown, Users, Globe, BarChart2, Swords } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { TournamentClient } from './TournamentClient';
+import { SeasonAwardsClient } from './SeasonAwardsClient';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HubTabsWrapper — Client wrapper for HUB page tab navigation.
@@ -39,7 +41,7 @@ interface HubTabsWrapperProps {
   userId: string;
 }
 
-type HubTab = 'competitions' | 'social' | 'rankings' | 'search';
+type HubTab = 'competitions' | 'social' | 'rankings' | 'search' | 'cup' | 'awards';
 
 export function HubTabsWrapper({
   standings, currentTeamId, tierName, groupName,
@@ -91,6 +93,8 @@ export function HubTabsWrapper({
         <SubNavTabs
           tabs={[
             { id: 'competitions', label: 'LEAGUE'   },
+            { id: 'cup',          label: 'CUP 🏆'   },
+            { id: 'awards',       label: 'AWARDS 🏅' },
             { id: 'social',       label: 'WOOF 🐾'   },
             { id: 'rankings',     label: 'GLOBAL'   },
             { id: 'search',       label: 'SEARCH'   },
@@ -192,6 +196,20 @@ export function HubTabsWrapper({
                 <span className="text-[8px] text-gray-600">{totalTeams} teams</span>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ── CUP: Tournament Bracket ──────────────────────────── */}
+        {activeTab === 'cup' && (
+          <div className="pt-2">
+            <TournamentClient userId={userId} teamId={currentTeamId} />
+          </div>
+        )}
+
+        {/* ── AWARDS: Season Awards ─────────────────────────────── */}
+        {activeTab === 'awards' && (
+          <div className="pt-2">
+            <SeasonAwardsClient userId={userId} teamId={currentTeamId} />
           </div>
         )}
 

@@ -1,6 +1,6 @@
 BEGIN;
 
-DROP FUNCTION IF EXISTS public.sync_daily_steps(uuid, integer);
+DROP FUNCTION IF EXISTS public.sync_daily_steps(uuid, integer, date);
 
 CREATE OR REPLACE FUNCTION public.sync_daily_steps(
   p_user_id   UUID,

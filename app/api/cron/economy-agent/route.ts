@@ -23,6 +23,25 @@ export async function GET(request: Request) {
   }
 
   try {
+    // ── Rate Limiting: Check last run time ─────────────────────────────────
+    const { data: lastLog } = await supabase
+      .from('economy_logs')
+      .select('log_date')
+      .order('log_date', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (lastLog) {
+      const lastRun = new Date(lastLog.log_date);
+      const hoursSinceLastRun = (Date.now() - lastRun.getTime()) / (1000 * 60 * 60);
+      if (hoursSinceLastRun < 6) {
+        return NextResponse.json({
+          success: false,
+          message: `Rate limited: last run ${hoursSinceLastRun.toFixed(1)}h ago. Min interval: 6h.`,
+        }, { status: 429 });
+      }
+    }
+
     // 2. Gather Economic Metrics
     // Calculate Total FC in circulation
     const { data: users, error: usersError } = await supabase
@@ -54,15 +73,21 @@ export async function GET(request: Request) {
         .filter((tx) => tx.amount < 0)
         .reduce((sum, tx) => sum + tx.amount, 0)
     );
+
+    // ── C17 SECURITY: Sanity bounds to prevent prompt injection ──────────
+    const MAX_MULTIPLIER = 2;
+    const safeTotalFc = Math.max(totalFc, 1);
+    const safeMinted = Math.min(Math.max(0, mintedToday), safeTotalFc * MAX_MULTIPLIER);
+    const safeBurned = Math.min(Math.max(0, burnedToday), safeTotalFc * MAX_MULTIPLIER);
     
     const today = new Date().toISOString().split('T')[0];
 
-    // Log the daily snapshot
+    // Log the daily snapshot (use sanitized values)
     await supabase.from('economy_logs').insert({
       log_date: today,
       total_fc_in_circulation: totalFc,
-      total_fc_minted_today: mintedToday,
-      total_fc_burned_today: burnedToday,
+      total_fc_minted_today: safeMinted,
+      total_fc_burned_today: safeBurned,
       active_users_today: activeUsers,
     }).select().single();
 
@@ -79,8 +104,8 @@ export async function GET(request: Request) {
       
       Current Data:
       - Total FC in circulation: ${totalFc}
-      - FC Minted Today: ${mintedToday}
-      - FC Burned Today: ${burnedToday}
+      - FC Minted Today: ${safeMinted}
+      - FC Burned Today: ${safeBurned}
       - Active Users: ${activeUsers}
       
       Calculate the inflation risk. If Minted > Burned, inflation is happening. Adjust multipliers accordingly.
@@ -167,6 +192,33 @@ export async function GET(request: Request) {
 
   } catch (error: any) {
     console.error('AI Economist Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // ── Fallback: Apply default multipliers if AI fails ─────────────────────
+    const DEFAULT_MULTIPLIERS = {
+      match_reward: 1.0,
+      medical_cost: 1.0,
+      stadium_tax: 1.0,
+      scouting_cost: 1.0,
+    };
+
+    try {
+      await supabase.from('economy_state').insert({
+        match_reward_multiplier: DEFAULT_MULTIPLIERS.match_reward,
+        medical_cost_multiplier: DEFAULT_MULTIPLIERS.medical_cost,
+        stadium_tax_multiplier: DEFAULT_MULTIPLIERS.stadium_tax,
+        scouting_cost_multiplier: DEFAULT_MULTIPLIERS.scouting_cost,
+      });
+
+      await supabase.from('social_feed').insert({
+        title: '⚙️ Центральный банк: Режим по умолчанию',
+        body: 'Временные технические неполадки. Множители экономики установлены на стандартные значения.',
+        author: 'Central Bank AI',
+        type: 'economy',
+      });
+    } catch (fallbackError) {
+      console.error('Fallback also failed:', fallbackError);
+    }
+
+    return NextResponse.json({ error: error.message, fallback_applied: true }, { status: 500 });
   }
 }

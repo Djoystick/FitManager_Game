@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- USERS TABLE
 CREATE TABLE IF NOT EXISTS public.users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     telegram_id VARCHAR(255) UNIQUE NOT NULL,
     wallet_address VARCHAR(255) UNIQUE,
     balance_fancoins BIGINT DEFAULT 0,
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS public.users (
 
 -- TEAMS TABLE
 CREATE TABLE IF NOT EXISTS public.teams (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     logo_url VARCHAR(1024),
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS public.teams (
 
 -- PLAYERS TABLE
 CREATE TABLE IF NOT EXISTS public.players (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     age INTEGER NOT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS public.players (
 
 -- MATCHES TABLE
 CREATE TABLE IF NOT EXISTS public.matches (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     home_team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE,
     away_team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE,
     home_score INTEGER NOT NULL DEFAULT 0,
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS public.matches (
 
 -- LEAGUE STANDINGS TABLE
 CREATE TABLE IF NOT EXISTS public.league_standings (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE,
     matches_played INTEGER DEFAULT 0,
     wins INTEGER DEFAULT 0,

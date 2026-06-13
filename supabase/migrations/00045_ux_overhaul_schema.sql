@@ -15,7 +15,7 @@ BEGIN;
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS public.staff (
-  id                UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   team_id           UUID        NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
   name              VARCHAR(255) NOT NULL,
   role              VARCHAR(50)  NOT NULL DEFAULT 'assistant_coach'
@@ -160,7 +160,7 @@ $$;
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS public.manager_objectives (
-  id               UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   team_id          UUID        NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
   season           INTEGER     NOT NULL DEFAULT 1,
   title            VARCHAR(255) NOT NULL,
@@ -218,7 +218,7 @@ ON CONFLICT DO NOTHING;
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS public.social_posts (
-  id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   author_team_id  UUID        REFERENCES public.teams(id) ON DELETE SET NULL,
   author_name     VARCHAR(255) NOT NULL DEFAULT 'Anonymous',
   author_handle   VARCHAR(100) NOT NULL DEFAULT '@anon',

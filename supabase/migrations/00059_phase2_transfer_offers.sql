@@ -1,6 +1,6 @@
 -- Migration 00107: Transfer Offers
 CREATE TABLE IF NOT EXISTS public.transfer_offers (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sender_team_id UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
     receiver_team_id UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
     target_player_id UUID NOT NULL REFERENCES public.players(id) ON DELETE CASCADE,

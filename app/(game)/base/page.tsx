@@ -40,6 +40,7 @@ import { dict } from '@/lib/dictionaries';
 import { ScreenGuide } from '@/components/ui/ScreenGuide';
 import { usePageTour } from '@/components/providers/PageTourProvider';
 import { useRouter } from 'next/navigation';
+import { InfrastructureReportModal } from '@/components/InfrastructureReportModal';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Static definitions — declared outside component so Tailwind class scanner
@@ -278,6 +279,7 @@ export default function BaseDashboard() {
   const [campData, setCampData]             = useState<TrainingCampData | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerForTraining | null>(null);
   const [isLoading, setIsLoading]           = useState(true);
+  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
 
   /**
    * useTransition wraps all mutations (upgrade building, train stat).
@@ -317,6 +319,24 @@ export default function BaseDashboard() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, userId]);
+
+  // ── E2: Check if maintenance is pending (new season) ──────────────────────
+  useEffect(() => {
+    if (!infra) return;
+    const deferredAt = localStorage.getItem('fm_maintenance_deferred_at');
+    const paidAt = localStorage.getItem('fm_maintenance_paid_at');
+
+    // Show modal if neither paid nor deferred this season
+    if (!deferredAt && !paidAt) {
+      setShowMaintenanceModal(true);
+    } else if (deferredAt && !paidAt) {
+      // Check if deferred was more than 7 days ago (new season)
+      const defTime = parseInt(deferredAt, 10);
+      if (Date.now() - defTime > 7 * 24 * 60 * 60 * 1000) {
+        setShowMaintenanceModal(true);
+      }
+    }
+  }, [infra]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
@@ -454,6 +474,21 @@ export default function BaseDashboard() {
         screenName="training" 
         title={t.training_base_title} 
         content={t.training_base_desc} 
+      />
+
+      {/* E2: Infrastructure Maintenance Modal */}
+      <InfrastructureReportModal
+        isOpen={showMaintenanceModal}
+        onClose={() => setShowMaintenanceModal(false)}
+        onPaid={() => {
+          localStorage.setItem('fm_maintenance_paid_at', String(Date.now()));
+          localStorage.removeItem('fm_maintenance_deferred_at');
+          fetchAll(selectedPlayer?.id);
+        }}
+        onDeferred={() => {
+          // Deferred state already set in modal
+          fetchAll(selectedPlayer?.id);
+        }}
       />
     </div>
   );

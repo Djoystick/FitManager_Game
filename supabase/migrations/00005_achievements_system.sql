@@ -8,7 +8,7 @@ ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS stats JSONB DEFAULT '{}'::JSON
 
 -- 3. Create team_achievements table
 CREATE TABLE IF NOT EXISTS public.team_achievements (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE,
     achievement_code VARCHAR(255) NOT NULL,
     unlocked_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS public.team_achievements (
 
 -- 4. Create notifications table for offline toasts
 CREATE TABLE IF NOT EXISTS public.notifications (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
     type VARCHAR(100) NOT NULL,
     payload JSONB DEFAULT '{}'::JSONB,
