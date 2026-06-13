@@ -83,12 +83,12 @@ const AVAILABLE_PERKS = [
 //   Level 1 → 15%,  Level 5 → 35%,  Level 10 → 60%
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function generateRandomPlayer(
+export async function generateRandomPlayer(
   teamId: string,
   academyLevel: number = 1,
   scoutLevel: number   = 1,
   academyPerks: any[]  = []
-): Omit<Player, 'id'> & { perk_granted: boolean } {
+): Promise<Omit<Player, 'id'> & { perk_granted: boolean }> {
   const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
   const lastName  = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
   const position  = POSITIONS[Math.floor(Math.random() * POSITIONS.length)];
@@ -198,7 +198,7 @@ export async function scoutYouthPlayer(): Promise<ScoutResult> {
     const academyPerks = infra?.academy_perks ?? [];
 
     // 3. Generate player with infrastructure bonuses
-    const { perk_granted, ...newPlayerData } = generateRandomPlayer(teamId, academyLevel, scoutLevel, academyPerks);
+    const { perk_granted, ...newPlayerData } = await generateRandomPlayer(teamId, academyLevel, scoutLevel, academyPerks);
 
     // 4. Insert into database
     const { data: insertedPlayer, error: insertError } = await supabaseAdmin

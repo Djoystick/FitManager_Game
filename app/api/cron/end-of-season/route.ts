@@ -359,7 +359,7 @@ export async function GET(request: Request) {
           const { generateRandomPlayer } = await import('@/app/actions/scoutingActions');
           const intakes = [];
           for (let y = 0; y < numIntakes; y++) {
-            const { perk_granted, lineup_status, is_nft_coach, morale, ...newPlayerData } = generateRandomPlayer(teamData.id, academyLevel, scoutLevel, academyPerks);
+            const { perk_granted, lineup_status, is_nft_coach, morale, ...newPlayerData } = await generateRandomPlayer(teamData.id, academyLevel, scoutLevel, academyPerks);
             intakes.push({
               team_id: teamData.id,
               name: newPlayerData.name,
