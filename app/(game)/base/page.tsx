@@ -385,12 +385,23 @@ export default function BaseDashboard() {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col flex-1 h-full overflow-hidden bg-space-dark">
+    <div className="flex flex-col flex-1 h-full overflow-hidden relative" style={{ background: '#0a0a0f' }}>
 
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <header className="flex-shrink-0 px-3 pt-3 pb-0">
-        <div className="glass-card-cyan relative overflow-hidden p-3">
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />
+      {/* Background — Premium Dark Glassmorphism */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_20%_0%,rgba(52,211,153,0.12)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_100%,rgba(147,51,234,0.08)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_50%_50%,rgba(0,240,255,0.04)_0%,transparent_70%)]" />
+      </div>
+
+      {/* ── Header — Glassmorphism ──────────────────────────────────────────── */}
+      <header className="flex-shrink-0 px-3 pt-3 pb-0 relative z-10">
+        <div className="relative overflow-hidden p-3 rounded-2xl border border-white/10 backdrop-blur-xl"
+             style={{
+               background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
+               boxShadow: '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)',
+             }}>
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-xl glass-card flex items-center justify-center border border-cyan-500/25">
@@ -403,22 +414,24 @@ export default function BaseDashboard() {
             </div>
             <div className="flex items-center gap-1.5">
               {infra && (
-                <div className="flex items-center gap-1 px-2 py-1 rounded-full border border-yellow-700/40 bg-yellow-900/20 text-yellow-400">
-                  <span className="text-[9px] font-mono font-bold">🪙 {infra.fancoins.toLocaleString()} FC</span>
+                <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl border border-amber-500/30 bg-amber-500/10 backdrop-blur-md"
+                     style={{ boxShadow: '0 0 12px rgba(245,158,11,0.1)' }}>
+                  <span className="text-[9px] font-mono font-bold text-amber-300">🪙 {infra.fancoins.toLocaleString()} FC</span>
                 </div>
               )}
             </div>
           </div>
-          {/* W2E Currency ribbon */}
+          {/* W2E Currency ribbon — Glassmorphism */}
           {campData && (
             <div className="flex gap-1.5 flex-wrap mt-2">
               {([
-                { emoji: '🏃', val: campData.currencies.cardio_coin,   cls: 'border-cyan-800/40 bg-cyan-900/20 text-cyan-400' },
-                { emoji: '🤸', val: campData.currencies.fitness_coin,  cls: 'border-emerald-800/40 bg-emerald-900/20 text-emerald-400' },
-                { emoji: '⚽', val: campData.currencies.ball_coin,     cls: 'border-orange-800/40 bg-orange-900/20 text-orange-400' },
-                { emoji: '💪', val: campData.currencies.strength_coin, cls: 'border-rose-800/40 bg-rose-900/20 text-rose-400' },
+                { emoji: '🏃', val: campData.currencies.cardio_coin,   border: 'border-cyan-500/25', bg: 'bg-cyan-500/10', text: 'text-cyan-300', glow: '0 0 8px rgba(0,240,255,0.1)' },
+                { emoji: '🤸', val: campData.currencies.fitness_coin,  border: 'border-emerald-500/25', bg: 'bg-emerald-500/10', text: 'text-emerald-300', glow: '0 0 8px rgba(52,211,153,0.1)' },
+                { emoji: '⚽', val: campData.currencies.ball_coin,     border: 'border-amber-500/25', bg: 'bg-amber-500/10', text: 'text-amber-300', glow: '0 0 8px rgba(245,158,11,0.1)' },
+                { emoji: '💪', val: campData.currencies.strength_coin, border: 'border-rose-500/25', bg: 'bg-rose-500/10', text: 'text-rose-300', glow: '0 0 8px rgba(244,63,94,0.1)' },
               ] as const).map((c, i) => (
-                <div key={i} className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-bold font-mono ${c.cls}`}>
+                <div key={i} className={`flex items-center gap-1 px-2 py-0.5 rounded-xl border backdrop-blur-md text-[9px] font-bold font-mono ${c.border} ${c.bg} ${c.text}`}
+                     style={{ boxShadow: c.glow }}>
                   <span>{c.emoji}</span>
                   <span>{c.val}</span>
                 </div>
@@ -537,45 +550,49 @@ function InfrastructureTab({
   const powerPct   = Math.round((totalLevel / totalMax) * 100);
 
   return (
-    <div className="px-3 py-2 flex flex-col gap-1.5">
+    <div className="px-3 py-2 flex flex-col gap-2 relative z-10">
 
-      {/* ── Club Power Panel ──────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-yellow-500/25
-                      bg-gradient-to-r from-yellow-900/10 via-black/60 to-amber-900/10
-                      p-4 shadow-[0_0_25px_rgba(234,179,8,0.08)]">
-        <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full blur-3xl bg-yellow-500/6 pointer-events-none" />
+      {/* ── Club Power Panel — Glassmorphism ──────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-amber-500/25 p-4 backdrop-blur-xl"
+           style={{
+             background: 'linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(255,255,255,0.03) 50%, rgba(234,179,8,0.06) 100%)',
+             boxShadow: '0 0 30px rgba(245,158,11,0.08)',
+           }}>
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400/30 to-transparent" />
+        <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full blur-3xl bg-amber-500/5 pointer-events-none" />
         <div className="flex items-center justify-between mb-3 relative z-10">
           <div>
-            <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">Мощь клуба</p>
-            <p className="text-xl font-black font-orbitron text-yellow-400 leading-none">
+            <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">Club Power</p>
+            <p className="text-xl font-black font-orbitron text-amber-300 leading-none"
+               style={{ textShadow: '0 0 15px rgba(245,158,11,0.5)' }}>
               {totalLevel} <span className="text-[11px] text-gray-600 font-mono">/ {totalMax}</span>
             </p>
           </div>
           <div className="flex flex-col items-end">
-            <div className="text-[9px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">Рейтинг базы</div>
+            <div className="text-[9px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">Rating</div>
             <div className={`text-2xl font-black font-orbitron leading-none ${
-              powerPct >= 80 ? 'text-neon-cyan' : powerPct >= 50 ? 'text-violet-400' : 'text-gray-500'
-            }`}>{powerPct}%</div>
+              powerPct >= 80 ? 'text-cyan-300' : powerPct >= 50 ? 'text-violet-300' : 'text-gray-500'
+            }`} style={{ textShadow: powerPct >= 80 ? '0 0 15px rgba(0,240,255,0.5)' : 'none' }}>
+              {powerPct}%
+            </div>
           </div>
         </div>
-        <div className="relative z-10 h-2 bg-black/50 rounded-full overflow-hidden border border-yellow-900/40">
-          <div
-            className="h-full rounded-full transition-all duration-1000"
-            style={{
-              width: `${powerPct}%`,
-              background: 'linear-gradient(90deg, rgba(234,179,8,0.6), rgba(251,191,36,0.9), rgba(245,158,11,0.7))',
-              boxShadow: '0 0 8px rgba(234,179,8,0.5)',
-            }}
-          />
+        <div className="relative z-10 h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
+          <div className="h-full rounded-full transition-all duration-1000"
+               style={{
+                 width: `${powerPct}%`,
+                 background: 'linear-gradient(90deg, rgba(245,158,11,0.6), rgba(251,191,36,0.9), rgba(245,158,11,0.7))',
+                 boxShadow: '0 0 10px rgba(245,158,11,0.5)',
+               }} />
         </div>
-        <p className="text-[8px] text-gray-700 uppercase tracking-widest font-mono mt-1.5 relative z-10">
-          Баланс: {fancoins.toLocaleString()} FanCoins
+        <p className="text-[8px] text-gray-600 uppercase tracking-widest font-mono mt-1.5 relative z-10">
+          Balance: {fancoins.toLocaleString()} FanCoins
         </p>
       </div>
 
-      <p className="text-[9px] text-gray-600 uppercase tracking-[0.25em] font-bold px-1 -mb-1">Здания клуба</p>
+      <p className="text-[9px] text-gray-500 uppercase tracking-[0.25em] font-bold px-1 -mb-1">Club Buildings</p>
 
-      {/* ── Building Cards ─────────────────────────────────────────────────── */}
+      {/* ── Building Cards — Glassmorphism ────────────────────────────────── */}
       {BUILDING_DEFS.map(b => {
         const level     = getInfraLevel(infra, b.key);
         const cost      = level * 1000;
@@ -584,36 +601,27 @@ function InfrastructureTab({
         const Icon      = b.Icon;
 
         return (
-          <div
-            key={b.key}
-            className={`relative overflow-hidden rounded-2xl border
-                        bg-black/50 backdrop-blur-md transition-all duration-300
-                        ${ isMaxed
-                          ? 'border-yellow-500/40 shadow-[0_0_20px_rgba(234,179,8,0.12)]'
-                          : `${b.colorBorder} ${b.colorHoverBorder}`
-                        }`}
-          >
+          <div key={b.key}
+               className={`relative overflow-hidden rounded-2xl border backdrop-blur-xl transition-all duration-300
+                           ${ isMaxed ? 'border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.12)]' : `${b.colorBorder} ${b.colorHoverBorder}` }`}
+               style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)' }}>
+            {/* Glass highlight */}
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
             {/* Ambient glow */}
-            <div className={`absolute -top-10 -right-10 w-36 h-36 rounded-full blur-3xl pointer-events-none ${b.colorGlow} opacity-80`} />
+            <div className={`absolute -top-10 -right-10 w-36 h-36 rounded-full blur-3xl pointer-events-none ${b.colorGlow} opacity-60`} />
 
             {/* Main content row */}
-            <div className="relative z-10 flex items-center gap-2.5 p-2">
-              <div className={`w-12 h-12 flex-shrink-0 rounded-xl flex items-center justify-center
-                               border ${b.colorBg} ${b.colorBorder}
-                               shadow-[inset_0_0_12px_rgba(0,0,0,0.4)]`}>
+            <div className="relative z-10 flex items-center gap-2.5 p-2.5">
+              <div className={`w-12 h-12 flex-shrink-0 rounded-xl flex items-center justify-center border ${b.colorBg} ${b.colorBorder}`}
+                   style={{ boxShadow: `inset 0 0 12px rgba(0,0,0,0.3), 0 0 10px ${b.colorGlow.replace('bg-', 'rgba(').replace('/8', ',0.1)')}` }}>
                 <Icon className={b.colorText} size={22} />
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <h2 className="text-sm font-black font-orbitron text-white uppercase tracking-wider leading-none">
-                    {b.label}
-                  </h2>
-                  <span className={`text-[8px] font-black font-mono px-1.5 py-0.5 rounded-md
-                                   ${ isMaxed
-                                     ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40'
-                                     : `${b.colorBg} ${b.colorText} border ${b.colorBorder}`
-                                   }`}>
+                  <h2 className="text-sm font-black font-orbitron text-white uppercase tracking-wider leading-none">{b.label}</h2>
+                  <span className={`text-[8px] font-black font-mono px-1.5 py-0.5 rounded-md backdrop-blur-md
+                                   ${ isMaxed ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : `${b.colorBg} ${b.colorText} border ${b.colorBorder}` }`}>
                     {isMaxed ? '★ MAX' : `LVL ${level}`}
                   </span>
                 </div>
@@ -621,50 +629,37 @@ function InfrastructureTab({
                 <p className={`text-[9px] font-bold font-mono mt-0.5 ${b.colorText}`}>{b.bonusLabel}</p>
               </div>
 
-              <button
-                id={`upgrade-${b.key}`}
-                onClick={() => onUpgrade(b.key)}
-                disabled={isPending || !canAfford || isMaxed}
-                className={`flex-shrink-0 flex flex-col items-center justify-center
-                            px-3 py-2 rounded-xl text-[8px] font-black font-orbitron uppercase
-                            tracking-wider transition-all duration-200 min-w-[60px] border
-                            ${ isPending
-                              ? 'bg-gray-800/60 text-gray-500 border-gray-700/30 cursor-wait'
-                              : isMaxed
-                              ? 'bg-yellow-900/20 text-yellow-600 border-yellow-700/30 cursor-default'
-                              : !canAfford
-                              ? 'bg-gray-800/40 text-gray-600 border-gray-700/30 cursor-not-allowed'
-                              : `${b.colorBg} ${b.colorText} ${b.colorBorder} hover:brightness-125 active:scale-95 shadow-[0_0_12px_rgba(0,0,0,0.3)]`
-                            }`}
-              >
+              <button id={`upgrade-${b.key}`} onClick={() => onUpgrade(b.key)}
+                      disabled={isPending || !canAfford || isMaxed}
+                      className={`flex-shrink-0 flex flex-col items-center justify-center
+                                  px-3 py-2 rounded-xl text-[8px] font-black font-orbitron uppercase
+                                  tracking-wider transition-all duration-300 min-w-[60px] border backdrop-blur-md
+                                  ${ isPending ? 'bg-white/5 text-gray-500 border-white/5 cursor-wait'
+                                    : isMaxed ? 'bg-amber-500/10 text-amber-500 border-amber-500/30 cursor-default'
+                                    : !canAfford ? 'bg-white/5 text-gray-600 border-white/5 cursor-not-allowed'
+                                    : `${b.colorBg} ${b.colorText} ${b.colorBorder} hover:brightness-125 active:scale-95`
+                                  }`}
+                      style={!isPending && !isMaxed && canAfford ? { boxShadow: '0 0 15px rgba(0,0,0,0.2)' } : {}}>
                 {isPending ? <span className="animate-pulse">...</span>
                   : isMaxed ? <span>★</span>
-                  : <><span>{t.base_up || 'UP'}</span><span className="text-[7px] font-mono opacity-75 mt-0.5">{cost.toLocaleString()}</span></>
-                }
+                  : <><span>{t.base_up || 'UP'}</span><span className="text-[7px] font-mono opacity-70 mt-0.5">{cost.toLocaleString()}</span></>}
               </button>
             </div>
 
             {/* Segmented level progress bar */}
-            <div className="relative z-10 flex gap-0.5 px-2 pb-2">
+            <div className="relative z-10 flex gap-0.5 px-2.5 pb-2.5">
               {Array.from({ length: MAX_BUILDING_LEVEL }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`flex-1 h-1.5 rounded-full transition-all duration-500 ${
-                    i < level
-                      ? isMaxed
-                        ? 'bg-yellow-400 shadow-[0_0_4px_rgba(234,179,8,0.6)]'
-                        : b.colorBorder.replace('border-', 'bg-').replace('/40', '/80')
-                      : 'bg-white/5'
-                  }`}
-                  style={{ transitionDelay: `${i * 30}ms` }}
-                />
+                <div key={i}
+                     className={`flex-1 h-1.5 rounded-full transition-all duration-500 ${
+                       i < level ? isMaxed ? 'bg-amber-400 shadow-[0_0_4px_rgba(245,158,11,0.6)]' : b.colorBorder.replace('border-', 'bg-').replace('/40', '/80') : 'bg-white/5'
+                     }`}
+                     style={{ transitionDelay: `${i * 30}ms` }} />
               ))}
             </div>
 
-            {/* Affordable hint */}
             {!canAfford && !isMaxed && !isPending && (
-              <p className="relative z-10 px-2 pb-2 -mt-1 text-[8px] text-gray-700 font-mono">
-                Нужно ещё {(cost - fancoins).toLocaleString()} FC
+              <p className="relative z-10 px-2.5 pb-2 -mt-1 text-[8px] text-gray-600 font-mono">
+                Need {(cost - fancoins).toLocaleString()} more FC
               </p>
             )}
           </div>
@@ -749,50 +744,31 @@ function TrainingTab({
   return (
     <div className="flex flex-col">
 
-      {/* ── Player Carousel ───────────────────────────────────────────────── */}
+      {/* ── Player Carousel — Glassmorphism ──────────────────────────────── */}
       <div className="pt-2 px-4">
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none -mx-1 px-1">
           {campData.players.map(player => {
             const isSelected = selectedPlayer?.id === player.id;
             return (
-              <button
-                key={player.id}
-                id={`player-card-${player.id}`}
-                onClick={() => onSelectPlayer(player)}
-                className={`
-                  flex-shrink-0 flex flex-col items-center gap-1.5 p-2 rounded-xl
-                  border transition-all duration-200 w-[68px]
-                  ${isSelected
-                    ? 'bg-neon-cyan/10 border-neon-cyan/50 shadow-[0_0_10px_rgba(0,240,255,0.15)]'
-                    : 'bg-black/40 border-gray-800 hover:border-gray-600 active:scale-95'
-                  }
-                `}
-              >
+              <button key={player.id} id={`player-card-${player.id}`}
+                      onClick={() => onSelectPlayer(player)}
+                      className={`flex-shrink-0 flex flex-col items-center gap-1.5 p-2 rounded-2xl
+                                  border transition-all duration-300 w-[68px] backdrop-blur-md
+                                  ${isSelected
+                                    ? 'bg-cyan-500/10 border-cyan-500/40 shadow-[0_0_15px_rgba(0,240,255,0.15)]'
+                                    : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/8 active:scale-95'
+                                  }`}>
                 {/* OVR circle */}
-                <div
-                  className={`
-                    w-8 h-8 rounded-full flex items-center justify-center
-                    text-xs font-bold font-orbitron transition-colors
-                    ${isSelected
-                      ? 'bg-neon-cyan/20 text-neon-cyan'
-                      : 'bg-gray-800 text-gray-400'
-                    }
-                  `}
-                >
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center
+                                 text-xs font-bold font-orbitron transition-all duration-300 backdrop-blur-md
+                                 ${isSelected ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30' : 'bg-white/5 text-gray-400 border border-white/10'}`}
+                     style={isSelected ? { textShadow: '0 0 10px rgba(0,240,255,0.5)' } : {}}>
                   {player.ovr}
                 </div>
-
-                {/* Name (last name only) */}
                 <span className="text-[9px] font-bold text-white text-center leading-tight line-clamp-1 w-full">
                   {player.name.split(' ').pop()}
                 </span>
-
-                {/* Position */}
-                <span
-                  className={`text-[8px] font-mono uppercase tracking-wider ${
-                    isSelected ? 'text-neon-cyan' : 'text-gray-600'
-                  }`}
-                >
+                <span className={`text-[8px] font-mono uppercase tracking-wider ${isSelected ? 'text-cyan-300' : 'text-gray-500'}`}>
                   {player.position}
                 </span>
               </button>
@@ -820,7 +796,7 @@ function TrainingTab({
             )}
           </div>
 
-          {/* 2-column stat grid */}
+          {/* 2-column stat grid — Glassmorphism */}
           <div className="grid grid-cols-2 gap-2">
             {STAT_DEFS.map(stat => {
               const baseValue  = getStatValue(selectedPlayer.stats, stat.key);
@@ -834,77 +810,52 @@ function TrainingTab({
               const isMaxed    = plannedVal >= 99;
 
               return (
-                <div
-                  key={stat.key}
-                  className={`
-                    relative overflow-hidden rounded-xl border p-2
-                    ${stat.colorBg} ${stat.colorBorder}
-                    transition-opacity duration-200
-                    ${isPending ? 'opacity-60' : 'opacity-100'}
-                  `}
-                >
+                <div key={stat.key}
+                     className={`relative overflow-hidden rounded-2xl border p-2.5 backdrop-blur-md transition-all duration-300
+                                 ${stat.colorBorder} ${isPending ? 'opacity-60' : 'opacity-100'}`}
+                     style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)' }}>
+                  {/* Glass highlight */}
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                  
                   {/* Stat header */}
-                  <div className="flex items-center justify-between mb-1">
-                    <div>
-                      <span className={`text-[10px] font-bold font-orbitron ${stat.colorText}`}>
-                        {stat.label}
-                      </span>
-                    </div>
+                  <div className="flex items-center justify-between mb-1.5 relative z-10">
+                    <span className={`text-[10px] font-bold font-orbitron ${stat.colorText}`}>{stat.label}</span>
                     <span className="text-white font-bold font-mono text-sm leading-none flex items-center gap-1">
                       {baseValue}
-                      {pendingInc > 0 && <span className="text-neon-green text-[10px]">+ {pendingInc}</span>}
+                      {pendingInc > 0 && <span className="text-emerald-400 text-[10px]" style={{ textShadow: '0 0 8px rgba(52,211,153,0.5)' }}>+{pendingInc}</span>}
                     </span>
                   </div>
 
                   {/* Progress bar */}
-                  <div className="w-full h-1 bg-gray-700/40 rounded-full mb-1.5 overflow-hidden flex">
-                    <div
-                      className={`h-full transition-all duration-500 ${stat.colorBar}`}
-                      style={{ width: `${(baseValue / 99) * 100}%` }}
-                    />
+                  <div className="w-full h-1.5 bg-white/5 rounded-full mb-2 overflow-hidden flex relative z-10">
+                    <div className={`h-full rounded-full transition-all duration-500 ${stat.colorBar}`}
+                         style={{ width: `${(baseValue / 99) * 100}%` }} />
                     {pendingInc > 0 && (
-                      <div
-                        className="h-full transition-all duration-500 bg-neon-green/80"
-                        style={{ width: `${(pendingInc / 99) * 100}%` }}
-                      />
+                      <div className="h-full rounded-full transition-all duration-500 bg-emerald-400"
+                           style={{ width: `${(pendingInc / 99) * 100}%`, boxShadow: '0 0 8px rgba(52,211,153,0.5)' }} />
                     )}
                   </div>
 
                   {/* Footer: + / - buttons and cost */}
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between relative z-10">
                     <div className="flex items-center gap-1">
                       <span className="text-[10px]">{stat.currencyEmoji}</span>
-                      <span className={`text-[9px] font-mono font-bold ${stat.colorText}`}>
-                        {isMaxed ? 'MAX' : nextCost}
-                      </span>
+                      <span className={`text-[9px] font-mono font-bold ${stat.colorText}`}>{isMaxed ? 'MAX' : nextCost}</span>
                     </div>
-
                     <div className="flex items-center gap-1">
                       {pendingInc > 0 && (
-                        <button
-                          onClick={() => handleAdjust(stat.key, -1)}
-                          disabled={isPending}
-                          className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold transition-all bg-red-900/40 text-red-400 border border-red-800/40 hover:bg-red-800/60 active:scale-90"
-                        >
+                        <button onClick={() => handleAdjust(stat.key, -1)} disabled={isPending}
+                                className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold transition-all duration-300 bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 active:scale-90">
                           -
                         </button>
                       )}
-                      <button
-                        onClick={() => handleAdjust(stat.key, 1)}
-                        disabled={isPending || !canAffordNext || isMaxed}
-                        className={`
-                          w-6 h-6 rounded flex items-center justify-center
-                          text-xs font-bold transition-all
-                          ${isPending
-                            ? 'bg-gray-800 text-gray-600 cursor-wait'
-                            : isMaxed
-                            ? 'bg-gray-800/40 text-gray-700 cursor-default'
-                            : !canAffordNext
-                            ? 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
-                            : `${stat.colorBg} ${stat.colorText} border ${stat.colorBorder} hover:brightness-150 active:scale-90`
-                          }
-                        `}
-                      >
+                      <button onClick={() => handleAdjust(stat.key, 1)} disabled={isPending || !canAffordNext || isMaxed}
+                              className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold transition-all duration-300 border
+                                          ${isPending ? 'bg-white/5 text-gray-600 border-white/5 cursor-wait'
+                                            : isMaxed ? 'bg-white/5 text-gray-700 border-white/5 cursor-default'
+                                            : !canAffordNext ? 'bg-white/5 text-gray-600 border-white/5 cursor-not-allowed'
+                                            : `${stat.colorBg} ${stat.colorText} ${stat.colorBorder} hover:brightness-150 active:scale-90`
+                                          }`}>
                         +
                       </button>
                     </div>
@@ -914,21 +865,17 @@ function TrainingTab({
             })}
           </div>
 
-          {/* Confirm Button */}
+          {/* Confirm Button — Glassmorphism */}
           {hasPending && (
-            <button
-              onClick={confirmUpgrades}
-              disabled={isPending}
-              className={`
-                mt-4 w-full py-3 rounded-xl font-black uppercase tracking-widest text-xs
-                transition-all duration-200
-                ${isPending
-                  ? 'bg-gray-800 text-gray-500 cursor-wait'
-                  : 'bg-neon-cyan text-black hover:bg-neon-cyan/80 shadow-[0_0_15px_rgba(0,255,255,0.4)]'
-                }
-              `}
-            >
-              {isPending ? 'Загрузка...' : 'Подтвердить улучшения'}
+            <button onClick={confirmUpgrades} disabled={isPending}
+                    className={`mt-4 w-full py-3 rounded-2xl font-black uppercase tracking-widest text-xs
+                                transition-all duration-300 border backdrop-blur-md
+                                ${isPending
+                                  ? 'bg-white/5 text-gray-500 border-white/5 cursor-wait'
+                                  : 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/25 active:scale-[0.98]'
+                                }`}
+                    style={!isPending ? { boxShadow: '0 0 20px rgba(0,240,255,0.15)' } : {}}>
+              {isPending ? 'Loading...' : 'Confirm Training'}
             </button>
           )}
 
@@ -1079,11 +1026,15 @@ function StadiumTab({
   const previewFinal      = Math.floor(previewBase * (1 + seatingLevel * 0.05));
 
   return (
-    <div className="p-3 flex flex-col gap-3">
+    <div className="p-3 flex flex-col gap-3 relative z-10">
 
-      {/* ── Stadium main upgrade card ─────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-900/15 via-black/60 to-purple-900/10 p-4 shadow-[0_0_25px_rgba(139,92,246,0.08)]">
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/50 to-transparent" />
+      {/* ── Stadium main upgrade card — Glassmorphism ────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-violet-500/25 p-4 backdrop-blur-xl"
+           style={{
+             background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(255,255,255,0.03) 50%, rgba(147,51,234,0.06) 100%)',
+             boxShadow: '0 0 30px rgba(139,92,246,0.08)',
+           }}>
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/30 to-transparent" />
         <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full blur-3xl bg-violet-500/5 pointer-events-none" />
         <div className="relative z-10 flex items-center justify-between mb-3">
           <div>
@@ -1197,40 +1148,37 @@ function StadiumTab({
         );
       })}
 
-      {/* ── Ticket Pricing ─────────────────────────────────────────────────── */}
-      <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold px-1 mt-1">Ticket Pricing</div>
-      <div className="relative overflow-hidden rounded-2xl border border-cyan-700/30 bg-black/50 p-3 flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <p className="text-[8px] text-gray-600 font-mono">Доход = (посетители × цена) / 100 × seating bonus</p>
-          <span className={`text-[8px] font-bold font-mono px-2 py-0.5 rounded-full border ${
-            previewFinal > 500 ? 'text-cyan-400 border-cyan-700/40 bg-cyan-900/20' : 'text-gray-600 border-gray-700/40'
+      {/* ── Ticket Pricing — Glassmorphism ────────────────────────────────── */}
+      <div className="text-[8px] text-gray-500 uppercase tracking-widest font-bold px-1 mt-1">Ticket Pricing</div>
+      <div className="relative overflow-hidden rounded-2xl border border-cyan-500/20 p-3 flex flex-col gap-3 backdrop-blur-xl"
+           style={{ background: 'linear-gradient(135deg, rgba(0,240,255,0.05) 0%, rgba(255,255,255,0.03) 100%)' }}>
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent" />
+        <div className="flex items-center justify-between relative z-10">
+          <p className="text-[8px] text-gray-500 font-mono">Revenue = (visitors × price) / 100 × seating</p>
+          <span className={`text-[8px] font-bold font-mono px-2 py-0.5 rounded-xl border backdrop-blur-md ${
+            previewFinal > 500 ? 'text-cyan-300 border-cyan-500/30 bg-cyan-500/10' : 'text-gray-500 border-white/10 bg-white/5'
           }`}>~{previewFinal.toLocaleString()} FC</span>
         </div>
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5 relative z-10">
           {TICKET_ROWS.map(({ label, accentColor, val, set }) => (
             <div key={label} className="flex flex-col gap-1">
               <div className={`text-[7px] uppercase tracking-wider font-bold ${accentColor}`}>{label}</div>
-              <input
-                type="number"
-                value={val}
-                onChange={e => set(Math.max(0, Math.min(999, parseInt(e.target.value, 10) || 0)))}
-                min={0} max={999}
-                className="w-full bg-black/50 border border-white/10 text-white px-2 py-1.5 rounded-lg text-[10px] font-mono font-bold focus:border-cyan-500/40 focus:outline-none [appearance:textfield] transition-all"
-                placeholder="FC"
-              />
+              <input type="number" value={val}
+                     onChange={e => set(Math.max(0, Math.min(999, parseInt(e.target.value, 10) || 0)))}
+                     min={0} max={999}
+                     className="w-full bg-white/5 border border-white/10 text-white px-2 py-1.5 rounded-xl text-[10px] font-mono font-bold
+                                focus:border-cyan-400/40 focus:bg-white/8 focus:outline-none [appearance:textfield] transition-all duration-300"
+                     placeholder="FC" />
             </div>
           ))}
         </div>
-        <button
-          id="stadium-save-prices-btn"
-          onClick={handleSavePrices}
-          disabled={isSavingPrices || isPending}
-          className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all ${
-            isSavingPrices || isPending
-              ? 'bg-gray-800/50 text-gray-500 cursor-wait'
-              : 'bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/25 active:scale-95 shadow-[0_0_12px_rgba(0,240,255,0.08)]'
-          }`}
-        >
+        <button id="stadium-save-prices-btn" onClick={handleSavePrices} disabled={isSavingPrices || isPending}
+                className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all duration-300 border backdrop-blur-md
+                            ${isSavingPrices || isPending
+                              ? 'bg-white/5 text-gray-500 border-white/5 cursor-wait'
+                              : 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/25 active:scale-95'
+                            }`}
+                style={!isSavingPrices && !isPending ? { boxShadow: '0 0 15px rgba(0,240,255,0.1)' } : {}}>
           {isSavingPrices ? 'Saving...' : '💾 Save Ticket Prices'}
         </button>
       </div>
