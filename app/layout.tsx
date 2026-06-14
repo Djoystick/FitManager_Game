@@ -88,7 +88,7 @@ export default function RootLayout({
       <head>
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
       </head>
-      <body className="h-dvh overflow-hidden flex flex-col font-sans bg-midnight-abyss">
+      <body className="h-dvh overflow-hidden flex flex-col font-sans bg-[#020208]">
         <LanguageProvider>
           <TelegramAuthProvider>
             <TonProvider>
@@ -101,11 +101,12 @@ export default function RootLayout({
                       aria-label="Main Application Content"
                       className={`
                         max-w-[480px] w-full mx-auto
-                        h-dvh overflow-hidden
-                        bg-midnight-abyss text-white relative
-                        shadow-2xl border-x border-white/5
+                        h-dvh overflow-hidden overflow-x-hidden
+                        text-white relative
+                        shadow-2xl shadow-cyan-500/5 border-x border-white/5
                         flex flex-col
                       `}
+                      style={{ background: '#0a0a0f' }}
                     >
                       {/* Decorative scan line */}
                       <div className="scan-line" />

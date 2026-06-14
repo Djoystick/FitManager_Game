@@ -16,7 +16,7 @@
     <a href="#about-the-project"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://t.me/FitManagerBot">Play on Telegram</a>
+    <a href="https://t.me/FitManagerWeb3_bot/app">Play on Telegram</a>
     ·
     <a href="https://github.com/Djoystick/FitManager_Game/issues">Report Bug</a>
     ·
