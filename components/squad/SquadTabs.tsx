@@ -24,17 +24,33 @@ export function SquadTabs({ initialPlayers, teamId, userId }: { initialPlayers: 
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Tabs */}
-      <div className="flex bg-black/40 border border-gray-800 p-1 rounded-lg">
+      {/* Tabs — Glassmorphism */}
+      <div className="flex bg-white/5 border border-white/10 p-1 rounded-2xl backdrop-blur-xl relative">
+        <div 
+          className="absolute inset-y-1 rounded-xl transition-all duration-300 ease-out"
+          style={{
+            left: activeTab === 'lineup' ? '4px' : '50%',
+            width: 'calc(50% - 4px)',
+            background: activeTab === 'lineup' 
+              ? 'linear-gradient(135deg, rgba(0,240,255,0.2) 0%, rgba(0,240,255,0.1) 100%)'
+              : 'linear-gradient(135deg, rgba(239,68,68,0.2) 0%, rgba(239,68,68,0.1) 100%)',
+            border: `1px solid ${activeTab === 'lineup' ? 'rgba(0,240,255,0.3)' : 'rgba(239,68,68,0.3)'}`,
+            boxShadow: activeTab === 'lineup' 
+              ? '0 0 15px rgba(0,240,255,0.2)' 
+              : '0 0 15px rgba(239,68,68,0.2)',
+          }}
+        />
         <button 
           onClick={() => setActiveTab('lineup')}
-          className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-md transition-all duration-300 ${activeTab === 'lineup' ? 'bg-neon-cyan text-black shadow-[0_0_15px_rgba(0,240,255,0.4)]' : 'text-gray-400 hover:text-white'}`}
+          className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl 
+                     transition-all duration-300 z-10 ${activeTab === 'lineup' ? 'text-cyan-300' : 'text-gray-500 hover:text-white'}`}
         >
           Lineup
         </button>
         <button 
           onClick={() => setActiveTab('scout')}
-          className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-md transition-all duration-300 ${activeTab === 'scout' ? 'bg-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)]' : 'text-gray-400 hover:text-white'}`}
+          className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl 
+                     transition-all duration-300 z-10 ${activeTab === 'scout' ? 'text-red-300' : 'text-gray-500 hover:text-white'}`}
         >
           Scout Intel
         </button>
