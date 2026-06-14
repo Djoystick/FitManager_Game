@@ -2,10 +2,10 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, Bot } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SpotlightOverlay — Tutorial highlight engine
+// SpotlightOverlay — Premium Dark Glassmorphism Tutorial Engine
 //
 // How it works:
 //   1. Looks up `targetId` element via document.getElementById
@@ -33,7 +33,7 @@ interface SpotlightProps {
   buttonLabel?: string;
   onNext: () => void;
   onSkip?: () => void;
-  padding?: number; // extra px around the target element
+  padding?: number;
 }
 
 interface Rect {
@@ -56,12 +56,11 @@ export function SpotlightOverlay({
   const [tooltipBelow, setTooltipBelow] = useState(true);
   const rafRef = useRef<number>(0);
 
-  // Track target element position (handles layout shifts, scrolling, resizes)
   useEffect(() => {
     function measure() {
       const el = document.getElementById(targetId);
       if (!el) {
-        rafRef.current = requestAnimationFrame(measure); // retry until found
+        rafRef.current = requestAnimationFrame(measure);
         return;
       }
       const r = el.getBoundingClientRect();
@@ -71,7 +70,6 @@ export function SpotlightOverlay({
         width: r.width + padding * 2,
         height: r.height + padding * 2,
       });
-      // Place tooltip above if target is in the bottom 40% of screen
       setTooltipBelow(r.top < window.innerHeight * 0.6);
     }
 
@@ -91,7 +89,7 @@ export function SpotlightOverlay({
 
   return (
     <AnimatePresence>
-      {/* Full-screen overlay — blocks all interaction except the ring */}
+      {/* Full-screen overlay */}
       <motion.div
         key="spotlight-backdrop"
         className="fixed inset-0 z-[9999] pointer-events-auto"
@@ -101,7 +99,7 @@ export function SpotlightOverlay({
         transition={{ duration: 0.3 }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Highlight ring — positioned exactly over the target */}
+        {/* Highlight ring */}
         <div
           className="absolute spotlight-ring neon-glow-pulse pointer-events-none"
           style={{
@@ -112,7 +110,7 @@ export function SpotlightOverlay({
           }}
         />
 
-        {/* Transparent "click-through" hole over the target so user can interact */}
+        {/* Click-through hole */}
         <div
           className="absolute pointer-events-auto cursor-pointer"
           style={{
@@ -124,7 +122,7 @@ export function SpotlightOverlay({
           onClick={onNext}
         />
 
-        {/* Tooltip card */}
+        {/* Tooltip card — Premium Dark Glassmorphism */}
         <motion.div
           key="spotlight-tooltip"
           className="absolute mx-4 pointer-events-auto flex flex-col"
@@ -145,41 +143,70 @@ export function SpotlightOverlay({
             <div className="w-0 h-0 ml-8 mb-[-1px]
               border-l-[8px] border-l-transparent
               border-r-[8px] border-r-transparent
-              border-b-[8px] border-b-cyan-500/60" />
+              border-b-[8px] border-b-cyan-500/50" />
           ) : (
             <div className="w-0 h-0 ml-8 mt-[-1px] order-last
               border-l-[8px] border-l-transparent
               border-r-[8px] border-r-transparent
-              border-t-[8px] border-t-cyan-500/60" />
+              border-t-[8px] border-t-cyan-500/50" />
           )}
 
-          <div className="bg-gray-950/95 backdrop-blur-xl border border-cyan-500/40
-                          rounded-2xl p-4 shadow-[0_0_30px_rgba(0,240,255,0.2)]">
-            <div className="flex items-start justify-between mb-2">
-              <h3 className="font-orbitron font-bold text-white text-sm tracking-wide">
-                {title}
-              </h3>
-              {onSkip && (
-                <button
-                  onClick={onSkip}
-                  className="text-gray-500 hover:text-gray-300 transition-colors ml-2 mt-0.5"
-                  aria-label="Skip tutorial"
-                >
-                  <X size={14} />
-                </button>
-              )}
+          {/* Main tooltip — Glassmorphism */}
+          <div className="relative rounded-2xl border border-cyan-500/30 backdrop-blur-2xl overflow-hidden"
+               style={{
+                 background: 'linear-gradient(135deg, rgba(15,15,30,0.95) 0%, rgba(8,8,20,0.98) 100%)',
+                 boxShadow: '0 0 40px rgba(0,240,255,0.12), 0 20px 40px rgba(0,0,0,0.5)',
+               }}>
+            {/* Glass highlight */}
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
+            
+            {/* Ambient glow */}
+            <div className="absolute -top-8 -right-8 w-24 h-24 bg-cyan-500/8 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="p-4 relative z-10">
+              {/* Header with Assistant Avatar */}
+              <div className="flex items-start gap-3 mb-2">
+                {/* AI Scout Avatar */}
+                <div className="flex-shrink-0 w-9 h-9 rounded-full border border-cyan-400/50 bg-cyan-500/10 flex items-center justify-center"
+                     style={{ boxShadow: '0 0 15px rgba(0,240,255,0.25)' }}>
+                  <Bot size={16} className="text-cyan-400" />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-orbitron font-bold text-white text-sm tracking-wide leading-tight"
+                      style={{ textShadow: '0 0 10px rgba(0,240,255,0.3)' }}>
+                    {title}
+                  </h3>
+                  <p className="text-[8px] text-cyan-400/50 uppercase tracking-widest font-bold mt-0.5">AI Scout</p>
+                </div>
+
+                {/* Skip button — Glass circle */}
+                {onSkip && (
+                  <button onClick={onSkip}
+                          className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center
+                                     text-gray-500 hover:text-white hover:bg-white/10 transition-all duration-300 active:scale-90 flex-shrink-0"
+                          aria-label="Skip tutorial">
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+
+              {/* Description */}
+              <p className="text-gray-300 text-xs leading-relaxed mb-3 ml-12">
+                {description}
+              </p>
+
+              {/* Action Button — Glassmorphism Cyan */}
+              <button onClick={onNext}
+                      className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest
+                                 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40
+                                 hover:bg-cyan-500/30 hover:border-cyan-400/60
+                                 active:scale-95 transition-all duration-300
+                                 backdrop-blur-md"
+                      style={{ boxShadow: '0 0 15px rgba(0,240,255,0.15)' }}>
+                {buttonLabel}
+              </button>
             </div>
-            <p className="text-gray-300 text-xs leading-relaxed mb-4">
-              {description}
-            </p>
-            <button
-              onClick={onNext}
-              className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest
-                         text-black btn-shimmer active:scale-95 transition-transform
-                         shadow-[0_0_15px_rgba(0,240,255,0.4)]"
-            >
-              {buttonLabel}
-            </button>
           </div>
         </motion.div>
       </motion.div>
