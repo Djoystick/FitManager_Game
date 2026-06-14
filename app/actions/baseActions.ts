@@ -96,14 +96,19 @@ export async function healPlayer(playerId: string) {
       return { success: false, error: 'Not enough Sweat Points' };
     }
 
-    // 3. Deduct Sweat Points
-    const newBalance = user.sweat_points - spCost;
-    const { error: deductError } = await supabaseAdmin
+    // 3. Deduct Sweat Points (atomic with WHERE guard to prevent race condition)
+    const newSPBalance = user.sweat_points - spCost;
+    const { data: updatedUser, error: deductError } = await supabaseAdmin
       .from('users')
-      .update({ sweat_points: newBalance })
-      .eq('id', userId);
+      .update({ sweat_points: newSPBalance })
+      .eq('id', userId)
+      .gte('sweat_points', spCost) // WHERE guard: prevent double-spend
+      .select('sweat_points')
+      .single();
 
-    if (deductError) throw deductError;
+    if (deductError || !updatedUser) {
+      return { success: false, error: 'Failed to deduct Sweat Points (insufficient balance or race condition)' };
+    }
 
     // 4. Heal Player (restore stamina + clear injury)
     const { error: healError } = await supabaseAdmin
@@ -116,7 +121,7 @@ export async function healPlayer(playerId: string) {
       throw healError;
     }
 
-    return { success: true, new_balance: newBalance, message: 'Player successfully healed.' };
+    return { success: true, new_balance: newSPBalance, message: 'Player successfully healed.' };
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to heal player' };
   }
@@ -222,33 +227,32 @@ export async function upgradeStadium() {
       return { success: false, error: 'Insufficient FanCoins' };
     }
 
-    // 5. Transaction: Deduct coins, upgrade level
-    const newBalance = user.balance_fancoins - upgradeCost;
-    
-    const { error: deductError } = await supabaseAdmin
-      .from('users')
-      .update({ balance_fancoins: newBalance })
-      .eq('id', user.id);
+    // 5. Atomic deduction via RPC (prevents race condition)
+    try {
+      const { data: newBalance, error: deductError } = await supabaseAdmin
+        .rpc('deduct_fancoins', { user_id: user.id, amount: upgradeCost });
 
-    if (deductError) throw deductError;
+      if (deductError) throw deductError;
 
-    const { error: upgradeError } = await supabaseAdmin
-      .from('infrastructure')
-      .update({ stadium_level: currentLevel + 1 })
-      .eq('team_id', team.id);
+      const { error: upgradeError } = await supabaseAdmin
+        .from('infrastructure')
+        .update({ stadium_level: currentLevel + 1 })
+        .eq('team_id', team.id);
 
-    if (upgradeError) {
-      // Rollback
-      await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins }).eq('id', user.id);
-      throw upgradeError;
+      if (upgradeError) {
+        // Rollback: refund the deduction
+        await supabaseAdmin.rpc('increment_fancoins', { u_id: user.id, amount: upgradeCost });
+        throw upgradeError;
+      }
+
+      return {
+        success: true,
+        new_level: currentLevel + 1,
+        new_balance: newBalance
+      };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to upgrade stadium' };
     }
-
-    return { 
-      success: true, 
-      new_level: currentLevel + 1, 
-      new_balance: newBalance 
-    };
-
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to upgrade stadium' };
   }
@@ -341,31 +345,31 @@ export async function upgradeMedicalCenter() {
       return { success: false, error: 'Insufficient FanCoins' };
     }
 
-    const newBalance = user.balance_fancoins - upgradeCost;
-    
-    const { error: deductError } = await supabaseAdmin
-      .from('users')
-      .update({ balance_fancoins: newBalance })
-      .eq('id', user.id);
+    // Atomic deduction via RPC
+    try {
+      const { data: newBalance, error: deductError } = await supabaseAdmin
+        .rpc('deduct_fancoins', { user_id: user.id, amount: upgradeCost });
 
-    if (deductError) throw deductError;
+      if (deductError) throw deductError;
 
-    const { error: upgradeError } = await supabaseAdmin
-      .from('infrastructure')
-      .update({ medical_center_level: currentLevel + 1 })
-      .eq('team_id', team.id);
+      const { error: upgradeError } = await supabaseAdmin
+        .from('infrastructure')
+        .update({ medical_center_level: currentLevel + 1 })
+        .eq('team_id', team.id);
 
-    if (upgradeError) {
-      await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins }).eq('id', user.id);
-      throw upgradeError;
+      if (upgradeError) {
+        await supabaseAdmin.rpc('increment_fancoins', { u_id: user.id, amount: upgradeCost });
+        throw upgradeError;
+      }
+
+      return {
+        success: true,
+        new_level: currentLevel + 1,
+        new_balance: newBalance
+      };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to upgrade medical center' };
     }
-
-    return { 
-      success: true, 
-      new_level: currentLevel + 1, 
-      new_balance: newBalance 
-    };
-
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to upgrade medical center' };
   }
@@ -412,31 +416,31 @@ export async function upgradeTrainingCenter() {
       return { success: false, error: 'Insufficient FanCoins' };
     }
 
-    const newBalance = user.balance_fancoins - upgradeCost;
-    
-    const { error: deductError } = await supabaseAdmin
-      .from('users')
-      .update({ balance_fancoins: newBalance })
-      .eq('id', user.id);
+    // Atomic deduction via RPC
+    try {
+      const { data: newBalance, error: deductError } = await supabaseAdmin
+        .rpc('deduct_fancoins', { user_id: user.id, amount: upgradeCost });
 
-    if (deductError) throw deductError;
+      if (deductError) throw deductError;
 
-    const { error: upgradeError } = await supabaseAdmin
-      .from('infrastructure')
-      .update({ training_camp_level: currentLevel + 1 })
-      .eq('team_id', team.id);
+      const { error: upgradeError } = await supabaseAdmin
+        .from('infrastructure')
+        .update({ training_camp_level: currentLevel + 1 })
+        .eq('team_id', team.id);
 
-    if (upgradeError) {
-      await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins }).eq('id', user.id);
-      throw upgradeError;
+      if (upgradeError) {
+        await supabaseAdmin.rpc('increment_fancoins', { u_id: user.id, amount: upgradeCost });
+        throw upgradeError;
+      }
+
+      return {
+        success: true,
+        new_level: currentLevel + 1,
+        new_balance: newBalance
+      };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to upgrade training center' };
     }
-
-    return { 
-      success: true, 
-      new_level: currentLevel + 1, 
-      new_balance: newBalance 
-    };
-
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to upgrade training center' };
   }

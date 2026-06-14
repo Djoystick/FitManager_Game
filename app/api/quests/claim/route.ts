@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { verifySession } from '@/lib/session';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,8 +9,13 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: Request) {
   try {
-    const { userId, questId } = await req.json();
-    if (!userId || !questId) return NextResponse.json({ success: false, error: 'Missing params' }, { status: 400 });
+    const userId = await verifySession();
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { questId } = await req.json();
+    if (!questId) return NextResponse.json({ success: false, error: 'Missing questId' }, { status: 400 });
 
     const today = new Date().toISOString().split('T')[0];
 
@@ -44,40 +50,61 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Failed to claim' }, { status: 500 });
     }
 
-    // 3. Grant rewards
+    // 3. Grant FC rewards via atomic RPC
     await supabaseAdmin.rpc('safe_credit_treasury', {
       p_user_id: userId,
       p_amount: quest.reward_fc,
       p_currency: 'fancoins',
       p_activity_type: 'daily_quest_reward'
     });
-    
-    // We don't have safe_credit_treasury for SP right now, we can just update users table directly for SP
+
+    // 4. Grant SP rewards via standard .update() (no execute_sql)
     if (quest.reward_sp > 0) {
-      await supabaseAdmin.rpc('execute_sql', {
-        sql: `UPDATE users SET scouting_points = scouting_points + ${quest.reward_sp} WHERE id = '${userId}'`
-      });
+      const { data: userData } = await supabaseAdmin
+        .from('users')
+        .select('scouting_points')
+        .eq('id', userId)
+        .single();
+
+      if (userData) {
+        await supabaseAdmin
+          .from('users')
+          .update({ scouting_points: (userData.scouting_points || 0) + quest.reward_sp })
+          .eq('id', userId);
+      }
     }
 
-    // 4. Check if all 3 are claimed
+    // 5. Check if all 3 are claimed
     const { data: allQuests } = await supabaseAdmin
       .from('daily_quests')
       .select('is_claimed')
       .eq('user_id', userId)
       .eq('date', today);
-      
+
     let bonusGranted = false;
     if (allQuests && allQuests.length === 3 && allQuests.every(q => q.is_claimed)) {
-      // Grant bonus: 500 FC + 50 SP
+      // Grant bonus: 500 FC
       await supabaseAdmin.rpc('safe_credit_treasury', {
         p_user_id: userId,
         p_amount: 500,
         p_currency: 'fancoins',
         p_activity_type: 'daily_quest_bonus'
       });
-      await supabaseAdmin.rpc('execute_sql', {
-        sql: `UPDATE users SET scouting_points = scouting_points + 50 WHERE id = '${userId}'`
-      });
+
+      // Grant bonus: 50 SP via standard update
+      const { data: bonusUserData } = await supabaseAdmin
+        .from('users')
+        .select('scouting_points')
+        .eq('id', userId)
+        .single();
+
+      if (bonusUserData) {
+        await supabaseAdmin
+          .from('users')
+          .update({ scouting_points: (bonusUserData.scouting_points || 0) + 50 })
+          .eq('id', userId);
+      }
+
       bonusGranted = true;
     }
 

@@ -1,10 +1,9 @@
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import { verifySession } from '@/lib/session';
 
 export async function requireTeam() {
-  const cookieStore = await cookies();
-  const userId = cookieStore.get('tg_user_id')?.value;
+  const userId = await verifySession();
 
   if (!userId) {
     // Cannot redirect to onboarding if we don't know who the user is.

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { verifySession } from '@/lib/session';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,8 +17,10 @@ const POSSIBLE_QUESTS = [
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await req.json();
-    if (!userId) return NextResponse.json({ success: false, error: 'No userId' }, { status: 400 });
+    const userId = await verifySession();
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
 
     const today = new Date().toISOString().split('T')[0];
 

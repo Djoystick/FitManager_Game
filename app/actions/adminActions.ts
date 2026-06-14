@@ -166,16 +166,14 @@ export async function executeBotSeeding(supabaseAdmin: any): Promise<AdminAction
 
 export async function seedBotLeague(): Promise<AdminActionResult> {
   try {
-    const cookieStore = await cookies();
-    const tgCookie = cookieStore.get('tg_user_id');
-    const sessionUuid = tgCookie?.value;
+    const userId = await verifySession();
 
-    if (!sessionUuid) {
-      return { success: false, error: 'Unauthorized: Valid Telegram session required for Admin Actions.' };
+    if (!userId) {
+      return { success: false, error: 'Unauthorized: Valid session required for Admin Actions.' };
     }
 
     // 0. Check Authorization (RBAC)
-    const isAdmin = await checkIsAdmin(sessionUuid, supabase);
+    const isAdmin = await checkIsAdmin(userId, supabase);
     if (!isAdmin) {
       return { success: false, error: 'Forbidden: Admin access required.' };
     }
