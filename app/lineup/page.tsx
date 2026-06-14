@@ -412,10 +412,10 @@ export default function LineupPage() {
       return (
         <div 
           key={`empty-${slotIndex}`} 
-          className="relative flex flex-col items-center justify-center p-1 w-14 h-[84px] cursor-not-allowed transition-all rounded-md border border-dashed border-gray-600/50 bg-black/20"
+          className="relative flex flex-col items-center justify-center p-1 w-14 h-[84px] cursor-not-allowed transition-all rounded-2xl border border-dashed border-white/10 bg-white/5 backdrop-blur-sm"
         >
-          <div className="w-8 h-8 rounded-full border border-gray-700/50 flex items-center justify-center bg-gray-800/30 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
-            <span className="text-gray-500 font-black text-[10px] opacity-40">{idealLine || 'BN'}</span>
+          <div className="w-9 h-9 rounded-full border border-white/10 flex items-center justify-center bg-white/5 shadow-[inset_0_0_10px_rgba(0,0,0,0.3)]">
+            <span className="text-gray-600 font-black text-[10px] opacity-50">{idealLine || 'BN'}</span>
           </div>
         </div>
       );
@@ -429,12 +429,12 @@ export default function LineupPage() {
       <div 
         key={player.id} 
         onClick={(e) => handlePlayerClick(player, e)}
-        className={`relative flex flex-col items-center justify-center p-1 w-14 cursor-pointer transition-all duration-300 rounded-md ${
+        className={`relative flex flex-col items-center justify-center p-1 w-14 cursor-pointer transition-all duration-300 rounded-2xl backdrop-blur-md ${
           isSelected 
-            ? 'ring-2 ring-neon-pink scale-110 z-20 bg-neon-pink/20 shadow-[0_0_15px_rgba(255,0,60,0.6)]' 
+            ? 'ring-2 ring-fuchsia-400 scale-110 z-20 bg-fuchsia-500/20 shadow-[0_0_25px_rgba(217,70,239,0.5)] border border-fuchsia-400/40' 
             : isOOP && viewMode === 'lineup'
-              ? 'ring-1 ring-red-500 bg-red-900/40 hover:bg-red-900/60 shadow-[0_0_10px_rgba(255,0,0,0.4)]'
-              : 'hover:bg-white/10'
+              ? 'ring-1 ring-red-400 bg-red-500/15 hover:bg-red-500/25 shadow-[0_0_15px_rgba(239,68,68,0.3)] border border-red-400/30'
+              : 'hover:bg-white/10 border border-white/10 bg-white/5'
         }`}
       >
         {/* Position Badge & Injury */}
@@ -448,19 +448,29 @@ export default function LineupPage() {
         {/* Dynamic Center Content based on View Mode */}
         <div className="relative flex flex-col items-center justify-center h-10 w-full transition-all duration-300">
           {viewMode === 'lineup' ? (
-            <div className="relative flex items-center justify-center animate-in fade-in zoom-in duration-300">
-              <Shirt className={`w-9 h-9 drop-shadow-md ${isOOP ? 'text-red-500' : 'text-white'} transition-colors duration-300`} fill={isOOP ? '#ef4444' : '#ffffff'} fillOpacity={0.2} strokeWidth={1.5} />
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none mt-1">
-                <span className={`text-[11px] font-black drop-shadow-md ${isOOP ? 'text-red-500' : 'text-neon-cyan'}`}>{displayOvr}</span>
+            <div className={`relative flex items-center justify-center w-10 h-12 rounded-lg border backdrop-blur-md shadow-lg transition-all duration-300 animate-in fade-in zoom-in ${
+              displayOvr >= 90 ? 'bg-fuchsia-500/20 border-fuchsia-400/50 shadow-[0_0_10px_rgba(217,70,239,0.3)]' :
+              displayOvr >= 80 ? 'bg-amber-500/20 border-amber-400/50 shadow-[0_0_10px_rgba(251,191,36,0.3)]' :
+              displayOvr >= 65 ? 'bg-cyan-500/20 border-cyan-400/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]' :
+              'bg-gray-500/20 border-gray-400/50'
+            }`}>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <span className={`text-[13px] font-black drop-shadow-md ${
+                  displayOvr >= 90 ? 'text-fuchsia-300' :
+                  displayOvr >= 80 ? 'text-amber-300' :
+                  displayOvr >= 65 ? 'text-cyan-300' :
+                  'text-gray-300'
+                }`}>{displayOvr}</span>
               </div>
             </div>
           ) : (
-            <div className="w-full flex flex-col items-center justify-center gap-1 animate-in fade-in zoom-in duration-300">
-              <span className={`text-[13px] font-black drop-shadow-md ${player.stamina > 70 ? 'text-neon-green' : player.stamina > 30 ? 'text-yellow-500' : 'text-red-500 animate-pulse'}`}>
+            <div className="w-full flex flex-col items-center justify-center gap-1">
+              <span className={`text-[13px] font-black font-orbitron ${player.stamina > 70 ? 'text-emerald-300' : player.stamina > 30 ? 'text-amber-300' : 'text-red-400 animate-pulse'}`}
+                    style={{ textShadow: player.stamina > 70 ? '0 0 10px rgba(52,211,153,0.5)' : player.stamina > 30 ? '0 0 8px rgba(245,158,11,0.4)' : '0 0 10px rgba(239,68,68,0.5)' }}>
                 {player.stamina}
               </span>
-              <div className={`w-10 h-1.5 rounded-full overflow-hidden border bg-black/50 ${player.stamina > 70 ? 'border-neon-green/50 shadow-[0_0_8px_rgba(57,255,20,0.6)]' : player.stamina > 30 ? 'border-yellow-500/50 shadow-[0_0_8px_rgba(234,179,8,0.6)]' : 'border-red-500/80 shadow-[0_0_10px_rgba(239,68,68,0.8)] bg-red-900/40'}`}>
-                <div className={`h-full transition-all duration-1000 ${player.stamina > 70 ? 'bg-neon-green' : player.stamina > 30 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${player.stamina}%` }}></div>
+              <div className={`w-10 h-1.5 rounded-full overflow-hidden border bg-white/5 ${player.stamina > 70 ? 'border-emerald-400/40 shadow-[0_0_8px_rgba(52,211,153,0.4)]' : player.stamina > 30 ? 'border-amber-400/40 shadow-[0_0_8px_rgba(245,158,11,0.4)]' : 'border-red-400/60 shadow-[0_0_10px_rgba(239,68,68,0.5)]'}`}>
+                <div className={`h-full rounded-full transition-all duration-1000 ${player.stamina > 70 ? 'bg-emerald-400' : player.stamina > 30 ? 'bg-amber-400' : 'bg-red-400'}`} style={{ width: `${player.stamina}%` }}></div>
               </div>
             </div>
           )}
@@ -505,10 +515,19 @@ export default function LineupPage() {
         {/* Dynamic Center Content based on View Mode */}
         <div className="relative flex flex-col items-center justify-center h-10 w-full transition-all duration-300">
           {viewMode === 'lineup' ? (
-            <div className="relative flex items-center justify-center animate-in fade-in zoom-in duration-300 opacity-60">
-              <Shirt className="w-9 h-9 drop-shadow-md text-gray-400 transition-colors duration-300" fill="#9ca3af" fillOpacity={0.1} strokeWidth={1.5} />
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none mt-1">
-                <span className="text-[11px] font-black drop-shadow-md text-gray-400">{player.ovr}</span>
+            <div className={`relative flex items-center justify-center w-10 h-12 rounded-lg border backdrop-blur-md shadow-lg transition-all duration-300 animate-in fade-in zoom-in ${
+              player.ovr >= 90 ? 'bg-fuchsia-500/20 border-fuchsia-400/50 shadow-[0_0_10px_rgba(217,70,239,0.3)]' :
+              player.ovr >= 80 ? 'bg-amber-500/20 border-amber-400/50 shadow-[0_0_10px_rgba(251,191,36,0.3)]' :
+              player.ovr >= 65 ? 'bg-cyan-500/20 border-cyan-400/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]' :
+              'bg-gray-500/20 border-gray-400/50'
+            }`}>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <span className={`text-[13px] font-black drop-shadow-md ${
+                  player.ovr >= 90 ? 'text-fuchsia-300' :
+                  player.ovr >= 80 ? 'text-amber-300' :
+                  player.ovr >= 65 ? 'text-cyan-300' :
+                  'text-gray-300'
+                }`}>{player.ovr}</span>
               </div>
             </div>
           ) : (
@@ -603,14 +622,21 @@ export default function LineupPage() {
 
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#05060f' }}>
-      {/* Background decorations */}
-      <div className="absolute inset-0 pointer-events-none bg-grid-violet opacity-30" style={{ backgroundImage: 'linear-gradient(rgba(147,51,234,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(147,51,234,0.05) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_30%_at_50%_0%,rgba(147,51,234,0.08)_0%,transparent_100%)]" />
+    <div className="flex flex-col h-full overflow-hidden relative" style={{ background: '#0a0a0f' }}>
+      {/* Background decorations — Premium Dark Glassmorphism */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_20%_0%,rgba(147,51,234,0.15)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_100%,rgba(0,240,255,0.1)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_50%_50%,rgba(147,51,234,0.05)_0%,transparent_70%)]" />
+      </div>
 
-      {/* HEADER */}
-      <header className="glass-card-violet relative overflow-hidden mx-3 mt-3 mb-1 p-3 flex justify-between items-center shrink-0">
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent" />
+      {/* HEADER — Glassmorphism */}
+      <header className="relative overflow-hidden mx-3 mt-3 mb-1 p-3 flex justify-between items-center shrink-0 rounded-2xl border border-white/10 backdrop-blur-xl"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)',
+              }}>
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
             <h1 className="text-sm font-black text-white tracking-wider uppercase leading-none font-orbitron">{team.name}</h1>
@@ -675,9 +701,13 @@ export default function LineupPage() {
             <StatCard label={t.lineup_formation || 'Formation'} value={currentFormation} accent="violet" />
           </div>
 
-          {/* Tactic Selector */}
-          <div className="glass-card p-3 rounded-xl">
-            <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold mb-2 px-0.5">{t.lineup_tactic || 'TACTIC'}</div>
+          {/* Tactic Selector — Glassmorphism */}
+          <div className="p-3 rounded-2xl border border-white/10 backdrop-blur-xl"
+               style={{
+                 background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
+               }}>
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent rounded-2xl" />
+            <div className="text-[8px] text-gray-500 uppercase tracking-widest font-bold mb-2 px-0.5">{t.lineup_tactic || 'TACTIC'}</div>
             <div className="flex gap-1.5 overflow-x-auto scrollbar-none py-0.5">
               {(['Balanced', 'Tiki-Taka', 'Counter Attack', 'High Press', 'Park the Bus', 'Wing Play'] as const).map(tactic => {
                 const isActive = activeTactic === tactic;
@@ -686,12 +716,12 @@ export default function LineupPage() {
                     key={tactic}
                     onClick={() => handleTacticChange(tactic)}
                     disabled={isTacticLoading}
-                    className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-[9px] font-black
-                                uppercase tracking-widest transition-all border whitespace-nowrap ${
+                    className={`flex-shrink-0 px-2.5 py-1 rounded-xl text-[9px] font-black
+                                uppercase tracking-widest transition-all duration-300 border whitespace-nowrap ${
                       isActive
-                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-[0_0_10px_rgba(0,240,255,0.4)]'
-                        : 'bg-black/30 border-gray-700/50 text-gray-500 hover:text-gray-300 hover:border-gray-600'
-                    } ${isTacticLoading ? 'opacity-40 cursor-not-allowed' : ''}`}
+                        ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40 shadow-[0_0_15px_rgba(0,240,255,0.2)]'
+                        : 'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:bg-white/8 hover:border-white/20'
+                    } ${isTacticLoading ? 'opacity-40 cursor-not-allowed' : 'active:scale-95'}`}
                   >
                     {tactic}
                   </button>
@@ -700,35 +730,51 @@ export default function LineupPage() {
             </div>
           </div>
 
-          {/* Management — Web3 gradient cards */}
-          <div className="text-[8px] text-gray-600 uppercase tracking-widest font-bold px-0.5">{t.lineup_management || 'Management'}</div>
+          {/* Management — Premium Glassmorphism Cards */}
+          <div className="text-[8px] text-gray-500 uppercase tracking-widest font-bold px-0.5">{t.lineup_management || 'Management'}</div>
           <div className="grid grid-cols-2 gap-2.5">
             {([
-              { label: t.team_structures || 'STRUCTURES', sub: t.team_club_stadium || 'Club & Stadium',   href: '/base',   bg: 'from-teal-950 to-cyan-950',    border: 'border-teal-700/30',    hb: 'hover:border-teal-400/60',    glow: 'hover:shadow-[0_0_20px_rgba(20,184,166,0.18)]',  accent: 'text-teal-400',   Icon: Building2 },
-              { label: t.team_transfers || 'TRANSFERS',  sub: t.team_buy_sell || 'Buy & Sell',       href: '/market', bg: 'from-violet-950 to-purple-950', border: 'border-violet-700/30',  hb: 'hover:border-violet-400/60',  glow: 'hover:shadow-[0_0_20px_rgba(139,92,246,0.18)]',  accent: 'text-violet-400', Icon: Shuffle   },
-              { label: t.team_staff || 'STAFF',      sub: t.team_coaches || 'Coaches & Scouts', href: '/staff',  bg: 'from-emerald-950 to-green-950', border: 'border-emerald-700/30', hb: 'hover:border-emerald-400/60', glow: 'hover:shadow-[0_0_20px_rgba(52,211,153,0.18)]',   accent: 'text-emerald-400', Icon: Users    },
-              { label: t.team_finances || 'FINANCES',   sub: t.team_fancoins || 'FanCoins & W2E',   href: '/bank',   bg: 'from-yellow-950 to-amber-950',  border: 'border-yellow-700/30',  hb: 'hover:border-yellow-400/60',  glow: 'hover:shadow-[0_0_20px_rgba(234,179,8,0.18)]',   accent: 'text-yellow-400', Icon: Wallet   },
-            ]).map(({ label, sub, href, bg, border, hb, glow, accent, Icon }) => (
-              <motion.div 
-                key={href} 
-                whileHover={{ scale: 1.02 }} 
-                whileTap={{ scale: 0.97 }}
-                id={href === '/base' ? 'card-structures' : undefined}
-              >
-                <Link
-                  href={href}
-                  className={`flex flex-col gap-2.5 p-3 rounded-2xl overflow-hidden bg-gradient-to-br ${bg} border ${border} ${hb} ${glow} transition-all duration-300 block`}
+              { label: t.team_structures || 'STRUCTURES', sub: t.team_club_stadium || 'Club & Stadium',   href: '/base',   accent: 'teal',   Icon: Building2 },
+              { label: t.team_transfers || 'TRANSFERS',  sub: t.team_buy_sell || 'Buy & Sell',           href: '/market', accent: 'violet', Icon: Shuffle   },
+              { label: t.team_staff || 'STAFF',          sub: t.team_coaches || 'Coaches & Scouts',     href: '/staff',  accent: 'emerald', Icon: Users    },
+              { label: t.team_finances || 'FINANCES',    sub: t.team_fancoins || 'FanCoins & W2E',      href: '/bank',   accent: 'amber',  Icon: Wallet   },
+            ]).map(({ label, sub, href, accent, Icon }) => {
+              const accentColors: Record<string, { icon: string; glow: string; border: string }> = {
+                teal:   { icon: 'text-teal-400',   glow: 'hover:shadow-[0_0_25px_rgba(20,184,166,0.15)]',  border: 'hover:border-teal-400/40' },
+                violet: { icon: 'text-violet-400', glow: 'hover:shadow-[0_0_25px_rgba(139,92,246,0.15)]',  border: 'hover:border-violet-400/40' },
+                emerald:{ icon: 'text-emerald-400',glow: 'hover:shadow-[0_0_25px_rgba(52,211,153,0.15)]',  border: 'hover:border-emerald-400/40' },
+                amber:  { icon: 'text-amber-400',  glow: 'hover:shadow-[0_0_25px_rgba(245,158,11,0.15)]',  border: 'hover:border-amber-400/40' },
+              };
+              const a = accentColors[accent];
+              return (
+                <motion.div 
+                  key={href} 
+                  whileHover={{ scale: 1.02 }} 
+                  whileTap={{ scale: 0.97 }}
+                  id={href === '/base' ? 'card-structures' : undefined}
                 >
-                  <div className={`w-8 h-8 rounded-xl bg-black/50 border border-white/10 flex items-center justify-center ${accent}`}>
-                    <Icon size={16} />
-                  </div>
-                  <div>
-                    <div className="text-[7px] text-gray-600 uppercase tracking-widest font-bold leading-none mb-0.5">{sub}</div>
-                    <div className={`text-[11px] font-black uppercase tracking-wide leading-tight ${accent}`}>{label}</div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
+                  <Link
+                    href={href}
+                    className={`flex flex-col gap-2.5 p-3 rounded-2xl overflow-hidden border border-white/10 
+                               backdrop-blur-xl transition-all duration-300 block ${a.border} ${a.glow}`}
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
+                    }}
+                  >
+                    {/* Glass highlight */}
+                    <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+                    
+                    <div className={`w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center ${a.icon}`}>
+                      <Icon size={18} />
+                    </div>
+                    <div>
+                      <div className="text-[7px] text-gray-500 uppercase tracking-widest font-bold leading-none mb-0.5">{sub}</div>
+                      <div className={`text-[11px] font-black uppercase tracking-wide leading-tight ${a.icon}`}>{label}</div>
+                    </div>
+                  </Link>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -940,7 +986,7 @@ export default function LineupPage() {
               ?
             </button>
           </div>
-          {/* Formation selector — scrollable row of 8 */}
+          {/* Formation selector — Glassmorphism */}
           <div className="shrink-0 z-20 px-2 mb-1">
             <div className="flex gap-1.5 overflow-x-auto scrollbar-none py-0.5">
               {Object.keys(FORMATIONS).map(f => {
@@ -950,12 +996,12 @@ export default function LineupPage() {
                     key={f}
                     onClick={() => handleFormationChange(f)}
                     disabled={isFormationLoading}
-                    className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-[9px] font-black
-                                uppercase tracking-widest transition-all border whitespace-nowrap ${
+                    className={`flex-shrink-0 px-2.5 py-1 rounded-xl text-[9px] font-black
+                                uppercase tracking-widest transition-all duration-300 border whitespace-nowrap ${
                       isActive
-                        ? 'bg-violet-500/20 text-violet-300 border-violet-500/50 shadow-[0_0_10px_rgba(147,51,234,0.4)]'
-                        : 'bg-black/30 border-gray-700/50 text-gray-500 hover:text-gray-300 hover:border-gray-600'
-                    } ${isFormationLoading ? 'opacity-40 cursor-not-allowed' : ''}`}
+                        ? 'bg-violet-500/15 text-violet-300 border-violet-500/40 shadow-[0_0_15px_rgba(147,51,234,0.2)]'
+                        : 'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:bg-white/8 hover:border-white/20'
+                    } ${isFormationLoading ? 'opacity-40 cursor-not-allowed' : 'active:scale-95'}`}
                   >
                     {f}
                   </button>
@@ -966,19 +1012,22 @@ export default function LineupPage() {
 
           <div className="flex-1 w-[96%] mx-auto flex flex-col justify-start gap-3 pb-2">
             
-            {/* Tactical Blueprint Pitch */}
-            <div className={`relative w-full aspect-[4/5] max-h-[420px] mx-auto rounded-xl overflow-hidden flex flex-col items-center justify-around transition-opacity duration-300 shadow-[0_0_20px_rgba(0,0,0,0.8)] ${isFormationLoading ? 'opacity-50 blur-sm' : 'opacity-100'}`}
+            {/* Cyber-Pitch — Premium Dark Glassmorphism */}
+            <div className={`relative w-full aspect-[4/5] max-h-[420px] mx-auto rounded-2xl overflow-hidden flex flex-col items-center justify-around transition-all duration-300 backdrop-blur-xl ${isFormationLoading ? 'opacity-50 blur-sm' : 'opacity-100'}`}
                  style={{ 
-                   background: '#0a0a0a', 
-                   border: '1px solid rgba(0, 240, 255, 0.3)', 
-                   boxShadow: 'inset 0 0 30px rgba(0, 240, 255, 0.05)',
-                   backgroundImage: 'linear-gradient(rgba(0, 240, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 240, 255, 0.05) 1px, transparent 1px)',
-                   backgroundSize: '20px 20px'
+                   background: 'linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(5,5,15,0.98) 100%)', 
+                   border: '1px solid rgba(0, 240, 255, 0.2)', 
+                   boxShadow: '0 0 40px rgba(0,240,255,0.08), inset 0 0 40px rgba(0,240,255,0.03)',
+                   backgroundImage: 'linear-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 240, 255, 0.04) 1px, transparent 1px)',
+                   backgroundSize: '24px 24px'
                  }}>
-              {/* Pitch Markings — neon cyan lines */}
-              <div className="absolute top-0 w-[45%] h-14 rounded-b-2xl" style={{ border: '1px solid rgba(0,240,255,0.15)', borderTop: 'none' }} />
-              <div className="absolute bottom-0 w-[45%] h-14 rounded-t-2xl" style={{ border: '1px solid rgba(0,240,255,0.15)', borderBottom: 'none' }} />
-              <div className="absolute top-1/2 left-0 w-full" style={{ borderTop: '1px solid rgba(0,240,255,0.12)' }} />
+              {/* Glass highlight */}
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent" />
+              
+              {/* Pitch Markings — neon cyan glass lines */}
+              <div className="absolute top-0 w-[45%] h-14 rounded-b-2xl" style={{ border: '1px solid rgba(0,240,255,0.12)', borderTop: 'none' }} />
+              <div className="absolute bottom-0 w-[45%] h-14 rounded-t-2xl" style={{ border: '1px solid rgba(0,240,255,0.12)', borderBottom: 'none' }} />
+              <div className="absolute top-1/2 left-0 w-full" style={{ borderTop: '1px solid rgba(0,240,255,0.1)' }} />
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full" style={{ border: '1px solid rgba(0,240,255,0.12)' }} />
               {/* Center spot */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-cyan-400/30" />
@@ -986,7 +1035,7 @@ export default function LineupPage() {
               {showChemistry && <ChemistryOverlay formation={currentFormation} players={activePlayers} />}
 
               {/* Player Mapping (Tactical Layout) */}
-              <div className="relative z-10 w-full h-full flex flex-col justify-between px-2 py-4">
+              <div className="relative z-10 w-full h-full flex flex-col justify-between px-2 pt-4 pb-12">
                 {getFormationLines(currentFormation).map((lineSlots, lineIdx) => (
                   <div key={lineIdx} className="w-full flex justify-around items-center" style={{ minHeight: 0, flex: '1 1 0' }}>
                     {lineSlots.map(idx => renderPitchMarker(idx))}
@@ -1148,11 +1197,11 @@ export default function LineupPage() {
       {/* Legend Modal — compact to prevent overflow on small TMA screens */}
       {showLegend && (
         <div
-          className="fixed inset-0 z-[100] flex items-end justify-center p-0 bg-black/70 backdrop-blur-sm pointer-events-auto"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm pointer-events-auto"
           onClick={() => setShowLegend(false)}
         >
           <div
-            className="w-full max-w-[480px] max-h-[72vh] overflow-y-auto custom-scrollbar glass-card-violet rounded-b-none p-4 relative"
+            className="w-full max-w-[480px] max-h-[72vh] overflow-y-auto custom-scrollbar glass-card-violet rounded-2xl border border-violet-500/30 shadow-[0_0_30px_rgba(139,92,246,0.15)] p-4 relative"
             onClick={e => e.stopPropagation()}
           >
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent" />
