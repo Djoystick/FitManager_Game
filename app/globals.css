@@ -366,3 +366,43 @@ body {
   border-radius: 1.5rem 1.5rem 0 0;
   box-shadow: 0 -8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
 }
+
+/* ── Premium Avatar Border Animations ─────────────────────────────────────── */
+
+/* Neon Cyan Pulse */
+@keyframes border-neon-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(0,240,255,0.4), 0 0 16px rgba(0,240,255,0.2); border-color: rgba(0,240,255,0.5); }
+  50% { box-shadow: 0 0 16px rgba(0,240,255,0.7), 0 0 32px rgba(0,240,255,0.4); border-color: rgba(0,240,255,0.8); }
+}
+.border-neon-cyan {
+  animation: border-neon-pulse 2s ease-in-out infinite;
+}
+
+/* Gold Glow */
+@keyframes border-gold-glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(245,158,11,0.4), 0 0 20px rgba(245,158,11,0.2); border-color: rgba(245,158,11,0.5); }
+  50% { box-shadow: 0 0 20px rgba(245,158,11,0.6), 0 0 40px rgba(245,158,11,0.3); border-color: rgba(245,158,11,0.8); }
+}
+.border-gold-glow {
+  animation: border-gold-glow 2.5s ease-in-out infinite;
+}
+
+/* Fire/Magma */
+@keyframes border-fire {
+  0% { box-shadow: 0 0 10px rgba(239,68,68,0.4), 0 0 20px rgba(245,158,11,0.3); border-color: rgba(239,68,68,0.5); }
+  33% { box-shadow: 0 0 16px rgba(245,158,11,0.5), 0 0 28px rgba(239,68,68,0.4); border-color: rgba(245,158,11,0.6); }
+  66% { box-shadow: 0 0 20px rgba(239,68,68,0.6), 0 0 36px rgba(245,158,11,0.3); border-color: rgba(239,68,68,0.7); }
+  100% { box-shadow: 0 0 10px rgba(239,68,68,0.4), 0 0 20px rgba(245,158,11,0.3); border-color: rgba(239,68,68,0.5); }
+}
+.border-fire {
+  animation: border-fire 3s ease-in-out infinite;
+}
+
+/* Fuchsia Elite */
+@keyframes border-fuchsia-glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(217,70,239,0.4), 0 0 20px rgba(217,70,239,0.2); border-color: rgba(217,70,239,0.5); }
+  50% { box-shadow: 0 0 20px rgba(217,70,239,0.6), 0 0 40px rgba(217,70,239,0.3); border-color: rgba(217,70,239,0.8); }
+}
+.border-fuchsia-glow {
+  animation: border-fuchsia-glow 2s ease-in-out infinite;
+}

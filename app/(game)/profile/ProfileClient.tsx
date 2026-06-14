@@ -511,7 +511,7 @@ export default function ProfileClient({
 
             {/* Admin link */}
             {isAdmin && (
-              <Link href="/admin/logs" className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl mt-2
+              <Link href="/admin" className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl mt-2
                 bg-red-900/15 border border-red-500/25 text-red-400 uppercase tracking-widest text-[9px] font-bold hover:bg-red-900/30 transition-all">
                 <Shield size={11} /> {t.mgr_dev_console || 'Developer Console'}
               </Link>

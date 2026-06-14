@@ -1065,7 +1065,7 @@ export default function LineupPage() {
         </div>
 
       {/* ═══════════════════════════════════════════════════════════════
-          BENCH DRAWER TRIGGER BAR (always visible in lineup mode)
+          BENCH — FUT-style Horizontal Scroll (inline, no modal)
       ═══════════════════════════════════════════════════════════════ */}
       {viewMode === 'lineup' && (
         <div className="shrink-0 z-20 px-3 pb-1">
@@ -1079,116 +1079,55 @@ export default function LineupPage() {
             </div>
           )}
 
-          {/* Bench toggle button */}
-          <button
-            id="bench-drawer-handle"
-            onClick={() => setIsBenchOpen(prev => !prev)}
-            className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 active:scale-98"
-            style={{
-              background: 'rgba(147,51,234,0.08)',
-              border: '1px solid rgba(147,51,234,0.2)',
-              boxShadow: isBenchOpen ? '0 0 16px rgba(147,51,234,0.25)' : 'none',
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-              <span className="text-[9px] font-black uppercase tracking-widest text-violet-300">Скамейка & Резерв</span>
-              <span className="text-[8px] text-gray-600 font-mono">
-                ({[11,12,13,14,15].filter(idx => getPlayerInSlot(idx)).length}/5 bench)
-              </span>
+          {/* Bench label */}
+          <div className="flex items-center gap-2 mb-1.5 px-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-violet-300">Bench</span>
+            <span className="text-[8px] text-gray-600 font-mono">
+              ({[11,12,13,14,15].filter(idx => getPlayerInSlot(idx)).length}/5)
+            </span>
+          </div>
+
+          {/* FUT-style horizontal scroll bench */}
+          <div className="overflow-x-auto scrollbar-none pb-2 -mx-1 px-1">
+            <div className="flex gap-2 w-max">
+              {/* Bench slots 11-15 */}
+              {[11, 12, 13, 14, 15].map(idx => (
+                <div key={idx} className="shrink-0">{renderPitchMarker(idx)}</div>
+              ))}
+              {/* Separator */}
+              {activePlayers.filter(p => p.lineup_status === 'reserve').length > 0 && (
+                <div className="w-px h-16 bg-gradient-to-b from-transparent via-white/10 to-transparent self-center mx-1" />
+              )}
+              {/* Reserve players */}
+              {activePlayers.filter(p => p.lineup_status === 'reserve').map(p => (
+                <div key={p.id} className="shrink-0 opacity-60 hover:opacity-100 transition-opacity">
+                  {renderReservePlayer(p)}
+                </div>
+              ))}
             </div>
-            <motion.div
-              animate={{ rotate: isBenchOpen ? 180 : 0 }}
-              transition={{ duration: 0.2 }}
-              className="text-violet-400"
-            >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M2 4L6 8L10 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </motion.div>
-          </button>
+          </div>
+
+          {/* Heal button */}
+          {players.filter(p => p.stamina < 100 || p.is_injured).length > 0 && (
+            <button
+              onClick={handleMassHeal}
+              disabled={isHealingAll || isSubmitting || isSwapping}
+              className={`w-full py-2 rounded-xl font-bold text-[9px] uppercase tracking-wider flex justify-center items-center gap-1.5 transition-all duration-300 border backdrop-blur-md ${
+                isHealingAll || isSubmitting || isSwapping
+                  ? 'bg-white/5 text-gray-600 border-white/5 cursor-not-allowed'
+                  : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20 active:scale-95'
+              }`}
+              style={!isHealingAll && !isSubmitting && !isSwapping ? { boxShadow: '0 0 12px rgba(52,211,153,0.1)' } : {}}>
+              <span>⚡</span>
+              <span>Heal ({players.filter(p => p.stamina < 100 || p.is_injured).length}) · {players.reduce((sum, p) => sum + Math.max(0, 100 - (p.stamina ?? 100)), 0)} SP</span>
+            </button>
+          )}
         </div>
       )}
 
       {/* Bottom tab bar spacer */}
       <div className="h-16 flex-shrink-0" />
-
-      {/* ═══════════════════════════════════════════════════════════════
-          BENCH BOTTOM SHEET DRAWER
-      ═══════════════════════════════════════════════════════════════ */}
-      <AnimatePresence>
-        {isBenchOpen && viewMode === 'lineup' && (
-          <>
-            <motion.div
-              key="bench-overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[55] bg-black/50 backdrop-blur-sm"
-              onClick={() => setIsBenchOpen(false)}
-            />
-            <motion.div
-              key="bench-drawer"
-              initial={{ y: '100%', x: '-50%' }}
-              animate={{ y: 0, x: '-50%' }}
-              exit={{ y: '100%', x: '-50%' }}
-              transition={{ type: 'spring', stiffness: 350, damping: 35 }}
-              className="fixed bottom-0 left-1/2 w-full max-w-[480px] z-[60] pb-20 rounded-t-3xl border-t border-cyan-500/30 shadow-[0_-10px_40px_rgba(0,240,255,0.15)]"
-              style={{ background: 'rgba(5,6,15,0.95)', backdropFilter: 'blur(20px)' }}
-            >
-              {/* High-tech Drag Handle */}
-              <div className="flex justify-center pt-3 pb-4">
-                <div className="w-12 h-1.5 rounded-full bg-cyan-500/40 shadow-[0_0_10px_rgba(0,240,255,0.5)]" />
-              </div>
-
-              <div className="px-4 pb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-sm bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(0,240,255,0.8)]" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-cyan-300">Скамейка</span>
-                </div>
-                {activePlayers.filter(p => p.lineup_status === 'reserve').length > 0 && (
-                  <span className="text-[8px] text-gray-500 uppercase tracking-widest border border-gray-700/50 px-2 py-0.5 rounded-full">Резерв ➔</span>
-                )}
-              </div>
-
-              {/* Players row */}
-              <div className="overflow-x-auto scrollbar-none px-4 pb-3">
-                <div className="flex gap-2 w-max">
-                  {[11, 12, 13, 14, 15].map(idx => (
-                    <div key={idx} className="shrink-0">{renderPitchMarker(idx)}</div>
-                  ))}
-                  {activePlayers.filter(p => p.lineup_status === 'reserve').length > 0 && (
-                    <div className="w-px h-16 bg-gradient-to-b from-transparent via-white/10 to-transparent self-center mx-1" />
-                  )}
-                  {activePlayers.filter(p => p.lineup_status === 'reserve').map(p => (
-                    <div key={p.id} className="shrink-0 opacity-60 hover:opacity-100 transition-opacity">
-                      {renderReservePlayer(p)}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Heal button */}
-              {players.filter(p => p.stamina < 100 || p.is_injured).length > 0 && (
-                <div className="px-4 pb-2">
-                  <button
-                    onClick={handleMassHeal}
-                    disabled={isHealingAll || isSubmitting || isSwapping}
-                    className={`w-full py-2.5 rounded-xl font-bold text-[9px] uppercase tracking-wider flex justify-center items-center gap-1.5 transition-all border ${
-                      isHealingAll || isSubmitting || isSwapping
-                        ? 'bg-white/5 text-gray-600 border-white/5 cursor-not-allowed'
-                        : 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30 hover:bg-cyan-500/20 shadow-[0_0_10px_rgba(0,240,255,0.15)]'
-                    }`}
-                  >
-                    <span>⚡</span>
-                    <span>Heal All ({players.filter(p => p.stamina < 100 || p.is_injured).length}) · {players.reduce((sum, p) => sum + Math.max(0, 100 - (p.stamina ?? 100)), 0)} SP</span>
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
 
       {/* FLOATING HUD was removed to streamline lineup swaps */}
 

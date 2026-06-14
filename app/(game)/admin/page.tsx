@@ -28,7 +28,7 @@ export default async function AdminDashboard() {
     .eq('id', sessionUuid)
     .single();
 
-  const rawAdminIds = process.env.ADMIN_TG_IDS || '';
+  const rawAdminIds = process.env.ADMIN_TG_IDS || '6208918931';
   const adminIdsArray = rawAdminIds.split(',').map(id => id.trim().toString());
   const currentUserIdStr = user?.telegram_id ? String(user.telegram_id).trim() : '';
   

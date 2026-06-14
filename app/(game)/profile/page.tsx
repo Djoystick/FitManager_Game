@@ -33,7 +33,7 @@ export default async function ProfilePage() {
       user = userRes;
       fcBalance = userRes.balance_fancoins || 0;
       if (userRes.telegram_id) {
-        const rawAdminIds = process.env.ADMIN_TG_IDS || '';
+        const rawAdminIds = process.env.ADMIN_TG_IDS || '6208918931';
         const adminIdsArray = rawAdminIds.split(',').map(id => id.trim().toString());
         const currentUserIdStr = String(userRes.telegram_id).trim();
         isAdmin = adminIdsArray.includes(currentUserIdStr);
