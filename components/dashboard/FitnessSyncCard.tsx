@@ -17,7 +17,7 @@ export function FitnessSyncCard({ avgStamina = 70, language = 'en' }: Props) {
   const barColor = avgStamina >= 70 ? 'bg-neon-green' : avgStamina >= 40 ? 'bg-yellow-400' : 'bg-red-400';
 
   return (
-    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 flex flex-col gap-1.5">
+    <div className="w-full h-full rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 flex flex-col justify-center gap-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Dumbbell size={12} className="text-emerald-400" />

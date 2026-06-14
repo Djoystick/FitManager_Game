@@ -42,7 +42,7 @@ export function MiniStandingsCard({ standings, userTeamId, language = 'en' }: Pr
   }
 
   return (
-    <Link href="/league" className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-3 flex flex-col gap-1.5 hover:bg-violet-500/10 transition-colors">
+    <Link href="/league" className="h-full w-full rounded-xl border border-violet-500/20 bg-violet-500/5 p-3 flex flex-col justify-between gap-1.5 hover:bg-violet-500/10 transition-colors">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Trophy size={12} className="text-violet-400" />

@@ -17,7 +17,7 @@ export function UnseenMatchesCard({ count, onClick, language = 'en' }: Props) {
   return (
     <button
       onClick={onClick}
-      className={`relative overflow-hidden rounded-xl border p-3 flex flex-col items-center justify-center gap-1 transition-all duration-200 active:scale-95 ${
+      className={`relative w-full h-full overflow-hidden rounded-xl border p-3 flex flex-col items-center justify-center gap-1 transition-all duration-200 active:scale-95 ${
         count > 0
           ? 'border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/15'
           : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.04]'
