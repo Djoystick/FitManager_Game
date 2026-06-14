@@ -30,15 +30,7 @@ import { OpponentScoutModal } from '@/components/OpponentScoutModal';
 import { LandingPage } from '@/components/LandingPage';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HOME DASHBOARD — Cyberpunk Command Center
-// Layout:
-//   1. Franchise Card       — team name + date + OVR bar
-//   2. Single Countdown     — Transfer Window OR Next Match (never both)
-//   3. Calendar Card        — next 3 upcoming matches (expanded when countdown absent)
-//   4. Financial Row        — Bank Balance + Yearly Profit
-//   5. Action Grid          — Standings Modal · Social Feed Modal · Fitness Sync Modal
-//   6. Match History        — horizontal snap carousel (recent results, expanded)
-//   7. PROCEED TO MATCH     — large neon CTA button
+// HOME DASHBOARD — Premium Dark Glassmorphism
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -75,16 +67,12 @@ function ModalBackdrop({ onClose, children }: { onClose: () => void; children: R
         exit={{ opacity: 0 }}
         onClick={onClose}
       >
-        {/* Backdrop */}
-        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-        {/* Sheet */}
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" />
         <motion.div
-          className="relative w-full max-w-[480px] rounded-t-3xl overflow-hidden z-10"
+          className="relative w-full max-w-[480px] rounded-t-3xl overflow-hidden z-10 border border-white/10"
           style={{
-            background: 'linear-gradient(180deg, rgba(10,11,25,0.98) 0%, rgba(5,6,15,1) 100%)',
-            border: '1px solid rgba(0,240,255,0.15)',
-            borderBottom: 'none',
-            boxShadow: '0 -20px 60px rgba(0,0,0,0.8), 0 -2px 0 rgba(0,240,255,0.2)',
+            background: 'linear-gradient(180deg, rgba(15,15,30,0.98) 0%, rgba(8,8,20,1) 100%)',
+            boxShadow: '0 -20px 80px rgba(0,240,255,0.08), 0 -2px 0 rgba(0,240,255,0.2)',
           }}
           initial={{ y: '100%' }}
           animate={{ y: 0 }}
@@ -92,7 +80,6 @@ function ModalBackdrop({ onClose, children }: { onClose: () => void; children: R
           transition={{ type: 'spring', stiffness: 380, damping: 38 }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Top neon line */}
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent" />
           {children}
         </motion.div>
@@ -126,12 +113,10 @@ function StandingsModal({
 
   return (
     <ModalBackdrop onClose={onClose}>
-      {/* Handle */}
       <div className="flex justify-center pt-3 pb-1">
         <div className="w-10 h-1 rounded-full bg-white/20" />
       </div>
 
-      {/* Header */}
       <div className="flex items-center justify-between px-5 pb-3 pt-2">
         <div className="flex items-center gap-2">
           <Trophy size={16} className="text-violet-400" />
@@ -142,14 +127,13 @@ function StandingsModal({
         <button
           onClick={onClose}
           className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center
-                     hover:bg-white/10 transition-colors active:scale-90"
+                     hover:bg-white/10 transition-all duration-300 active:scale-90"
         >
           <X size={13} className="text-gray-400" />
         </button>
       </div>
 
       <div className="px-5 pb-24 flex flex-col gap-3">
-        {/* Top 3 */}
         {standings.length === 0 ? (
           <div className="text-center py-8 text-gray-600 text-sm font-bold uppercase tracking-wider">
             {t.standings_empty || 'No standings data yet'}
@@ -159,15 +143,15 @@ function StandingsModal({
             {top3.map((entry: any, i: number) => (
               <motion.div
                 key={entry.team_id || i}
-                className={`flex items-center gap-3 p-3 rounded-xl border
+                className={`flex items-center gap-3 p-3 rounded-2xl border backdrop-blur-md transition-all duration-300 active:scale-[0.98]
                             ${entry.team_id === userTeamId
-                              ? 'bg-cyan-500/10 border-cyan-500/30'
-                              : 'bg-white/[0.03] border-white/[0.06]'}`}
+                              ? 'bg-cyan-500/10 border-cyan-500/30 shadow-[0_0_20px_rgba(0,240,255,0.1)]'
+                              : 'bg-white/5 border-white/10 hover:bg-white/8'}`}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.07 }}
               >
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black border ${medalColors[i]}`}>
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black border ${medalColors[i]}`}>
                   {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -177,7 +161,7 @@ function StandingsModal({
                       <span className="ml-1.5 text-[8px] text-cyan-400 font-bold bg-cyan-500/15 px-1.5 py-0.5 rounded-full">{t.standings_you || 'YOU'}</span>
                     )}
                   </div>
-                  <div className="text-[9px] text-gray-600 font-mono mt-0.5">
+                  <div className="text-[9px] text-gray-500 font-mono mt-0.5">
                     {entry.wins ?? 0}{t.win_short || 'W'} · {entry.draws ?? 0}{t.draw_short || 'D'} · {entry.losses ?? 0}{t.loss_short || 'L'}
                   </div>
                 </div>
@@ -188,21 +172,20 @@ function StandingsModal({
               </motion.div>
             ))}
 
-            {/* User position if outside top 3 */}
             {userEntry && userRank && userRank > 3 && (
               <>
                 <div className="flex items-center gap-2 my-1">
-                  <div className="flex-1 h-px bg-white/5" />
-                  <span className="text-[8px] text-gray-700 uppercase tracking-wider font-bold">{t.standings_your_position || 'Your Position'}</span>
-                  <div className="flex-1 h-px bg-white/5" />
+                  <div className="flex-1 h-px bg-white/10" />
+                  <span className="text-[8px] text-gray-600 uppercase tracking-wider font-bold">{t.standings_your_position || 'Your Position'}</span>
+                  <div className="flex-1 h-px bg-white/10" />
                 </div>
                 <motion.div
-                  className="flex items-center gap-3 p-3 rounded-xl border bg-cyan-500/10 border-cyan-500/30"
+                  className="flex items-center gap-3 p-3 rounded-2xl border bg-cyan-500/10 border-cyan-500/30 backdrop-blur-md"
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.25 }}
                 >
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black bg-cyan-500/15 border border-cyan-500/40 text-cyan-300">
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black bg-cyan-500/15 border border-cyan-500/40 text-cyan-300">
                     #{userRank}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -210,7 +193,7 @@ function StandingsModal({
                       {userEntry.team_name || (t.standings_your_team || 'Your Team')}
                       <span className="ml-1.5 text-[8px] text-cyan-400 font-bold bg-cyan-500/15 px-1.5 py-0.5 rounded-full">{t.standings_you || 'YOU'}</span>
                     </div>
-                    <div className="text-[9px] text-gray-600 font-mono mt-0.5">
+                    <div className="text-[9px] text-gray-500 font-mono mt-0.5">
                       {userEntry.wins ?? 0}{t.win_short || 'W'} · {userEntry.draws ?? 0}{t.draw_short || 'D'} · {userEntry.losses ?? 0}{t.loss_short || 'L'}
                     </div>
                   </div>
@@ -222,14 +205,13 @@ function StandingsModal({
               </>
             )}
 
-            {/* Full standings link */}
             <Link
               href="/league"
               onClick={onClose}
-              className="flex items-center justify-center gap-1.5 mt-1 py-2.5 rounded-xl
-                         border border-violet-500/25 bg-violet-500/10
+              className="flex items-center justify-center gap-1.5 mt-1 py-2.5 rounded-2xl
+                         border border-violet-500/25 bg-violet-500/10 backdrop-blur-md
                          text-[10px] font-black uppercase tracking-widest text-violet-300
-                         hover:bg-violet-500/20 transition-colors active:scale-95"
+                         hover:bg-violet-500/20 transition-all duration-300 active:scale-95"
             >
               {t.standings_full || 'Full Standings'} <ChevronRight size={11} />
             </Link>
@@ -239,9 +221,6 @@ function StandingsModal({
     </ModalBackdrop>
   );
 }
-
-
-
 
 function MatchCard({
   match,
@@ -258,17 +237,18 @@ function MatchCard({
   const result = myScore > theirScore ? 'W' : myScore < theirScore ? 'L' : 'D';
 
   const resultStyle = {
-    W: { chip: 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300', score: 'text-emerald-300', bar: 'bg-emerald-400', glow: 'shadow-[0_0_16px_rgba(52,211,153,0.15)]' },
-    L: { chip: 'bg-red-500/20 border-red-400/40 text-red-300',            score: 'text-red-300',     bar: 'bg-red-400',     glow: 'shadow-[0_0_16px_rgba(239,68,68,0.12)]'  },
-    D: { chip: 'bg-gray-500/20 border-gray-400/30 text-gray-400',         score: 'text-gray-300',    bar: 'bg-gray-600',    glow: '' },
+    W: { chip: 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300', score: 'text-emerald-300', bar: 'bg-emerald-400', glow: 'shadow-[0_0_20px_rgba(52,211,153,0.15)]' },
+    L: { chip: 'bg-red-500/20 border-red-400/40 text-red-300', score: 'text-red-300', bar: 'bg-red-400', glow: 'shadow-[0_0_20px_rgba(239,68,68,0.12)]' },
+    D: { chip: 'bg-gray-500/20 border-gray-400/30 text-gray-400', score: 'text-gray-300', bar: 'bg-gray-600', glow: '' },
   }[result];
 
   return (
     <div
       onClick={onClick}
       className={`snap-card w-[118px] flex-shrink-0 rounded-2xl border cursor-pointer
-                  transition-all duration-200 active:scale-95 hover:scale-[1.02]
-                  glass-card overflow-hidden ${resultStyle.glow}`}
+                  transition-all duration-300 active:scale-95 hover:scale-[1.02]
+                  backdrop-blur-md overflow-hidden ${resultStyle.glow}
+                  bg-white/5 border-white/10 hover:bg-white/8`}
     >
       <div className={`h-0.5 w-full ${resultStyle.bar}`} />
       <div className="p-3 flex flex-col gap-1.5">
@@ -285,7 +265,6 @@ function MatchCard({
   );
 }
 
-// Calendar row item for an upcoming match
 function CalendarMatchRow({
   match,
   teamName,
@@ -305,18 +284,16 @@ function CalendarMatchRow({
 
   return (
     <motion.div
-      className="flex items-center gap-3 py-2 px-3 border-b border-white/[0.04] last:border-b-0"
+      className="flex items-center gap-3 py-2.5 px-3 border-b border-white/[0.06] last:border-b-0"
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.06 }}
     >
-      {/* Round badge */}
-      <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center
+      <div className="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center
                       bg-violet-500/10 border border-violet-500/25">
         <span className="text-[9px] font-black text-violet-300 font-orbitron">{t.match_round?.replace('{round}', String(match.round_number || '?')) || `R${match.round_number || '?'}`}</span>
       </div>
 
-      {/* Opponent info */}
       <div className="flex-1 min-w-0">
         <div className="text-[11px] font-black text-white uppercase tracking-wide truncate">
           {opponentName}
@@ -332,13 +309,12 @@ function CalendarMatchRow({
         </div>
       </div>
 
-      {/* Scout button */}
       <button
         onClick={onScout}
-        className="flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg
+        className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-xl
                    bg-cyan-500/10 border border-cyan-500/25 text-cyan-400
                    text-[8px] font-bold uppercase tracking-wider
-                   hover:bg-cyan-500/20 transition-colors active:scale-90"
+                   hover:bg-cyan-500/20 transition-all duration-300 active:scale-90"
       >
         <Shield size={9} />
         {t.scout_btn || 'Scout'}
@@ -347,13 +323,10 @@ function CalendarMatchRow({
   );
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
 function NextHourCountdown() {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
-    // Update every second without triggering full page re-render
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -368,9 +341,9 @@ function NextHourCountdown() {
 
   return (
     <>
-      <div className="w-4/5 h-1 bg-black/40 rounded-full overflow-hidden mt-1 relative z-10 border border-white/5">
+      <div className="w-4/5 h-1.5 bg-white/5 rounded-full overflow-hidden mt-1 relative z-10 border border-white/5">
         <div 
-          className="h-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)] transition-all duration-1000 ease-linear" 
+          className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.6)] transition-all duration-1000 ease-linear rounded-full" 
           style={{ width: `${progressPct}%` }}
         />
       </div>
@@ -436,7 +409,6 @@ export default function DashboardPage() {
         fetch(`/api/user/me?userId=${id}`),
       ]);
 
-      // Financial data from user row
       if (userRes.ok) {
         const userJson = await userRes.json();
         if (userJson.user) {
@@ -446,7 +418,6 @@ export default function DashboardPage() {
         }
       }
 
-      // Team + squad
       if (teamRes.ok) {
         const teamJson = await teamRes.json();
         if (!teamJson.team) {
@@ -542,7 +513,6 @@ export default function DashboardPage() {
     return () => window.removeEventListener('startPageTour', handleStartTour);
   }, [hasSeenTour, areAllToursSkipped, startTour, isDataLoading]);
 
-  // Balance event listener
   useEffect(() => {
     const refresh = () => {
       if (userId) {
@@ -561,7 +531,6 @@ export default function DashboardPage() {
     return () => window.removeEventListener('balanceUpdated', refresh);
   }, [userId]);
 
-  // Lobby countdown timer
   useEffect(() => {
     if (lobbyTimeLeft === null || lobbyTimeLeft <= 0) return;
     const timer = setInterval(() => {
@@ -583,7 +552,6 @@ export default function DashboardPage() {
     }
   }, [hasTeam, userId]);
 
-  // Open standings modal — refresh standings data
   const handleOpenStandings = useCallback(async () => {
     setShowStandingsModal(true);
     if (standingsData.length === 0 && userId) {
@@ -612,8 +580,6 @@ export default function DashboardPage() {
     return <CyberLoader fullScreen text={t.loading} />;
   }
 
-  // ── Sub-components ────────────────────────────────────────────────────────────
-
   // ── Computed ─────────────────────────────────────────────────────────────
   const teamOvr     = players.length ? Math.round(players.reduce((s, p) => s + (p.ovr || 0), 0) / players.length) : 0;
   const avgStamina  = players.length ? Math.round(players.reduce((s, p) => s + (p.stamina || 0), 0) / players.length) : 0;
@@ -627,9 +593,6 @@ export default function DashboardPage() {
     }
   };
 
-
-
-  // Next upcoming match (first one)
   const nextMatch = upcomingMatches[0] ?? null;
   const isNextHome = nextMatch
     ? (nextMatch.home_team?.name === teamName || nextMatch.home_team_name === teamName)
@@ -647,7 +610,6 @@ export default function DashboardPage() {
     : null;
   const nextRound = nextMatch?.round_number ?? null;
 
-  // Financial formatting
   const formatProfit = (n: number) => {
     const abs = Math.abs(n);
     const str = abs >= 1000 ? `${(abs / 1000).toFixed(1)}k` : `${abs}`;
@@ -655,36 +617,40 @@ export default function DashboardPage() {
   };
   const profit = formatProfit(yearlyProfit);
 
-  // Show Offseason Card when league is over or waiting for a new one to start
   const isOffseason = ['filling', 'completed', 'finished', 'finishing'].includes(instanceStatus ?? '');
+
+  // OVR color coding
+  const ovrColor = teamOvr >= 80 ? 'from-yellow-400 to-amber-500' : teamOvr >= 70 ? 'from-gray-300 to-gray-400' : 'from-cyan-400 to-cyan-500';
+  const ovrText = teamOvr >= 80 ? 'text-yellow-400' : teamOvr >= 70 ? 'text-gray-300' : 'text-cyan-300';
+
   return (
     <div
       className="h-full flex flex-col overflow-hidden text-white relative"
-      style={{ background: '#05060f' }}
+      style={{ background: '#0a0a0f' }}
     >
-      {/* ── Background decorations ─────────────────────────────────────────── */}
-      <div className="fixed inset-0 pointer-events-none bg-grid-cyan opacity-100" />
-      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_40%_at_50%_0%,rgba(147,51,234,0.12)_0%,transparent_100%)]" />
-      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_60%_30%_at_50%_100%,rgba(0,240,255,0.06)_0%,transparent_100%)]" />
-
-
+      {/* ── Deep Background with Radial Glows ──────────────────────────────── */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_20%_0%,rgba(147,51,234,0.15)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_100%,rgba(0,240,255,0.1)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_50%_50%,rgba(147,51,234,0.05)_0%,transparent_70%)]" />
+      </div>
 
       {/* ── Lobby waiting overlay ──────────────────────────────────────────── */}
       <AnimatePresence>
         {lobbyTimeLeft !== null && lobbyTimeLeft > 0 && (
           <motion.div
-            className="fixed inset-0 z-[100] bg-[#05060f]/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center"
+            className="fixed inset-0 z-[100] bg-[#0a0a0f]/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           >
-            <div className="w-32 h-32 rounded-full border-2 border-violet-500/40 mb-6
+            <div className="w-36 h-36 rounded-full border-2 border-violet-500/40 mb-6
                             flex items-center justify-center
-                            shadow-[0_0_60px_rgba(147,51,234,0.4)] violet-glow-pulse"
-                 style={{ background: 'rgba(147,51,234,0.08)' }}>
-              <span className="text-4xl text-violet-300 font-orbitron font-black">{lobbyTimeLeft}s</span>
+                            shadow-[0_0_80px_rgba(147,51,234,0.5)]"
+                 style={{ background: 'radial-gradient(circle, rgba(147,51,234,0.15) 0%, rgba(147,51,234,0.05) 100%)' }}>
+              <span className="text-5xl text-violet-300 font-orbitron font-black">{lobbyTimeLeft}s</span>
             </div>
             <h2 className="text-2xl font-black text-white uppercase tracking-widest font-orbitron mb-2">{t.waiting_for_teams || 'WAITING FOR TEAMS'}</h2>
             <p className="text-violet-400 text-xl font-bold mb-8 font-orbitron tracking-widest">{t.lobby_teams_count?.replace('{count}', String(lobbyTeamCount)) || `${lobbyTeamCount} / 14`}</p>
-            <div className="glass-card p-4 rounded-xl max-w-sm">
+            <div className="p-4 rounded-2xl max-w-sm border border-white/10 bg-white/5 backdrop-blur-md">
               <p className="text-gray-300 text-sm">{t.league_auto_start || 'The league will start automatically.'}</p>
             </div>
           </motion.div>
@@ -695,86 +661,102 @@ export default function DashboardPage() {
       <UnseenMatchesModal matches={unseenMatches} onAcknowledge={handleAcknowledgeUnseen} />
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          SINGLE-SCREEN DASHBOARD — 4 Rows + Spacer (100dvh, no scroll)
+          MAIN DASHBOARD
       ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="flex-1 flex flex-col min-h-0 px-3 py-2 gap-2 overflow-hidden relative z-10">
+      <div className="flex-1 flex flex-col min-h-0 px-3 py-2 gap-2.5 overflow-hidden relative z-10">
 
-        {/* ── ROW 1: Franchise Card (compact) ──────────────────────────────── */}
+        {/* ── ROW 1: Team Hero Card ──────────────────────────────────────── */}
         <div className="flex-shrink-0">
           <motion.div
-            className="glass-card-violet relative overflow-hidden p-2.5 rounded-xl"
-            initial={{ opacity: 0, y: -10 }}
+            className="relative overflow-hidden p-3 rounded-2xl border border-white/10 backdrop-blur-xl"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)',
+            }}
+            initial={{ opacity: 0, y: -15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
           >
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent" />
-            <div className="flex items-center gap-2.5">
-              {/* Team logo — compact 36×36 */}
+            {/* Glass highlight */}
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+            
+            <div className="flex items-center gap-3">
+              {/* Team logo — glowing hex */}
               <div className="flex-shrink-0">
                 <div
-                  className="w-9 h-9 hex-clip flex items-center justify-center overflow-hidden violet-glow-pulse"
-                  style={{ background: 'linear-gradient(135deg,rgba(147,51,234,0.3),rgba(0,240,255,0.2))' }}
+                  className="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(147,51,234,0.3), rgba(0,240,255,0.2))',
+                    boxShadow: '0 0 30px rgba(147,51,234,0.3)',
+                  }}
                 >
                   {teamLogoUrl ? (
                     <img src={teamLogoUrl} alt={teamName || 'Team'} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-sm font-black font-orbitron text-white">
+                    <span className="text-base font-black font-orbitron text-white">
                       {teamName?.slice(0, 2).toUpperCase() || 'FC'}
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Name + stats — compact */}
+              {/* Name + stats */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <h1 className="text-xs font-black font-orbitron text-white truncate uppercase tracking-wide">
+                <div className="flex items-center gap-2 mb-1">
+                  <h1 className="text-sm font-black font-orbitron text-white truncate uppercase tracking-wide">
                     {teamName}
                   </h1>
                   {leagueTier && (
-                    <span className="flex-shrink-0 text-[7px] font-bold bg-violet-500/20 border border-violet-500/40
-                                     text-violet-300 px-1 py-0.5 rounded-full uppercase tracking-wider">
+                    <span className="flex-shrink-0 text-[8px] font-bold bg-violet-500/20 border border-violet-500/40
+                                     text-violet-300 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
                       T{leagueTier}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-0.5">
-                    <span className="text-[7px] text-gray-600 uppercase tracking-wider">OVR</span>
-                    <span className="text-xs font-black text-cyan-300 font-orbitron neon-text-cyan">{teamOvr}</span>
+                <div className="flex items-center gap-3">
+                  {/* OVR — massive and glowing */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-[8px] text-gray-500 uppercase tracking-wider font-bold">OVR</span>
+                    <span className={`text-lg font-black font-orbitron ${ovrText}`}
+                          style={{ textShadow: `0 0 20px ${teamOvr >= 80 ? 'rgba(250,204,21,0.4)' : teamOvr >= 70 ? 'rgba(209,213,219,0.3)' : 'rgba(0,240,255,0.4)'}` }}>
+                      {teamOvr}
+                    </span>
                   </div>
-                  <div className="w-px h-2.5 bg-white/10" />
-                  <div className="flex items-center gap-0.5">
-                    <span className="text-[7px] text-gray-600 uppercase tracking-wider">STA</span>
-                    <span className={`text-xs font-black font-orbitron ${avgStamina < 40 ? 'text-red-400' : 'text-emerald-400'}`}>
+                  <div className="w-px h-4 bg-white/10" />
+                  {/* Stamina */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-[8px] text-gray-500 uppercase tracking-wider font-bold">STA</span>
+                    <span className={`text-sm font-black font-orbitron ${avgStamina < 40 ? 'text-red-400' : 'text-emerald-400'}`}
+                          style={{ textShadow: avgStamina >= 40 ? '0 0 12px rgba(52,211,153,0.4)' : 'none' }}>
                       {avgStamina}%
                     </span>
                   </div>
-                  <div className="w-px h-2.5 bg-white/10" />
-                  <div className="flex items-center gap-0.5">
-                    <span className="text-[7px] text-gray-600 uppercase tracking-wider">LVL</span>
-                    <span className="text-xs font-black text-violet-300 font-orbitron">{managerLevel}</span>
+                  <div className="w-px h-4 bg-white/10" />
+                  {/* Level */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-[8px] text-gray-500 uppercase tracking-wider font-bold">LVL</span>
+                    <span className="text-sm font-black text-violet-300 font-orbitron">{managerLevel}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Profile link — compact 32×32 */}
+              {/* Profile link */}
               <Link href="/profile"
-                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
-                           border border-violet-500/50 bg-violet-500/15
-                           hover:bg-violet-500/30 transition-all duration-200 active:scale-90">
-                <User size={14} className="text-violet-200" />
+                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
+                           border border-white/10 bg-white/5
+                           hover:bg-white/10 transition-all duration-300 active:scale-90">
+                <User size={16} className="text-gray-400" />
               </Link>
             </div>
           </motion.div>
         </div>
 
-        {/* ── ROW 2: Core Focus — Next Match Info Card or Offseason ────────── */}
+        {/* ── ROW 2: Core Focus — Next Match or Offseason ─────────────────── */}
         <div className="flex-shrink-0">
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: 0.05 }}
+            transition={{ duration: 0.4, delay: 0.05 }}
           >
             {isOffseason ? (
               <OffseasonCard
@@ -802,49 +784,80 @@ export default function DashboardPage() {
           </motion.div>
         </div>
 
-        {/* ── ROW 2.5: Daily Quests ────────────────────────────────────────── */}
-        <div className="flex-shrink-0 mt-2">
-          {userId && <DailyQuestsWidget userId={userId} language={language} />}
+        {/* ── ROW 3: Daily Quests ─────────────────────────────────────────── */}
+        <div className="flex-shrink-0">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+          >
+            {userId && <DailyQuestsWidget userId={userId} language={language} />}
+          </motion.div>
         </div>
 
-        {/* ── ROW 3: CTA Hub — Unseen Matches + Fitness ───────────────────── */}
+        {/* ── ROW 4: CTA Hub — Unseen Matches + Fitness ──────────────────── */}
         <div className="flex-shrink-0">
-          <div className="grid grid-cols-2 gap-2">
-            <UnseenMatchesCard
-              count={unseenMatches.length}
-              onClick={() => unseenMatches.length > 0 && handleAcknowledgeUnseen(unseenMatches.map(m => m.id))}
-              language={language}
-            />
-            <FitnessSyncCard avgStamina={avgStamina} language={language} />
+          <div className="grid grid-cols-2 gap-2.5">
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, delay: 0.15 }}
+            >
+              <UnseenMatchesCard
+                count={unseenMatches.length}
+                onClick={() => unseenMatches.length > 0 && handleAcknowledgeUnseen(unseenMatches.map(m => m.id))}
+                language={language}
+              />
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, delay: 0.15 }}
+            >
+              <FitnessSyncCard avgStamina={avgStamina} language={language} />
+            </motion.div>
           </div>
         </div>
 
-        {/* ── ROW 4: Info Snippets — Mini Standings + Team Summary ─────────── */}
+        {/* ── ROW 5: Info Snippets — Mini Standings + Team Summary ────────── */}
         <div className="flex-shrink-0">
-          <div className="grid grid-cols-2 gap-2">
-            <MiniStandingsCard
-              standings={standingsData}
-              userTeamId={teamId}
-              language={language}
-            />
-            <TeamSummaryCard
-              teamOvr={teamOvr}
-              tactic="Balanced"
-              avgStamina={avgStamina}
-              injuredCount={injuredCount}
-              language={language}
-            />
+          <div className="grid grid-cols-2 gap-2.5">
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+            >
+              <MiniStandingsCard
+                standings={standingsData}
+                userTeamId={teamId}
+                language={language}
+              />
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+            >
+              <TeamSummaryCard
+                teamOvr={teamOvr}
+                tactic="Balanced"
+                avgStamina={avgStamina}
+                injuredCount={injuredCount}
+                language={language}
+              />
+            </motion.div>
           </div>
         </div>
 
         {/* Spacer / Social Hub Placeholder */}
-        <div className="flex-1 mt-2 min-h-[100px] flex items-center justify-center relative rounded-xl border border-dashed border-white/10 bg-white/5 overflow-hidden">
-          <div className="absolute inset-0 flex items-center justify-center opacity-[0.03]">
-            <Trophy size={120} className="text-white" />
+        <div className="flex-1 mt-2 min-h-[80px] flex items-center justify-center relative rounded-2xl border border-dashed border-white/10 bg-white/5 overflow-hidden backdrop-blur-md">
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-cyan-500/5" />
+          <div className="absolute inset-0 flex items-center justify-center opacity-[0.04]">
+            <Trophy size={100} className="text-white" />
           </div>
-          <div className="z-10 flex flex-col items-center justify-center gap-1 opacity-60">
-            <span className="text-xs font-black font-orbitron uppercase tracking-widest text-white">Social Hub</span>
-            <span className="text-[9px] uppercase tracking-widest text-cyan-500">Coming Soon</span>
+          <div className="z-10 flex flex-col items-center justify-center gap-1.5">
+            <span className="text-xs font-black font-orbitron uppercase tracking-widest text-white/70">Social Hub</span>
+            <span className="text-[9px] uppercase tracking-widest text-cyan-500/70">Coming Soon</span>
           </div>
         </div>
       </div>
@@ -877,9 +890,6 @@ export default function DashboardPage() {
           t={t}
         />
       )}
-
-
-
     </div>
   );
 }
