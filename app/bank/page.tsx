@@ -5,6 +5,7 @@ import { Droplets } from 'lucide-react';
 import type { Metadata, Viewport } from 'next';
 import type { ManagerProfileType } from '@/app/actions/economyActions';
 import { dict } from '@/lib/dictionaries';
+import { verifySession } from '@/lib/session';
 
 export const viewport: Viewport = {
   colorScheme: 'dark',
@@ -29,7 +30,7 @@ const DEFAULT_DATA = {
 
 export default async function BankPage() {
   const cookieStore = await cookies();
-  const userId = cookieStore.get('tg_user_id')?.value;
+  const userId = (await verifySession());
   const language = cookieStore.get('fitmanager_lang')?.value || 'en';
   const t = dict[language as keyof typeof dict];
 

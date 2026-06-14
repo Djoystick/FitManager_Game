@@ -5,10 +5,11 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { YouthIntakeList } from '@/components/academy/YouthIntakeList';
+import { verifySession } from '@/lib/session';
 
 export default async function AcademyDashboard() {
   const cookieStore = await cookies();
-  const tgUserId = cookieStore.get('tg_user_id')?.value;
+  const tgUserId = (await verifySession());
 
   if (!tgUserId) {
     redirect('/profile'); // Fallback if no auth

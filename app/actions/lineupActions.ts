@@ -8,11 +8,12 @@ const supabaseAdmin = createClient(
 );
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { verifySession } from '@/lib/session';
 
 export async function swapPlayers(playerOutId: string, playerInId: string) {
   try {
     const cookieStore = await cookies();
-    const tgUserId = cookieStore.get('tg_user_id')?.value;
+    const tgUserId = (await verifySession());
 
     if (!tgUserId) {
       return { success: false, error: 'Unauthorized: Valid Telegram session required.' };
@@ -92,7 +93,7 @@ export async function swapPlayers(playerOutId: string, playerInId: string) {
 export async function updatePlayers(payload: { id: string; lineup_status: string; lineup_slot: string | null }[]) {
   try {
     const cookieStore = await cookies();
-    const tgUserId = cookieStore.get('tg_user_id')?.value;
+    const tgUserId = (await verifySession());
 
     if (!tgUserId) {
       return { success: false, error: 'Unauthorized' };
@@ -144,7 +145,7 @@ const ALLOWED_TACTICS = ['Tiki-Taka', 'Counter Attack', 'High Press', 'Park the 
 export async function updateTeamTactic(tactic: string) {
   try {
     const cookieStore = await cookies();
-    const tgUserId = cookieStore.get('tg_user_id')?.value;
+    const tgUserId = (await verifySession());
 
     if (!tgUserId) {
       return { success: false, error: 'Unauthorized: Valid Telegram session required.' };
@@ -184,7 +185,7 @@ export async function updateTeamTactic(tactic: string) {
 export async function updateTeamFormation(teamId: string, formation: string) {
   try {
     const cookieStore = await cookies();
-    const tgUserId = cookieStore.get('tg_user_id')?.value;
+    const tgUserId = (await verifySession());
 
     if (!tgUserId) {
       return { success: false, error: 'Unauthorized: Valid Telegram session required.' };

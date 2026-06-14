@@ -3,10 +3,11 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { ShieldAlert, Bug, Terminal, Home } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
+import { verifySession } from '@/lib/session';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
-  const userId = cookieStore.get('tg_user_id')?.value;
+  const userId = (await verifySession());
   
   if (!userId) {
     redirect('/');

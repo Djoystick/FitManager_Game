@@ -15,6 +15,7 @@ const supabaseAdmin = createClient(
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { Player, PlayerStats, generateRandomPlayer } from '@/lib/playerUtils';
+import { verifySession } from '@/lib/session';
 
 export interface ScoutResult {
   success: boolean;
@@ -33,7 +34,7 @@ export interface ScoutResult {
 export async function scoutYouthPlayer(): Promise<ScoutResult> {
   try {
     const cookieStore = await cookies();
-    const tgUserId = cookieStore.get('tg_user_id')?.value;
+    const tgUserId = (await verifySession());
 
     if (!tgUserId) {
       return { success: false, error: 'Unauthorized: Valid Telegram session required.' };
@@ -97,7 +98,7 @@ export async function scoutYouthPlayer(): Promise<ScoutResult> {
 export async function signYouthIntake(intakeId: string): Promise<ScoutResult> {
   try {
     const cookieStore = await cookies();
-    const tgUserId = cookieStore.get('tg_user_id')?.value;
+    const tgUserId = (await verifySession());
     if (!tgUserId) return { success: false, error: 'Unauthorized' };
 
     const { data: teamData } = await supabaseAdmin.from('teams').select('id').eq('user_id', tgUserId).single();

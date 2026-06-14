@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { verifySession } from '@/lib/session';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,7 +12,7 @@ const supabaseAdmin = createClient(
 export async function getLastSeasonResult() {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     const { data: teamData } = await supabaseAdmin

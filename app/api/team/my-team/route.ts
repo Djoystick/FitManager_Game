@@ -6,11 +6,12 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 import { cookies } from 'next/headers';
+import { verifySession } from '@/lib/session';
 
 export async function GET(req: Request) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
 
     if (!userId) {
       return NextResponse.json({ error: 'Missing or invalid user session' }, { status: 401 });

@@ -3,6 +3,7 @@
 import { supabase } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
+import { verifySession } from '@/lib/session';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -39,7 +40,7 @@ export interface ActionResponse<T> {
 
 async function getAuthenticatedUserId(): Promise<string | null> {
   const cookieStore = await cookies();
-  return cookieStore.get('tg_user_id')?.value ?? null;
+  return (await verifySession()) ?? null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

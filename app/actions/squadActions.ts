@@ -3,11 +3,12 @@
 import { supabase } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
+import { verifySession } from '@/lib/session';
 
 export async function updateLineupStatus(playerId: string, teamId: string, newStatus: 'starting' | 'bench') {
   try {
     const cookieStore = await cookies();
-    const tgUserId = cookieStore.get('tg_user_id')?.value;
+    const tgUserId = (await verifySession());
     
     if (!tgUserId) {
       return { success: false, error: 'Unauthorized: Valid Telegram session required.' };

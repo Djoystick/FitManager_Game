@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { Address } from '@ton/core';
 import { signVerify } from '@ton/crypto';
 import crypto from 'crypto';
+import { verifySession } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +49,7 @@ function createMessage(message: {
 export async function POST(req: Request) {
     try {
         const cookieStore = await cookies();
-        const sessionUserId = cookieStore.get('tg_user_id')?.value;
+        const sessionUserId = (await verifySession());
 
         if (!sessionUserId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -132,6 +133,9 @@ export async function POST(req: Request) {
             const { checkAndUnlockAchievement } = await import('@/app/services/achievementService');
             await checkAndUnlockAchievement(team.id, 'WALLET_LINK');
         }
+
+        // Prevent Replay Attacks: Delete the nonce cookie now that it has been used successfully.
+        cookieStore.delete('ton_proof_nonce');
 
         return NextResponse.json({ success: true, wallet_address: account.address });
 

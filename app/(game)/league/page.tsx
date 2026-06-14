@@ -6,6 +6,7 @@ import { FriendlyMatchCard } from './FriendlyMatchCard';
 import { HubSocialClient } from './HubSocialClient';
 import { HubTabsWrapper } from './HubTabsWrapper';
 import { cookies } from 'next/headers';
+import { verifySession } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -15,7 +16,7 @@ export default async function LeagueDashboard() {
   if (!team) return null;
 
   const cookieStore = await cookies();
-  const userId = cookieStore.get('tg_user_id')?.value;
+  const userId = (await verifySession());
   if (!userId) return null;
 
   const supabaseAdmin = createClient(

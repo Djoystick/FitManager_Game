@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { TransferOffer } from '@/lib/types';
 import { triggerTransferAchievements } from '@/app/services/achievementService';
+import { verifySession } from '@/lib/session';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,7 +14,7 @@ const supabaseAdmin = createClient(
 export async function makeOffer(targetPlayerId: string, offeredFc: number, offeredPlayerId?: string) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     if (offeredFc < 0) return { success: false, error: 'Invalid FC amount' };
@@ -120,7 +121,7 @@ export async function acceptOffer(offerId: string, botReceiverId?: string) {
     let userId = botReceiverId;
     if (!userId) {
       const cookieStore = await cookies();
-      userId = cookieStore.get('tg_user_id')?.value;
+      userId = (await verifySession()) || undefined;
     }
     if (!userId) return { success: false, error: 'Unauthorized' };
 
@@ -213,7 +214,7 @@ export async function rejectOffer(offerId: string, botReceiverId?: string) {
     let userId = botReceiverId;
     if (!userId) {
       const cookieStore = await cookies();
-      userId = cookieStore.get('tg_user_id')?.value;
+      userId = (await verifySession()) || undefined;
     }
     if (!userId) return { success: false, error: 'Unauthorized' };
 
@@ -252,7 +253,7 @@ export async function rejectOffer(offerId: string, botReceiverId?: string) {
 export async function getIncomingOffers() {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     const { data: team } = await supabaseAdmin.from('teams').select('id').eq('user_id', userId).single();
@@ -275,7 +276,7 @@ export async function getIncomingOffers() {
 export async function getOutgoingOffers() {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     const { data: team } = await supabaseAdmin.from('teams').select('id').eq('user_id', userId).single();

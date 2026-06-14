@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { verifySession } from '@/lib/session';
 
 export interface SubmitLineupRequest {
   teamId: string;
@@ -12,7 +13,7 @@ const TAX_RATE_PER_OVR = 50;
 export async function POST(req: Request) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized: Missing valid session' }, { status: 401 });

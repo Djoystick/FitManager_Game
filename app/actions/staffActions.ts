@@ -3,6 +3,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { verifySession } from '@/lib/session';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // staffActions.ts — CRUD for staff/coaches table
@@ -15,7 +16,7 @@ const supabaseAdmin = createClient(
 
 async function getAuthUserId(): Promise<string | null> {
   const cookieStore = await cookies();
-  return cookieStore.get('tg_user_id')?.value ?? null;
+  return (await verifySession()) ?? null;
 }
 
 export interface StaffMember {

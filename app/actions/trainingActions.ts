@@ -6,6 +6,7 @@ import { matchService } from '@/services/matchService';
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 import { triggerTrainingAchievements, triggerInfrastructureAchievements } from '@/app/services/achievementService';
+import { verifySession } from '@/lib/session';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase service-role client (bypasses RLS for server actions)
@@ -87,7 +88,7 @@ export interface TrainingCampData {
 
 async function getAuthUserId(): Promise<string | null> {
   const cookieStore = await cookies();
-  return cookieStore.get('tg_user_id')?.value ?? null;
+  return (await verifySession()) ?? null;
 }
 
 /** Maps BuildingType to its column in the infrastructure table */
@@ -110,7 +111,7 @@ export async function logTrainingSession(
 ) {
   try {
     const cookieStore = await cookies();
-    const tgUserId = cookieStore.get('tg_user_id')?.value;
+    const tgUserId = (await verifySession());
 
     if (!tgUserId) {
       return { success: false, error: 'Unauthorized: Valid Telegram session required.' };

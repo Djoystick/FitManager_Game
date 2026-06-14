@@ -6,6 +6,7 @@ import { dict } from '@/lib/dictionaries';
 import { ScreenGuide } from '@/components/ui/ScreenGuide';
 
 import { SquadTabs } from '@/components/squad/SquadTabs';
+import { verifySession } from '@/lib/session';
 
 export default async function SquadPage() {
   const team = await requireTeam();
@@ -13,7 +14,7 @@ export default async function SquadPage() {
   if (!team) return null; // handled by requireTeam redirect
 
   const cookieStore = await cookies();
-  const userId = cookieStore.get('tg_user_id')?.value as string;
+  const userId = (await verifySession()) as string;
   const language = cookieStore.get('fitmanager_lang')?.value || 'en';
   const t = dict[language as keyof typeof dict];
 

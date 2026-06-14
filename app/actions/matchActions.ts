@@ -7,6 +7,7 @@ import { MatchReport } from '@/components/MatchReportModal';
 import { createClient } from '@supabase/supabase-js';
 import { simulateMatch as runMatchEngine, MatchPlayer } from '@/app/utils/matchEngine';
 import { triggerMatchAchievements } from '@/app/services/achievementService';
+import { verifySession } from '@/lib/session';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,7 +27,7 @@ export interface MatchResult {
 export async function markMatchAsViewed(matchId: string): Promise<{ success: boolean; error?: string }> {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     const { data: team } = await supabaseAdmin.from('teams').select('id').eq('user_id', userId).single();
@@ -57,7 +58,7 @@ export async function markMatchAsViewed(matchId: string): Promise<{ success: boo
 export async function getMatchHistory(): Promise<{ success: boolean; data?: MatchReport[]; error?: string }> {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'User not authenticated' };
 
     const { data: teamData, error: teamError } = await supabaseAdmin
@@ -130,7 +131,7 @@ export async function getMatchHistory(): Promise<{ success: boolean; data?: Matc
 export async function getMatchSchedule(): Promise<{ success: boolean; data?: any[]; error?: string }> {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'User not authenticated' };
 
     const { data: teamData, error: teamError } = await supabaseAdmin
@@ -316,6 +317,14 @@ export async function resolveMatch(
     const homeTactic = homeTeamData?.tactic || 'Balanced';
     const awayTactic = awayTeamData?.tactic || 'Balanced';
 
+    // P1-2 FIX: Fetch home team's pitch level for injury reduction
+    const { data: homeInfra } = await supabaseAdmin
+      .from('infrastructure')
+      .select('pitch_level')
+      .eq('team_id', match.home_team_id)
+      .maybeSingle();
+    const homePitchLevel = homeInfra?.pitch_level ?? 1;
+
     // [P1 FIX] Green Links only activate if BOTH players are in the active lineup
     const getGreenLinks = (chemRecords: any[], lineupIds: Set<string>) => {
       const greenMap: Record<string, boolean> = {};
@@ -377,7 +386,7 @@ export async function resolveMatch(
       };
     } else {
       console.log(`[resolveMatch] Running Core Match Engine...`);
-      result = runMatchEngine(homeLineup, awayLineup, homeBench, awayBench, homeGreen, awayGreen, homeTactic, awayTactic, [], [], isCupMatch);
+      result = runMatchEngine(homeLineup, awayLineup, homeBench, awayBench, homeGreen, awayGreen, homeTactic, awayTactic, [], [], isCupMatch, homePitchLevel);
     }
     console.log(`[resolveMatch] Core Engine output score: ${result.score.home}-${result.score.away}`);
 
@@ -597,18 +606,41 @@ export async function resolveMatch(
         // The RPC failure will be retried or investigated manually.
       }
 
-      // Apply bankruptcy stamina penalty if balance hit zero
+      // P0-2 FIX: Bankruptcy Economy — Option A debuff
+      // Check if user was bankrupt BEFORE the match (for recovery bonus)
+      const { data: beforeUpdate } = await supabaseAdmin
+        .from('users').select('balance_fancoins').eq('id', userId).maybeSingle();
+      const wasBankrupt = (beforeUpdate?.balance_fancoins ?? 1) === 0;
+
+      // Check balance AFTER the transaction
       const { data: afterUpdate } = await supabaseAdmin
         .from('users').select('balance_fancoins').eq('id', userId).maybeSingle();
-      if ((afterUpdate?.balance_fancoins ?? 1) === 0 && totalSalary > totalReward) {
-        console.warn(`[resolveMatch] Team ${teamId} went bankrupt. Applying stamina penalty.`);
+      const isStillBankrupt = (afterUpdate?.balance_fancoins ?? 1) === 0;
+
+      if (isStillBankrupt && totalSalary > totalReward) {
+        console.warn(`[resolveMatch] Team ${teamId} is bankrupt. Applying Option A debuff (-25% stamina, -15% morale).`);
         await Promise.all(
           players.map(p =>
             supabaseAdmin.from('players')
-              .update({ stamina: Math.min(Number(p.stamina ?? 30), 30) })
+              .update({
+                stamina: Math.floor(Number(p.stamina ?? 100) * 0.75),
+                morale: Math.floor(Number(p.morale ?? 70) * 0.85),
+              })
               .eq('id', p.id)
           )
         );
+      }
+
+      // P0-2 FIX: Recovery Bonus — if team was bankrupt and WON, give +50% FC
+      if (wasBankrupt && !isStillBankrupt && gf > ga) {
+        const bonus = Math.floor((afterUpdate?.balance_fancoins ?? 0) * 0.50);
+        if (bonus > 0) {
+          console.warn(`[resolveMatch] Team ${teamId} escaped bankruptcy with a win! Recovery bonus: +${bonus} FC`);
+          await supabaseAdmin.rpc('increment_fancoins', {
+            user_id: userId,
+            amount: bonus
+          });
+        }
       }
     };
 
@@ -890,10 +922,21 @@ export async function resolveMatch(
       console.error('[resolveMatch] Win achievement check failed:', achError);
     }
 
-    // ── ШАГ З: Уведомления о травмах ─────────────────────────────────────────
-    const injuryEvents = result.events.filter((e: any) => e.type === 'injury' && 'team' in e && 'player_name' in e);
+    // ── ШАГ З: Persist Injuries + Notifications ─────────────────────────────────
+    const injuryEvents = result.events.filter((e: any) => e.type === 'injury' && 'player_id' in e);
     for (const inj of injuryEvents) {
-      const injEvent = inj as { team: 'home' | 'away'; player_name: string };
+      const injEvent = inj as { player_id: string; player_name: string; team: 'home' | 'away' };
+      const injuryDuration = Math.floor(Math.random() * 3) + 1; // 1-3 matches
+
+      // P0-1 FIX: Actually persist the injury to the database
+      await supabaseAdmin
+        .from('players')
+        .update({
+          is_injured: true,
+          injury_matches_left: injuryDuration,
+        })
+        .eq('id', injEvent.player_id);
+
       const injTeamId = injEvent.team === 'home' ? match.home_team_id : match.away_team_id;
       const { data: injTeamOwner } = await supabaseAdmin
         .from('teams').select('user_id').eq('id', injTeamId).maybeSingle();
@@ -903,12 +946,41 @@ export async function resolveMatch(
           type: 'injury',
           title: 'Player injury',
           message: JSON.stringify({
-            en: `${injEvent.player_name} was injured in a match.`,
-            ru: `${injEvent.player_name} получил травму в матче.`,
+            en: `${injEvent.player_name} was injured in a match. Out for ${injuryDuration} match(es).`,
+            ru: `${injEvent.player_name} получил травму в матче. Выбыл на ${injuryDuration} матч(ей).`,
           }),
         });
       }
     }
+
+    // ── P1-3 FIX: Natural Injury Healing (decrement injury_matches_left) ──────
+    const processInjuryHealing = async (teamId: string) => {
+      const { data: injuredPlayers } = await supabaseAdmin
+        .from('players')
+        .select('id, injury_matches_left')
+        .eq('team_id', teamId)
+        .eq('is_injured', true);
+
+      if (!injuredPlayers || injuredPlayers.length === 0) return;
+
+      for (const p of injuredPlayers) {
+        const newLeft = (p.injury_matches_left || 1) - 1;
+        if (newLeft <= 0) {
+          await supabaseAdmin
+            .from('players')
+            .update({ is_injured: false, injury_matches_left: 0 })
+            .eq('id', p.id);
+        } else {
+          await supabaseAdmin
+            .from('players')
+            .update({ injury_matches_left: newLeft })
+            .eq('id', p.id);
+        }
+      }
+    };
+
+    await processInjuryHealing(match.home_team_id);
+    await processInjuryHealing(match.away_team_id);
 
     console.log(`[resolveMatch] SUCCESS for matchId: ${matchId}`);
     return { success: true };
@@ -921,7 +993,7 @@ export async function resolveMatch(
 export async function getUnviewedMatch() {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     const { data: teamData, error: teamError } = await supabaseAdmin
@@ -969,7 +1041,7 @@ export async function getUnviewedMatch() {
 export async function simulateNextPendingMatch(deferredTeamIds: string[] = []) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     const deferredSet = new Set(deferredTeamIds);
@@ -1051,7 +1123,7 @@ export async function simulateNextPendingMatch(deferredTeamIds: string[] = []) {
 export async function getUnseenMatches() {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     const { data: teamData } = await supabaseAdmin
@@ -1097,7 +1169,7 @@ export async function markMatchesAsViewed(matchIds: string[]) {
     if (!matchIds || matchIds.length === 0) return { success: true };
 
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     const { data: teamData } = await supabaseAdmin

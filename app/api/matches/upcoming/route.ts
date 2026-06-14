@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { verifySession } from '@/lib/session';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,7 +12,7 @@ const supabaseAdmin = createClient(
 // Returns the next N upcoming matches for the authenticated user's team.
 export async function GET(request: Request) {
   const cookieStore = await cookies();
-  const userId = cookieStore.get('tg_user_id')?.value;
+  const userId = (await verifySession());
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

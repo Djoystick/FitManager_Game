@@ -5,10 +5,11 @@ import { Calendar, History } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { BackButton } from '@/components/ui/BackButton';
+import { verifySession } from '@/lib/session';
 
 export default async function MatchCenterDashboard() {
   const cookieStore = await cookies();
-  const tgUserId = cookieStore.get('tg_user_id')?.value;
+  const tgUserId = (await verifySession());
 
   if (!tgUserId) {
     redirect('/profile');

@@ -5,11 +5,12 @@ import { Activity, AlertTriangle, CheckCircle2, XCircle, Zap } from 'lucide-reac
 import { dict } from '@/lib/dictionaries';
 import { cookies } from 'next/headers';
 import { ScreenGuide } from '@/components/ui/ScreenGuide';
+import { verifySession } from '@/lib/session';
 
 export default async function TrainingDashboard({ searchParams }: { searchParams: Promise<{ userId?: string }> | { userId?: string } }) {
   const resolvedParams = await searchParams;
   const cookieStore = await cookies();
-  const userId = resolvedParams.userId || cookieStore.get('tg_user_id')?.value;
+  const userId = resolvedParams.userId || (await verifySession());
   const language = cookieStore.get('fitmanager_lang')?.value || 'en';
   const t = dict[language as keyof typeof dict];
 

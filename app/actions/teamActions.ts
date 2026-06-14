@@ -7,6 +7,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { containsProfanity } from '@/app/utils/censor';
 import { isNameBlacklisted } from '@/app/utils/blacklist';
+import { verifySession } from '@/lib/session';
 
 export interface PlayerStats {
   pace: number;
@@ -93,7 +94,7 @@ function generatePlayer(
 export async function createStarterFranchise(teamName: string) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
 
     if (!userId || !teamName) {
       return { success: false, error: 'Missing userId or teamName' };
@@ -234,7 +235,7 @@ export async function createStarterFranchise(teamName: string) {
 export async function renamePlayerAction(playerId: string, newName: string) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'User not authenticated' };
 
     const cleanName = newName.trim();
@@ -330,7 +331,7 @@ export async function renamePlayerAction(playerId: string, newName: string) {
 export async function renameTeamAction(newName: string) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     
     if (!userId || !newName) return { success: false, error: 'Missing data' };
     if (containsProfanity(newName)) return { success: false, error: 'error_censorship' };
@@ -371,7 +372,7 @@ export async function renameTeamAction(newName: string) {
 export async function changeLogoAction(logoUrl: string) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     
     if (!userId || !logoUrl) return { success: false, error: 'Missing data' };
 
@@ -421,7 +422,7 @@ export async function changeLogoAction(logoUrl: string) {
 export async function retirePlayerToAcademy(playerId: string) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     
     if (!userId || !playerId) return { success: false, error: 'Missing data' };
 
@@ -500,7 +501,7 @@ export async function retirePlayerToAcademy(playerId: string) {
 export async function quickSellPlayer(playerId: string) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     
     if (!userId || !playerId) return { success: false, error: 'Missing data' };
 

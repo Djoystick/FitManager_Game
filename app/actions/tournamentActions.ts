@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
+import { verifySession } from '@/lib/session';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -97,7 +98,7 @@ export async function getTournamentBracket(tournamentId: string): Promise<{ succ
 export async function joinTournament(tournamentId: string): Promise<{ success: boolean; error?: string }> {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     const { data: team } = await supabaseAdmin
@@ -173,7 +174,7 @@ export async function joinTournament(tournamentId: string): Promise<{ success: b
 export async function startTournament(tournamentId: string): Promise<{ success: boolean; error?: string }> {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     // Check tournament exists and is in registration

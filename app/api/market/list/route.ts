@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
+import { verifySession } from '@/lib/session';
 
 export interface MarketListRequest {
   playerId: string;
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
     const { playerId, priceTon } = body;
 
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

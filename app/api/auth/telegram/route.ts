@@ -62,11 +62,14 @@ export async function POST(req: Request) {
       internalUserId = newUser.id;
     }
 
-    // 3. Set a secure HTTP-Only Cookie to protect subsequent Server Actions
+    // 3. Set a secure HTTP-Only Cookie with signed JWT session
+    const { signSession } = await import('@/lib/session');
+    const sessionToken = await signSession(internalUserId);
+
     const cookieStore = await cookies();
     cookieStore.set({
-      name: 'tg_user_id',
-      value: internalUserId,
+      name: 'session',
+      value: sessionToken,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

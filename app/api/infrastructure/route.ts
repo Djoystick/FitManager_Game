@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
+import { verifySession } from '@/lib/session';
 
 export async function GET(req: Request) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
     const { buildingType } = body; // buildingType: 'stadium' | 'training_camp' | 'medical_center'
 
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

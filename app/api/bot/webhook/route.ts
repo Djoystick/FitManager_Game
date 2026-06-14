@@ -50,6 +50,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Telegram Bot Token not configured' }, { status: 500 });
     }
 
+    // Secure webhook: Verify X-Telegram-Bot-Api-Secret-Token
+    const secretToken = req.headers.get('x-telegram-bot-api-secret-token');
+    const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+    
+    if (expectedSecret && secretToken !== expectedSecret) {
+      console.warn("Unauthorized webhook attempt: invalid secret token");
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
     
     // Process the update with Telegraf

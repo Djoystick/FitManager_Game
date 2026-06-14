@@ -57,13 +57,14 @@ export async function captureLog(level: LogLevel, source: string, message: strin
 }
 
 import { cookies } from 'next/headers';
+import { verifySession } from '@/lib/session';
 
 export async function submitBugReport(userIdParam: string | null, description: string, metadata: any = {}) {
   try {
     let userId = userIdParam;
     if (!userId) {
       const cookieStore = await cookies();
-      userId = cookieStore.get('tg_user_id')?.value || null;
+      userId = (await verifySession()) || null;
     }
 
     const { error } = await supabaseAdmin.from('bug_reports').insert({

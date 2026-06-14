@@ -461,6 +461,16 @@ export async function GET(request: Request) {
         }
       }
 
+      // ── P1-4 FIX: Reset Training Camp counters for next season ──────────────
+      const teamIdsInInstance = finalStandings.map(s => s.team_id);
+      if (teamIdsInInstance.length > 0) {
+        await supabaseAdmin
+          .from('teams')
+          .update({ season_camps_played: 0 })
+          .in('id', teamIdsInInstance);
+        console.log(`[CRON EndOfSeason] Reset season_camps_played for ${teamIdsInInstance.length} teams.`);
+      }
+
       // ── Assign teams to new tier instances for next season ─────────────────
       for (const assignment of newAssignments) {
         let targetInstanceId: string | undefined;

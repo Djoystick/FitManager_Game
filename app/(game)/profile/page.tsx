@@ -2,6 +2,7 @@ import React from 'react';
 import { cookies } from 'next/headers';
 import ProfileClient from './ProfileClient';
 import { supabase } from '@/lib/supabase';
+import { verifySession } from '@/lib/session';
 
 export default async function ProfilePage() {
   const cookieStore = await cookies();

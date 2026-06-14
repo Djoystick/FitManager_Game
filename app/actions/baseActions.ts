@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { verifySession } from '@/lib/session';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,7 +12,7 @@ const supabaseAdmin = createClient(
 export async function getInjuredPlayers() {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
     // 1. Get user's team
     const { data: team } = await supabaseAdmin
@@ -40,7 +41,7 @@ export async function getInjuredPlayers() {
 export async function healPlayer(playerId: string) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
     // 1. Check user's SP balance
     const { data: user, error: userError } = await supabaseAdmin
@@ -77,8 +78,19 @@ export async function healPlayer(playerId: string) {
       return { success: false, error: 'Player is already fully healthy' };
     }
 
-    // 2. Calculate SP Cost (1 missing stamina = 1 SP)
-    const spCost = Math.max(0, 100 - currentStamina);
+    // 2. Calculate SP Cost (1 missing stamina = 1 SP) with Medical Center discount
+    const baseSpCost = Math.max(0, 100 - currentStamina);
+
+    // P1-1 FIX: Fetch Medical Center level for discount
+    const { data: infra } = await supabaseAdmin
+      .from('infrastructure')
+      .select('medical_center_level')
+      .eq('team_id', team.id)
+      .maybeSingle();
+    const medLevel = infra?.medical_center_level ?? 1;
+    // Level 1: 0%, Level 2: 10%, Level 3+: 20%
+    const discount = Math.min(0.20, Math.max(0, (medLevel - 1) * 0.10));
+    const spCost = Math.floor(baseSpCost * (1 - discount));
 
     if (user.sweat_points < spCost) {
       return { success: false, error: 'Not enough Sweat Points' };
@@ -113,7 +125,7 @@ export async function healPlayer(playerId: string) {
 export async function getStadiumData() {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
     // 1. Get user uuid and balance
     const { data: user, error: userError } = await supabaseAdmin
@@ -168,7 +180,7 @@ export async function getStadiumData() {
 export async function upgradeStadium() {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
     // 1. Get user uuid and balance
     const { data: user, error: userError } = await supabaseAdmin
@@ -196,6 +208,11 @@ export async function upgradeStadium() {
       .single();
 
     if (infraError || !infra) return { success: false, error: 'Infrastructure not found' };
+
+    // P0-2 FIX: Economic lockout — cannot upgrade while bankrupt
+    if ((user.balance_fancoins ?? 0) === 0) {
+      return { success: false, error: 'Cannot upgrade while bankrupt. Win a match to recover.' };
+    }
 
     // 4. Validate funds
     const currentLevel = infra.stadium_level;
@@ -241,7 +258,7 @@ export async function forceInjuryDebug() {
   try {
     if (process.env.NODE_ENV !== 'development') return { success: false, error: 'Dev only' };
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
@@ -286,7 +303,7 @@ export async function forceInjuryDebug() {
 export async function upgradeMedicalCenter() {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
@@ -311,6 +328,11 @@ export async function upgradeMedicalCenter() {
       .single();
 
     if (infraError || !infra) return { success: false, error: 'Infrastructure not found' };
+
+    // P0-2 FIX: Economic lockout — cannot upgrade while bankrupt
+    if ((user.balance_fancoins ?? 0) === 0) {
+      return { success: false, error: 'Cannot upgrade while bankrupt. Win a match to recover.' };
+    }
 
     const currentLevel = infra.medical_center_level;
     const upgradeCost = currentLevel * 1000;
@@ -352,7 +374,7 @@ export async function upgradeMedicalCenter() {
 export async function upgradeTrainingCenter() {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
@@ -377,6 +399,11 @@ export async function upgradeTrainingCenter() {
       .single();
 
     if (infraError || !infra) return { success: false, error: 'Infrastructure not found' };
+
+    // P0-2 FIX: Economic lockout — cannot upgrade while bankrupt
+    if ((user.balance_fancoins ?? 0) === 0) {
+      return { success: false, error: 'Cannot upgrade while bankrupt. Win a match to recover.' };
+    }
 
     const currentLevel = infra.training_camp_level;
     const upgradeCost = currentLevel * 1000;
@@ -431,7 +458,7 @@ export async function healAllPlayers(): Promise<{
 }> {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
@@ -460,9 +487,19 @@ export async function healAllPlayers(): Promise<{
       return { success: true, playersHealed: 0, new_balance: user.sweat_points };
     }
 
+    // P1-1 FIX: Fetch Medical Center level for discount
+    const { data: infra } = await supabaseAdmin
+      .from('infrastructure')
+      .select('medical_center_level')
+      .eq('team_id', team.id)
+      .maybeSingle();
+    const medLevel = infra?.medical_center_level ?? 1;
+    const discount = Math.min(0.20, Math.max(0, (medLevel - 1) * 0.10));
+
     let totalCost = 0;
     needsHeal.forEach(p => {
-      totalCost += Math.max(0, 100 - (p.stamina ?? 100));
+      const baseCost = Math.max(0, 100 - (p.stamina ?? 100));
+      totalCost += Math.floor(baseCost * (1 - discount));
     });
 
     if (user.sweat_points < totalCost) {

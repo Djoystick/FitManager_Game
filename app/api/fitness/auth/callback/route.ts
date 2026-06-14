@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getGoogleOAuthClient } from '@/lib/googleFitness';
 import { supabase } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { verifySession } from '@/lib/session';
 
 export async function GET(req: Request) {
   try {
@@ -20,7 +21,7 @@ export async function GET(req: Request) {
     }
 
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
 
     if (!userId) {
       // Not authenticated in our app

@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { verifySession } from '@/lib/session';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,7 +15,7 @@ const supabaseAdmin = createClient(
 export async function searchTeams(query: string) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     if (!query || query.trim().length < 2) {
@@ -60,7 +61,7 @@ export async function searchTeams(query: string) {
 export async function sendFriendRequest(targetUserId: string) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     if (userId === targetUserId) {
@@ -125,7 +126,7 @@ export async function sendFriendRequest(targetUserId: string) {
 export async function respondToFriendRequest(requestId: string, accept: boolean) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     // Verify ownership
@@ -182,7 +183,7 @@ export async function respondToFriendRequest(requestId: string, accept: boolean)
 export async function getFriendsList() {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     const { data: friendships, error } = await supabaseAdmin
@@ -241,7 +242,7 @@ export async function getFriendsList() {
 export async function getPendingFriendRequests() {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     // Requests where I am user_b (the receiver)

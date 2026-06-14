@@ -105,6 +105,7 @@ interface AttackContext {
   hasRedCardBonus: boolean;
   momentumAtkBonus: number;
   momentumDefBonus: number;
+  homePitchLevel: number;
 }
 
 // =============================================================================
@@ -533,6 +534,12 @@ function resolveAttack(ctx: AttackContext) {
     }
 
     const r = Math.random();
+    // P1-2 FIX: Pitch level reduces injury chance by 2% per level (max 15%)
+    // Original: yellow=0-0.55, injury=0.55-0.80, red=0.80-1.0
+    // With pitch: injury range shrinks, red card range expands
+    const injuryReduction = Math.min(0.15, (ctx.homePitchLevel - 1) * 0.02);
+    const injuryThreshold = 0.80 - (0.25 * injuryReduction); // 25% base injury range
+
     if (r < 0.55) {
       // Yellow card — track and check for second yellow
       const prevYellows = ctx.yellowCards.get(defDef.id) ?? 0;
@@ -552,7 +559,7 @@ function resolveAttack(ctx: AttackContext) {
           details: `🟡 ЖЁЛТАЯ! ${defDef.name} срубает ${atkFwd.name} на подходе к штрафной.`,
         });
       }
-    } else if (r < 0.80) {
+    } else if (r < injuryThreshold) {
       events.push({
         type: 'injury', minute,
         player_id: atkFwd.id, player_name: atkFwd.name, team: attackingTeamKey,
@@ -869,7 +876,8 @@ export function simulateMatch(
   awayTactic: TacticalStyle = 'Balanced',
   homeForm: string[] = [],
   awayForm: string[] = [],
-  isCupMatch: boolean = false
+  isCupMatch: boolean = false,
+  homePitchLevel: number = 1
 ): MatchResult {
   const events: MatchEvent[] = [];
   const score = { home: 0, away: 0 };
@@ -1121,6 +1129,7 @@ export function simulateMatch(
       hasRedCardBonus: defRedCount > 0,
       momentumAtkBonus: finalAtkBonus,
       momentumDefBonus,
+      homePitchLevel,
     };
     resolveAttack(ctx);
 

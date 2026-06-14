@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
 import { BackButton } from '@/components/ui/BackButton';
 import { AdminConsoleClient } from '@/components/admin/AdminConsoleClient';
+import { verifySession } from '@/lib/session';
 
 export default async function AdminDashboard() {
   const cookieStore = await cookies();

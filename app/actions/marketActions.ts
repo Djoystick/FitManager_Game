@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { getRandomName } from '@/app/utils/nameGenerator';
 import { triggerTransferAchievements } from '@/app/services/achievementService';
+import { verifySession } from '@/lib/session';
 
 function getRandomInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -20,7 +21,7 @@ const supabaseAdmin = createClient(
 export async function listPlayerAction(playerId: string, priceTon: number) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'User not authenticated' };
     if (priceTon <= 0 || priceTon > 1000000) return { success: false, error: 'Invalid price. Maximum 1,000,000 TON' };
 
@@ -48,7 +49,7 @@ export async function listPlayerAction(playerId: string, priceTon: number) {
 export async function buyPlayerAction(listingId: string) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'User not authenticated' };
 
     // Anti-cheat: check if buyer and seller played each other in last 48h
@@ -93,6 +94,21 @@ export async function buyPlayerAction(listingId: string) {
           errorRu: 'Покупка запрещена: вы играли с этим менеджером недавно',
         };
       }
+    }
+
+    // P0-2 FIX: Economic lockout — cannot buy players while bankrupt
+    const { data: buyerUser } = await supabaseAdmin
+      .from('users')
+      .select('balance_fancoins')
+      .eq('id', userId)
+      .maybeSingle();
+    if ((buyerUser?.balance_fancoins ?? 1) === 0) {
+      return {
+        success: false,
+        error: 'Cannot buy players while bankrupt. Win a match to recover.',
+        errorKey: 'bankrupt_lockout',
+        errorRu: 'Нельзя покупать игроков будучи банкротом. Выиграйте матч, чтобы восстановиться.',
+      };
     }
 
     const { data, error } = await supabaseAdmin.rpc('buy_player_from_market', {
@@ -142,7 +158,7 @@ export async function buyPlayerAction(listingId: string) {
 export async function cancelListingAction(listingId: string) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'User not authenticated' };
 
     const { data, error } = await supabaseAdmin.rpc('cancel_market_listing', {
@@ -215,7 +231,7 @@ export async function debugAddTonAction(amount: number) {
     }
 
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'User not authenticated' };
 
     const { data: user, error: userErr } = await supabaseAdmin
@@ -250,7 +266,7 @@ export async function debugAddTonAction(amount: number) {
 export async function getFreeAgentsAction() {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'User not authenticated' };
 
     const jwtSecret = process.env.CRON_SECRET;
@@ -321,7 +337,7 @@ export async function getFreeAgentsAction() {
 export async function buyFreeAgentAction(token: string) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'User not authenticated' };
 
     const jwtSecret = process.env.CRON_SECRET;

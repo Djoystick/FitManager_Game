@@ -3,6 +3,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { simulateMatch, MatchPlayer } from '@/app/utils/matchEngine';
+import { verifySession } from '@/lib/session';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +16,7 @@ const supabaseAdmin = createClient(
 export async function issueChallenge(targetUserId: string) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     if (userId === targetUserId) {
@@ -87,7 +88,7 @@ export async function issueChallenge(targetUserId: string) {
 export async function resolvePvPChallenge(challengeId: string, accept: boolean) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     // Fetch challenge
@@ -308,7 +309,7 @@ export async function resolvePvPChallenge(challengeId: string, accept: boolean) 
 export async function getPendingChallenges() {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     const { data: challenges, error } = await supabaseAdmin
@@ -356,7 +357,7 @@ export async function getPendingChallenges() {
 export async function getChallengeHistory() {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('tg_user_id')?.value;
+    const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
 
     const { data: challenges, error } = await supabaseAdmin

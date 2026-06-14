@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
+import { verifySession } from '@/lib/session';
 
 export interface AdminActionResult {
   success: boolean;
@@ -193,7 +194,7 @@ export async function seedBotLeague(): Promise<AdminActionResult> {
 export async function addSweatPoints(amount: number): Promise<AdminActionResult> {
   try {
     const cookieStore = await cookies();
-    const sessionUuid = cookieStore.get('tg_user_id')?.value;
+    const sessionUuid = (await verifySession());
     if (!sessionUuid) return { success: false, error: 'Unauthorized' };
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -219,7 +220,7 @@ export async function addSweatPoints(amount: number): Promise<AdminActionResult>
 export async function hardResetUserTeam(userId: string): Promise<AdminActionResult> {
   try {
     const cookieStore = await cookies();
-    const sessionUuid = cookieStore.get('tg_user_id')?.value;
+    const sessionUuid = (await verifySession());
     if (!sessionUuid) return { success: false, error: 'Unauthorized' };
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -262,7 +263,7 @@ export async function hardResetUserTeam(userId: string): Promise<AdminActionResu
 export async function addFanCoins(amount: number): Promise<AdminActionResult> {
   try {
     const cookieStore = await cookies();
-    const sessionUuid = cookieStore.get('tg_user_id')?.value;
+    const sessionUuid = (await verifySession());
     if (!sessionUuid) return { success: false, error: 'Unauthorized' };
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -285,7 +286,7 @@ export async function addFanCoins(amount: number): Promise<AdminActionResult> {
 export async function addManagerXp(amount: number): Promise<AdminActionResult> {
   try {
     const cookieStore = await cookies();
-    const sessionUuid = cookieStore.get('tg_user_id')?.value;
+    const sessionUuid = (await verifySession());
     if (!sessionUuid) return { success: false, error: 'Unauthorized' };
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -308,7 +309,7 @@ export async function addManagerXp(amount: number): Promise<AdminActionResult> {
 export async function maxEnergy(): Promise<AdminActionResult> {
   try {
     const cookieStore = await cookies();
-    const sessionUuid = cookieStore.get('tg_user_id')?.value;
+    const sessionUuid = (await verifySession());
     if (!sessionUuid) return { success: false, error: 'Unauthorized' };
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -333,7 +334,7 @@ export async function maxEnergy(): Promise<AdminActionResult> {
 export async function generateTopPlayer(): Promise<AdminActionResult> {
   try {
     const cookieStore = await cookies();
-    const sessionUuid = cookieStore.get('tg_user_id')?.value;
+    const sessionUuid = (await verifySession());
     if (!sessionUuid) return { success: false, error: 'Unauthorized' };
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -374,7 +375,7 @@ export async function generateTopPlayer(): Promise<AdminActionResult> {
 export async function forceMatchWin(): Promise<AdminActionResult> {
   try {
     const cookieStore = await cookies();
-    const sessionUuid = cookieStore.get('tg_user_id')?.value;
+    const sessionUuid = (await verifySession());
     if (!sessionUuid) return { success: false, error: 'Unauthorized' };
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
