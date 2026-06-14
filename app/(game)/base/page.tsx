@@ -749,26 +749,41 @@ function TrainingTab({
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none -mx-1 px-1">
           {campData.players.map(player => {
             const isSelected = selectedPlayer?.id === player.id;
+            const ovr = player.ovr;
+            
+            // Determine rarity color
+            const rarityBorder = ovr >= 90 ? 'border-fuchsia-500/40' : ovr >= 80 ? 'border-amber-500/40' : ovr >= 65 ? 'border-cyan-500/40' : 'border-gray-500/40';
+            const rarityBg = ovr >= 90 ? 'bg-fuchsia-500/10' : ovr >= 80 ? 'bg-amber-500/10' : ovr >= 65 ? 'bg-cyan-500/10' : 'bg-gray-500/10';
+            const rarityText = ovr >= 90 ? 'text-fuchsia-300' : ovr >= 80 ? 'text-amber-300' : ovr >= 65 ? 'text-cyan-300' : 'text-gray-300';
+            const rarityShadow = ovr >= 90 ? 'shadow-[0_0_15px_rgba(217,70,239,0.2)]' : ovr >= 80 ? 'shadow-[0_0_15px_rgba(251,191,36,0.2)]' : ovr >= 65 ? 'shadow-[0_0_15px_rgba(34,211,238,0.2)]' : 'shadow-none';
+
             return (
               <button key={player.id} id={`player-card-${player.id}`}
                       onClick={() => onSelectPlayer(player)}
                       className={`flex-shrink-0 flex flex-col items-center gap-1.5 p-2 rounded-2xl
-                                  border transition-all duration-300 w-[68px] backdrop-blur-md
+                                  border transition-all duration-300 w-[68px] backdrop-blur-md relative overflow-hidden
                                   ${isSelected
-                                    ? 'bg-cyan-500/10 border-cyan-500/40 shadow-[0_0_15px_rgba(0,240,255,0.15)]'
-                                    : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/8 active:scale-95'
+                                    ? `${rarityBg} ${rarityBorder} ${rarityShadow} scale-105 z-10`
+                                    : 'bg-white/5 border-white/10 hover:border-white/30 hover:bg-white/10 active:scale-95'
                                   }`}>
+                
+                {isSelected && (
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+                )}
+
                 {/* OVR circle */}
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center
-                                 text-xs font-bold font-orbitron transition-all duration-300 backdrop-blur-md
-                                 ${isSelected ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30' : 'bg-white/5 text-gray-400 border border-white/10'}`}
-                     style={isSelected ? { textShadow: '0 0 10px rgba(0,240,255,0.5)' } : {}}>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center relative
+                                 text-[13px] font-black font-orbitron transition-all duration-300 backdrop-blur-md drop-shadow-md
+                                 ${isSelected 
+                                   ? `${rarityBg} ${rarityText} ${rarityBorder}` 
+                                   : `bg-white/5 ${rarityText} border-white/10`}`}
+                     style={isSelected ? { textShadow: `0 0 10px currentColor` } : {}}>
                   {player.ovr}
                 </div>
-                <span className="text-[9px] font-bold text-white text-center leading-tight line-clamp-1 w-full">
+                <span className={`text-[9px] font-bold text-center leading-tight line-clamp-1 w-full truncate ${isSelected ? 'text-white' : 'text-gray-300'}`}>
                   {player.name.split(' ').pop()}
                 </span>
-                <span className={`text-[8px] font-mono uppercase tracking-wider ${isSelected ? 'text-cyan-300' : 'text-gray-500'}`}>
+                <span className={`text-[8px] font-mono font-black uppercase tracking-wider ${isSelected ? rarityText : 'text-gray-500'}`}>
                   {player.position}
                 </span>
               </button>
