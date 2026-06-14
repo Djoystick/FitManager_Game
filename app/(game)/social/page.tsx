@@ -159,9 +159,16 @@ export default function SocialPage() {
   const [friendsSubTab, setFriendsSubTab] = useState<'list' | 'requests' | 'history'>('list');
 
   return (
-    <div className="min-h-screen bg-[#05060f] pb-24">
-      {/* Header */}
-      <div className="sticky top-0 z-40 bg-[#05060f]/95 backdrop-blur-xl border-b border-white/5 px-4 pt-[85px] pb-3">
+    <div className="min-h-screen pb-24 relative" style={{ background: '#0a0a0f' }}>
+      {/* Background — Premium Dark Glassmorphism */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,rgba(52,211,153,0.12)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_100%,rgba(147,51,234,0.08)_0%,transparent_60%)]" />
+      </div>
+
+      {/* Header — Glassmorphism */}
+      <div className="sticky top-0 z-40 px-4 pt-[85px] pb-3" style={{ background: 'linear-gradient(180deg, rgba(10,10,15,0.98) 0%, rgba(10,10,15,0.95) 100%)', backdropFilter: 'blur(20px)' }}>
+        <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-3" />
         <div className="flex items-center justify-between">
           <Link href="/" className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors">
             <ArrowLeft size={16} />
@@ -172,8 +179,8 @@ export default function SocialPage() {
           <div className="w-8" />
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1.5 mt-3 overflow-x-auto scrollbar-hide">
+        {/* Tabs — Glassmorphism */}
+        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
           <TabButton active={tab === 'notifications'} onClick={() => setTab('notifications')} color="cyan" icon={<Bell size={11} />} label={t.notifications || 'Alerts'} badge={unreadCount} />
           <TabButton active={tab === 'friends'} onClick={() => setTab('friends')} color="emerald" icon={<Users size={11} />} label={language === 'ru' ? 'Друзья' : 'Friends'} badge={pendingRequests.length + pendingChallenges.length} />
           <TabButton active={tab === 'search'} onClick={() => setTab('search')} color="violet" icon={<Search size={11} />} label={language === 'ru' ? 'Поиск' : 'Search'} />
@@ -217,27 +224,23 @@ function TabButton({ active, onClick, color, icon, label, badge }: {
   active: boolean; onClick: () => void; color: string; icon: React.ReactNode; label: string; badge?: number;
 }) {
   const colorMap: Record<string, string> = {
-    cyan: active ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300' : '',
-    emerald: active ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300' : '',
-    violet: active ? 'bg-violet-500/15 border-violet-500/30 text-violet-300' : '',
-    yellow: active ? 'bg-yellow-500/15 border-yellow-500/30 text-yellow-300' : '',
+    cyan: active ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300 shadow-[0_0_10px_rgba(0,240,255,0.15)]' : '',
+    emerald: active ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.15)]' : '',
+    violet: active ? 'bg-violet-500/15 border-violet-500/30 text-violet-300 shadow-[0_0_10px_rgba(139,92,246,0.15)]' : '',
+    yellow: active ? 'bg-yellow-500/15 border-yellow-500/30 text-yellow-300 shadow-[0_0_10px_rgba(234,179,8,0.15)]' : '',
   };
   const badgeColor: Record<string, string> = {
-    cyan: 'bg-cyan-400 text-[#05060f]',
-    emerald: 'bg-emerald-400 text-[#05060f]',
-    violet: 'bg-violet-400 text-[#05060f]',
-    yellow: 'bg-yellow-400 text-[#05060f]',
+    cyan: 'bg-cyan-400 text-[#0a0a0f]',
+    emerald: 'bg-emerald-400 text-[#0a0a0f]',
+    violet: 'bg-violet-400 text-[#0a0a0f]',
+    yellow: 'bg-yellow-400 text-[#0a0a0f]',
   };
 
   return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
-        active
-          ? `${colorMap[color]} border`
-          : 'bg-white/5 border border-white/10 text-gray-500 hover:text-gray-300'
-      }`}
-    >
+    <button onClick={onClick}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all duration-300 whitespace-nowrap border backdrop-blur-md ${
+              active ? `${colorMap[color]}` : 'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:bg-white/8'
+            }`}>
       {icon}
       {label}
       {badge !== undefined && badge > 0 && (
@@ -277,8 +280,8 @@ function NotificationsTab({ notifications, onMarkAllRead, unreadCount, language,
       {notifications.map((n) => {
         const icon = TYPE_ICONS[n.type] ?? '📢';
         return (
-          <div key={n.id} className={`flex items-start gap-3 p-3 rounded-2xl border transition-all ${n.is_read ? 'bg-white/[0.02] border-white/5 opacity-50' : 'bg-cyan-500/5 border-cyan-500/20'}`}>
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-black/40 border border-white/8 flex-shrink-0 text-lg">{icon}</div>
+          <div key={n.id} className={`flex items-start gap-3 p-3 rounded-2xl border backdrop-blur-md transition-all duration-300 ${n.is_read ? 'bg-white/[0.03] border-white/5 opacity-50' : 'bg-cyan-500/5 border-cyan-500/20 shadow-[0_0_12px_rgba(0,240,255,0.05)]'}`}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/5 border border-white/10 flex-shrink-0 text-lg">{icon}</div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
                 <span className="text-[10px] font-black text-white uppercase tracking-wide">{n.title}</span>
@@ -355,7 +358,7 @@ function FriendsTab({ friends, pendingRequests, pendingChallenges, challengeHist
             </div>
           ) : (
             friends.map((f) => (
-              <div key={f.user_id} className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.02] border border-white/5">
+              <div key={f.user_id} className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md">
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-lg flex-shrink-0">
                   {f.logo_url ? <img src={f.logo_url} alt="" className="w-8 h-8 rounded-lg object-cover" /> : '⚽'}
                 </div>
@@ -395,7 +398,7 @@ function FriendsTab({ friends, pendingRequests, pendingChallenges, challengeHist
             </div>
           ) : (
             pendingRequests.map((r) => (
-              <div key={r.request_id} className="flex items-center gap-3 p-3 rounded-2xl bg-yellow-500/5 border border-yellow-500/15">
+              <div key={r.request_id} className="flex items-center gap-3 p-3 rounded-2xl bg-yellow-500/5 border border-yellow-500/20 backdrop-blur-md">
                 <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-lg flex-shrink-0">
                   {r.logo_url ? <img src={r.logo_url} alt="" className="w-8 h-8 rounded-lg object-cover" /> : '👋'}
                 </div>
@@ -444,7 +447,7 @@ function FriendsTab({ friends, pendingRequests, pendingChallenges, challengeHist
               const resultColor = ch.result === 'win' ? 'text-emerald-400' : ch.result === 'loss' ? 'text-red-400' : 'text-yellow-400';
               const resultLabel = ch.result === 'win' ? (language === 'ru' ? 'Победа' : 'Win') : ch.result === 'loss' ? (language === 'ru' ? 'Поражение' : 'Loss') : (language === 'ru' ? 'Ничья' : 'Draw');
               return (
-                <div key={ch.challenge_id} className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.02] border border-white/5">
+                <div key={ch.challenge_id} className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md">
                   <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-lg flex-shrink-0">
                     {ch.opponent_logo ? <img src={ch.opponent_logo} alt="" className="w-8 h-8 rounded-lg object-cover" /> : '⚔️'}
                   </div>
@@ -490,7 +493,7 @@ function ChallengeCard({ challenge, language, onRefresh }: {
   };
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded-2xl bg-violet-500/5 border border-violet-500/20">
+    <div className="flex items-center gap-3 p-3 rounded-2xl bg-violet-500/5 border border-violet-500/20 backdrop-blur-md">
       <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-lg flex-shrink-0">
         {challenge.challenger_logo ? <img src={challenge.challenger_logo} alt="" className="w-8 h-8 rounded-lg object-cover" /> : '⚔️'}
       </div>
@@ -559,12 +562,10 @@ function SearchTab({ language }: { language: string }) {
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           placeholder={language === 'ru' ? 'Найти команду...' : 'Search teams...'}
-          className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[11px] placeholder-gray-600 focus:outline-none focus:border-violet-500/50 transition-colors"
+          className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[11px] placeholder-gray-600 focus:outline-none focus:border-violet-500/50 focus:bg-white/8 transition-all duration-300 backdrop-blur-md"
         />
-        <button
-          onClick={handleSearch}
-          disabled={searching || query.trim().length < 2}
-          className="px-3 py-2 rounded-xl bg-violet-500/15 border border-violet-500/30 text-violet-300 text-[10px] font-bold uppercase tracking-wider hover:bg-violet-500/25 transition-colors disabled:opacity-50 flex items-center gap-1"
+        <button onClick={handleSearch} disabled={searching || query.trim().length < 2}
+                className="px-3 py-2 rounded-xl bg-violet-500/15 border border-violet-500/30 text-violet-300 text-[10px] font-bold uppercase tracking-wider hover:bg-violet-500/25 transition-all duration-300 disabled:opacity-50 flex items-center gap-1 active:scale-95 backdrop-blur-md"
         >
           <Search size={12} />
           {searching ? '...' : (language === 'ru' ? 'Найти' : 'Search')}
@@ -579,7 +580,7 @@ function SearchTab({ language }: { language: string }) {
           </p>
         )}
         {results.map((team) => (
-          <div key={team.team_id} className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.02] border border-white/5">
+          <div key={team.team_id} className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md">
             <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-lg flex-shrink-0">
               {team.logo_url ? <img src={team.logo_url} alt="" className="w-8 h-8 rounded-lg object-cover" /> : '⚽'}
             </div>
@@ -623,7 +624,9 @@ function NewsTab({ news, language }: { news: NewsItem[]; language: string }) {
   return (
     <div className="flex flex-col gap-3">
       {news.map((item) => (
-        <div key={item.id} className="glass-card-cyan p-4 relative overflow-hidden flex flex-col gap-2">
+        <div key={item.id} className="relative overflow-hidden p-4 rounded-2xl border border-cyan-500/20 backdrop-blur-xl flex flex-col gap-2"
+             style={{ background: 'linear-gradient(135deg, rgba(0,240,255,0.05) 0%, rgba(255,255,255,0.02) 100%)' }}>
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent" />
           <div className="absolute top-0 right-0 p-2 opacity-10"><Newspaper size={40} /></div>
           <div className="flex justify-between items-start">
             <span className="text-[9px] font-bold text-cyan-400 uppercase tracking-wider bg-cyan-500/10 px-2 py-0.5 rounded-sm">{item.author}</span>

@@ -72,17 +72,21 @@ function TransfersIcon({ active }: { active: boolean }) {
   );
 }
 
-function ManagerIcon({ active }: { active: boolean }) {
+function SocialIcon({ active }: { active: boolean }) {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="transition-all duration-300">
-      {/* Cyber-shield base */}
-      <path d="M12 2L4 5v6c0 5.5 3.8 10.7 8 12c4.2-1.3 8-6.5 8-12V5l-8-3z" stroke="currentColor" strokeWidth="1.2" fill={active ? 'rgba(0,240,255,0.05)' : 'none'} opacity={active ? 1 : 0.6} />
-      {/* Inner tech lines */}
-      <path d="M12 5V21" stroke={active ? 'rgba(0,240,255,0.4)' : 'currentColor'} strokeWidth="1" strokeDasharray="3 3" opacity={active ? 1 : 0.3} />
-      {/* Rank insignia */}
-      <path d="M8 10L12 7L16 10" stroke={active ? '#00f0ff' : 'currentColor'} strokeWidth={active ? "2" : "1.5"} strokeLinecap="round" strokeLinejoin="round" style={{ filter: active ? 'drop-shadow(0 0 4px #00f0ff)' : 'none' }} />
-      <path d="M8 14L12 11L16 14" stroke={active ? '#fff' : 'currentColor'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity={active ? 0.9 : 0.5} />
-      <path d="M8 18L12 15L16 18" stroke={active ? '#ff0055' : 'currentColor'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity={active ? 0.7 : 0.3} />
+      {/* Main person */}
+      <circle cx="9" cy="7" r="3.5" stroke="currentColor" strokeWidth="1.2" fill={active ? 'rgba(0,240,255,0.1)' : 'none'} opacity={active ? 1 : 0.6} />
+      <path d="M2 21v-2a5 5 0 015-5h4a5 5 0 015 5v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity={active ? 1 : 0.6} />
+      {/* Second person (offset) */}
+      <circle cx="16" cy="8" r="2.5" stroke={active ? '#00f0ff' : 'currentColor'} strokeWidth="1.2" fill={active ? 'rgba(0,240,255,0.1)' : 'none'} opacity={active ? 1 : 0.5} />
+      <path d="M19 21v-1.5a4 4 0 00-3-3.87" stroke={active ? '#00f0ff' : 'currentColor'} strokeWidth="1.2" strokeLinecap="round" opacity={active ? 1 : 0.4} />
+      {/* Connection line */}
+      {active && (
+        <path d="M12 10L14 9" stroke="#00f0ff" strokeWidth="1.5" strokeLinecap="round" opacity={0.6} />
+      )}
+      {/* Glow dot */}
+      <circle cx="9" cy="7" r="1" fill={active ? '#00f0ff' : 'currentColor'} style={{ filter: active ? 'drop-shadow(0 0 4px #00f0ff)' : 'none' }} />
     </svg>
   );
 }
@@ -119,7 +123,7 @@ export function BottomTabBar() {
     if (pathname === '/')           return '/';
     if (pathname.startsWith('/lineup') || pathname.startsWith('/base') || pathname.startsWith('/bank') || pathname.startsWith('/staff')) return '/lineup';
     if (pathname.startsWith('/market')) return '/market';
-    if (pathname.startsWith('/profile') || pathname.includes('/profile')) return '/profile';
+    if (pathname.startsWith('/social')) return '/social';
     if (pathname.startsWith('/league') || pathname.includes('/league') || pathname.includes('/achievements')) return '/league';
     return pathname;
   })();
@@ -128,7 +132,7 @@ export function BottomTabBar() {
     { name: 'HOME',      href: '/',        Icon: HomeIcon,      id: 'tab-home'    },
     { name: 'TEAM',      href: '/lineup',  Icon: TeamIcon,      id: 'tab-lineup'  },
     { name: 'TRANSFERS', href: '/market',  Icon: TransfersIcon, id: 'tab-market'  },
-    { name: 'MANAGER',   href: '/profile', Icon: ManagerIcon,   id: 'tab-manager' },
+    { name: 'SOCIAL',    href: '/social',  Icon: SocialIcon,    id: 'tab-social'  },
     { name: 'HUB',       href: '/league',  Icon: HubIcon,       id: 'tab-hub'     },
   ];
 

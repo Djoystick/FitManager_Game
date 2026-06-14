@@ -740,12 +740,13 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Profile link */}
+              {/* Profile link — Glassmorphism button */}
               <Link href="/profile"
                 className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
-                           border border-white/10 bg-white/5
-                           hover:bg-white/10 transition-all duration-300 active:scale-90">
-                <User size={16} className="text-gray-400" />
+                           border border-white/10 bg-white/5 backdrop-blur-md
+                           hover:bg-white/10 hover:border-white/20 transition-all duration-300 active:scale-90"
+                style={{ boxShadow: '0 0 10px rgba(255,255,255,0.03)' }}>
+                <ChevronRight size={16} className="text-gray-400" />
               </Link>
             </div>
           </motion.div>

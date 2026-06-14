@@ -214,18 +214,19 @@ export default function ProfileClient({
   const shortenAddress = (a: string) => `${a.slice(0,4)}...${a.slice(-4)}`;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden text-white relative" style={{ background: '#05060f' }}>
-      {/* Background */}
-      <div className="absolute inset-0 pointer-events-none bg-grid-cyan opacity-50" />
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_40%_at_50%_0%,rgba(147,51,234,0.1)_0%,transparent_100%)]" />
+    <div className="flex flex-col h-full overflow-hidden text-white relative" style={{ background: '#0a0a0f' }}>
+      {/* Background — Premium Dark Glassmorphism */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,rgba(147,51,234,0.15)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_100%,rgba(0,240,255,0.08)_0%,transparent_60%)]" />
+      </div>
 
-      {/* ── Hero Card ──────────────────────────────────────────────────── */}
+      {/* ── Hero Card — Glassmorphism ──────────────────────────────────── */}
       <div className="flex-shrink-0 p-3 pb-0 relative z-10">
-        <motion.div
-          className="glass-card-violet relative overflow-hidden p-3"
-          initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent" />
+        <motion.div className="relative overflow-hidden p-3 rounded-2xl border border-white/10 backdrop-blur-xl"
+                    style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}
+                    initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
           <div className="flex items-center gap-3">
             {/* Avatar */}
             <div className="flex-shrink-0 relative group">
@@ -286,14 +287,15 @@ export default function ProfileClient({
               </div>
             </div>
 
-            {/* Level + FC */}
+            {/* Level + FC — Glassmorphism */}
             <div className="flex-shrink-0 flex flex-col items-end gap-1">
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/25">
+              <div className="flex items-center gap-1 px-2 py-1 rounded-xl bg-cyan-500/10 border border-cyan-500/25 backdrop-blur-md"
+                   style={{ boxShadow: '0 0 10px rgba(0,240,255,0.1)' }}>
                 <span className="text-[7px] text-gray-500 font-bold uppercase">LVL</span>
-                <span className="text-sm font-black font-orbitron text-cyan-300">{managerLevel}</span>
+                <span className="text-sm font-black font-orbitron text-cyan-300" style={{ textShadow: '0 0 10px rgba(0,240,255,0.5)' }}>{managerLevel}</span>
               </div>
-              <div className="text-sm font-black font-orbitron text-yellow-400">{fcBalance.toLocaleString()}</div>
-              <div className="text-[7px] text-yellow-500/70 font-bold">FC</div>
+              <div className="text-sm font-black font-orbitron text-amber-300" style={{ textShadow: '0 0 10px rgba(245,158,11,0.4)' }}>{fcBalance.toLocaleString()}</div>
+              <div className="text-[7px] text-amber-400/60 font-bold">FC</div>
             </div>
           </div>
         </motion.div>
