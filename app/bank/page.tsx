@@ -69,21 +69,28 @@ export default async function BankPage() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-space-dark overflow-y-auto custom-scrollbar pb-[90px]">
-      {/* Page Header */}
-      <div className="shrink-0 px-4 pt-4 pb-2 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-neon-green/10 border border-neon-green/20 flex items-center justify-center">
-          <Droplets className="text-neon-green w-5 h-5" />
+    <div className="h-full flex flex-col overflow-y-auto custom-scrollbar pb-[90px] relative" style={{ background: '#0a0a0f' }}>
+      {/* Background — Premium Dark Glassmorphism */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,rgba(52,211,153,0.12)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_100%,rgba(245,158,11,0.08)_0%,transparent_60%)]" />
+      </div>
+
+      {/* Page Header — Glassmorphism */}
+      <div className="shrink-0 px-4 pt-4 pb-2 flex items-center gap-3 relative z-10">
+        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center backdrop-blur-md"
+             style={{ boxShadow: '0 0 12px rgba(52,211,153,0.15)' }}>
+          <Droplets className="text-emerald-400 w-5 h-5" />
         </div>
         <div>
-          <h1 className="text-base font-black uppercase tracking-widest text-white leading-none">
+          <h1 className="text-base font-black uppercase tracking-widest text-white leading-none"
+              style={{ textShadow: '0 0 12px rgba(52,211,153,0.3)' }}>
             {t.bank_title}
           </h1>
           <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">
             {t.bank_subtitle}
           </p>
         </div>
-
       </div>
 
       {/* Main Client Component */}

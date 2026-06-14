@@ -37,9 +37,9 @@ const CURRENCY_META: Record<CurrencyType, { label: string; icon: React.ReactNode
 };
 
 function multiplierBadge(mult: number): string {
-  if (mult >= 0.9) return 'text-neon-green bg-neon-green/10 border-neon-green/30';
-  if (mult >= 0.5) return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30';
-  return 'text-gray-500 bg-gray-800/40 border-gray-700/40';
+  if (mult >= 0.9) return 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30';
+  if (mult >= 0.5) return 'text-amber-300 bg-amber-500/10 border-amber-500/30';
+  return 'text-gray-500 bg-white/5 border-white/10';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -158,16 +158,19 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col gap-4 p-4 pb-6 relative text-white">
-      {/* Header Tabs */}
+    <div className="flex flex-col gap-3 p-4 pb-6 relative text-white z-10">
 
       {/* ── BLOCK 1: Step Sync ─────────────────────────────────────────────── */}
       <FitnessSyncWidget />
 
-      {/* ── BLOCK 2: Manager Profile ────────────────────────────────────────── */}
-      <section className="bg-black/40 border border-gray-800 rounded-2xl p-4 flex flex-col gap-3">
+      {/* ── BLOCK 2: Manager Profile — Glassmorphism ────────────────────────── */}
+      <section className="relative overflow-hidden rounded-2xl border border-white/10 p-4 flex flex-col gap-3 backdrop-blur-xl"
+               style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)' }}>
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400/20 to-transparent" />
+        
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-black uppercase tracking-widest text-neon-cyan drop-shadow-[0_0_5px_rgba(0,240,255,0.5)]">
+          <h2 className="text-sm font-black uppercase tracking-widest text-cyan-300"
+              style={{ textShadow: '0 0 10px rgba(0,240,255,0.4)' }}>
             {t.manager_profile_title}
           </h2>
           <span className={`text-sm font-black ${profileMeta.color} flex items-center gap-1.5`}>
@@ -181,11 +184,11 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
           {(Object.entries(CURRENCY_META) as [CurrencyType, typeof CURRENCY_META[CurrencyType]][]).map(([curr, meta]) => {
             const mult = MULTIPLIER_MATRIX[profile][curr];
             return (
-              <div key={curr} className={`flex items-center justify-between px-3 py-2 rounded-lg bg-gray-900/50 border ${mult >= 0.9 ? 'border-neon-green/30' : 'border-gray-800'}`}>
+              <div key={curr} className={`flex items-center justify-between px-3 py-2 rounded-xl bg-white/5 border ${mult >= 0.9 ? 'border-emerald-500/30' : 'border-white/10'} backdrop-blur-md`}>
                 <span className={`flex items-center gap-1.5 text-xs font-bold ${meta.accent}`}>
                   {meta.icon} {meta.label}
                 </span>
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded border ${multiplierBadge(mult)}`}>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border backdrop-blur-sm ${multiplierBadge(mult)}`}>
                   x{mult.toFixed(1)}
                 </span>
               </div>
@@ -194,11 +197,15 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
         </div>
       </section>
 
-      {/* ── BLOCK 3: Exchange ───────────────────────────────────────────────── */}
-      <section className="bg-black/40 border border-gray-800 rounded-2xl p-4 flex flex-col gap-4" id="bank-exchange-section">
+      {/* ── BLOCK 3: Exchange — Glassmorphism ──────────────────────────────── */}
+      <section className="relative overflow-hidden rounded-2xl border border-white/10 p-4 flex flex-col gap-3 backdrop-blur-xl" id="bank-exchange-section"
+               style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)' }}>
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-pink-400/20 to-transparent" />
+        
         <div className="flex items-center gap-2">
-          <ArrowRightLeft className="text-neon-pink w-5 h-5" />
-          <h2 className="text-sm font-black uppercase tracking-widest text-neon-pink drop-shadow-[0_0_5px_rgba(255,0,100,0.5)]">
+          <ArrowRightLeft className="text-pink-400 w-5 h-5" />
+          <h2 className="text-sm font-black uppercase tracking-widest text-pink-300"
+              style={{ textShadow: '0 0 10px rgba(236,72,153,0.4)' }}>
             {t.sp_exchange}
           </h2>
         </div>
@@ -208,13 +215,10 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
             const mult = MULTIPLIER_MATRIX[profile][curr];
             const rawInput = spInputs[curr];
             const spAmt = parseInt(rawInput, 10);
-            const preview = rawInput && !isNaN(spAmt) && spAmt > 0
-              ? Math.floor(spAmt * mult)
-              : null;
+            const preview = rawInput && !isNaN(spAmt) && spAmt > 0 ? Math.floor(spAmt * mult) : null;
 
             return (
-              <div key={curr} className={`border rounded-xl p-3 flex flex-col gap-2 ${curr === Object.keys(CURRENCY_META)[0] ? '' : ''} bg-gray-900/40 border-gray-800`}>
-                {/* Header row: icon + name + balance */}
+              <div key={curr} className="border border-white/10 rounded-2xl p-3 flex flex-col gap-2 bg-white/[0.03] backdrop-blur-md">
                 <div className="flex items-center justify-between">
                   <span className={`flex items-center gap-1.5 text-xs font-black uppercase tracking-wider ${meta.accent}`}>
                     {meta.icon} {meta.label}
@@ -223,39 +227,25 @@ export function SweatBankClient({ initialData, language }: SweatBankClientProps)
                     {coinBalances[curr].toLocaleString()}
                   </span>
                 </div>
-
-                {/* Input + preview + button */}
                 <div className="flex items-stretch gap-2">
                   <div className="flex-1 relative">
-                    <input
-                      type="number"
-                      min={1}
-                      max={sweatPoints}
-                      value={rawInput}
-                      onChange={e => setSpInputs(prev => ({ ...prev, [curr]: e.target.value }))}
-                      placeholder="SP"
-                      className="w-full bg-black/60 border border-gray-700 rounded-lg px-3 py-2 text-xs font-bold text-white placeholder-gray-600 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/20 transition-all"
-                    />
+                    <input type="number" min={1} max={sweatPoints} value={rawInput}
+                           onChange={e => setSpInputs(prev => ({ ...prev, [curr]: e.target.value }))}
+                           placeholder="SP"
+                           className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white placeholder-gray-600 focus:outline-none focus:border-cyan-400/50 transition-all duration-300" />
                     {preview !== null && (
-                      <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-black ${meta.accent}`}>
-                        →{preview}
-                      </span>
+                      <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-black ${meta.accent}`}>→{preview}</span>
                     )}
                   </div>
-                  <button
-                    onClick={() => handleConvert(curr)}
-                    disabled={isConverting || !rawInput}
-                    className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all whitespace-nowrap ${
-                      isConverting || !rawInput
-                        ? 'bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed'
-                        : `${meta.accent} bg-gray-900 border-gray-700 hover:border-current active:scale-95 ${meta.glow}`
-                    }`}
-                  >
+                  <button onClick={() => handleConvert(curr)} disabled={isConverting || !rawInput}
+                          className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all duration-300 whitespace-nowrap backdrop-blur-md ${
+                            isConverting || !rawInput
+                              ? 'bg-white/5 text-gray-600 border-white/5 cursor-not-allowed'
+                              : `${meta.accent} bg-white/5 border-white/10 hover:bg-white/10 active:scale-95`
+                          }`}>
                     {isConverting ? '...' : t.exchange_btn}
                   </button>
                 </div>
-
-                {/* Multiplier indicator inline */}
                 <div className="flex items-center gap-1">
                   <span className="text-[9px] text-gray-600 font-bold uppercase tracking-wider">{t.exchange_rate}</span>
                   <span className={`text-[9px] font-black ${multiplierBadge(mult).split(' ')[0]}`}>
