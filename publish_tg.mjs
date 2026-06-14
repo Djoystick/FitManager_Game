@@ -52,7 +52,7 @@ const payload = JSON.stringify({
       [
         {
           text: '🎮 Запустить игру',
-          url: 'https://t.me/FitManagerWeb3_bot/app'
+          url: 'https://t.me/fitmanager_game_bot/FitManager'
         }
       ]
     ]

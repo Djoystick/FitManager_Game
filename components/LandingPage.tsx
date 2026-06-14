@@ -49,7 +49,7 @@ export function LandingPage() {
 
         {/* Play Button */}
         <a 
-          href="https://t.me/FitManagerWeb3_bot/app"
+          href="https://t.me/fitmanager_game_bot/FitManager"
           target="_blank" 
           rel="noopener noreferrer"
           className="relative group overflow-hidden rounded-2xl p-[1px] mb-12 inline-block cursor-pointer active:scale-95 transition-transform"

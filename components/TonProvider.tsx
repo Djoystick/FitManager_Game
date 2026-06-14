@@ -19,7 +19,7 @@ export function TonProvider({ children }: { children: ReactNode }) {
     <TonConnectUIProvider 
       manifestUrl={manifestUrl}
       actionsConfiguration={{
-        twaReturnUrl: 'https://t.me/FitManagerWeb3_bot/app'
+        twaReturnUrl: 'https://t.me/fitmanager_game_bot/FitManager'
       }}
     >
       {children}
