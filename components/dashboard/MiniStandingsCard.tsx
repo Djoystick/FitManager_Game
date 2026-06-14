@@ -42,7 +42,11 @@ export function MiniStandingsCard({ standings, userTeamId, language = 'en' }: Pr
   }
 
   return (
-    <Link href="/league" className="h-full w-full rounded-xl border border-violet-500/20 bg-violet-500/5 p-3 flex flex-col justify-between gap-1.5 hover:bg-violet-500/10 transition-colors">
+    <Link href="/league"
+          className="h-full w-full rounded-2xl border border-violet-500/20 p-3 flex flex-col justify-between gap-1.5 backdrop-blur-xl transition-all duration-300 hover:border-violet-400/40 hover:bg-white/8 active:scale-[0.98]"
+          style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.06) 0%, rgba(255,255,255,0.02) 100%)' }}>
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/20 to-transparent rounded-2xl" />
+      
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Trophy size={12} className="text-violet-400" />

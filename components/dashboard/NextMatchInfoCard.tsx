@@ -19,17 +19,20 @@ export function NextMatchInfoCard({ opponentName, opponentLogoUrl, roundNumber, 
 
   if (!opponentName) {
     return (
-      <div className="glass-card p-3 rounded-xl flex-shrink-0 flex items-center justify-center">
-        <span className="text-[9px] text-gray-600 uppercase tracking-widest font-bold">{t.no_upcoming || 'No upcoming fixtures'}</span>
+      <div className="p-3 rounded-2xl border border-white/10 backdrop-blur-xl flex-shrink-0 flex items-center justify-center"
+           style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)' }}>
+        <span className="text-[9px] text-gray-500 uppercase tracking-widest font-bold">{t.no_upcoming || 'No upcoming fixtures'}</span>
       </div>
     );
   }
 
   return (
-    <div
-      className="glass-card p-3 rounded-xl flex-shrink-0 cursor-pointer active:scale-[0.98] transition-transform"
-      onClick={onScout}
-    >
+    <div className="p-3 rounded-2xl border border-white/10 backdrop-blur-xl flex-shrink-0 cursor-pointer active:scale-[0.98] transition-all duration-300 hover:border-white/20 hover:bg-white/8"
+         style={{ background: 'linear-gradient(135deg, rgba(0,240,255,0.05) 0%, rgba(255,255,255,0.02) 100%)', boxShadow: '0 0 20px rgba(0,240,255,0.05)' }}
+         onClick={onScout}>
+      {/* Glass highlight */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent rounded-2xl" />
+      
       {/* Top row: label + round */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
@@ -53,7 +56,7 @@ export function NextMatchInfoCard({ opponentName, opponentLogoUrl, roundNumber, 
         <div className="flex-1 min-w-0">
           <span className="text-sm font-black text-white truncate block">{t.match_vs || 'vs'} {opponentName}</span>
         </div>
-        <span className="text-[8px] text-cyan-400/40 uppercase tracking-wider flex items-center gap-0.5">
+        <span className="text-[8px] text-cyan-400/50 uppercase tracking-wider flex items-center gap-0.5">
           {t.scout_btn || 'Scout'} <ChevronRight size={10} />
         </span>
       </div>
