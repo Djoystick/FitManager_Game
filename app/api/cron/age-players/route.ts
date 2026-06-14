@@ -7,9 +7,17 @@ const supabaseAdmin = createClient(
 );
 
 export async function GET(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const authHeader = req.headers.get('authorization');
+  const secretParam = new URL(req.url).searchParams.get('secret');
+  
+  const validSecret = process.env.CRON_SECRET && (
+    authHeader === `Bearer ${process.env.CRON_SECRET}` ||
+    secretParam === process.env.CRON_SECRET
+  );
+
+  if (!validSecret) {
+    console.warn('[age-players] Unauthorized request blocked.');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {

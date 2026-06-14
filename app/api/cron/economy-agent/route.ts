@@ -14,7 +14,14 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 export async function GET(request: Request) {
   // 1. Verify cron secret to prevent unauthorized execution
   const authHeader = request.headers.get('authorization');
-  if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const secretParam = new URL(request.url).searchParams.get('secret');
+  
+  const validSecret = process.env.CRON_SECRET && (
+    authHeader === `Bearer ${process.env.CRON_SECRET}` ||
+    secretParam === process.env.CRON_SECRET
+  );
+
+  if (!validSecret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
