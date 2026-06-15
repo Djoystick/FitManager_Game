@@ -15,7 +15,16 @@ const BORDERS = [
   { id: 'default', cost: 0 },
   { id: 'neon-cyan', cost: 500 },
   { id: 'gold-glow', cost: 1500 },
+  { id: 'toxic-venom', cost: 2000 },
+  { id: 'bloody-crimson', cost: 2500 },
   { id: 'fire', cost: 3000 },
+  { id: 'golden-leaves', cost: 4000 },
+  { id: 'cyber-glitch', cost: 5000 },
+  { id: 'void-abyss', cost: 6000 },
+  { id: 'diamond-frost', cost: 7500 },
+  { id: 'electric-shock', cost: 8500 },
+  { id: 'plasma-storm', cost: 10000 },
+  { id: 'holographic', cost: 15000 },
 ] as const;
 
 type BorderId = (typeof BORDERS)[number]['id'];

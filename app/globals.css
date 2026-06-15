@@ -406,3 +406,115 @@ body {
 .border-fuchsia-glow {
   animation: border-fuchsia-glow 2s ease-in-out infinite;
 }
+
+/* ── Ultra-Premium Avatar Borders (Phase 1) ──────────────────────────────── */
+
+/* Cyber Glitch — neon green + pink, pixel-distortion flicker */
+@keyframes border-cyber-glitch {
+  0%   { box-shadow: 0 0 8px rgba(57,255,20,0.5), 0 0 16px rgba(255,0,128,0.3); border-color: rgba(57,255,20,0.6); }
+  20%  { box-shadow: 2px 0 12px rgba(255,0,128,0.6), -2px 0 8px rgba(57,255,20,0.4); border-color: rgba(255,0,128,0.7); }
+  40%  { box-shadow: -1px 0 10px rgba(57,255,20,0.7), 1px 0 20px rgba(255,0,128,0.3); border-color: rgba(57,255,20,0.5); }
+  60%  { box-shadow: 0 0 14px rgba(255,0,128,0.5), 0 0 8px rgba(57,255,20,0.6); border-color: rgba(255,0,128,0.5); }
+  80%  { box-shadow: 3px 0 12px rgba(57,255,20,0.4), -3px 0 16px rgba(255,0,128,0.5); border-color: rgba(57,255,20,0.7); }
+  100% { box-shadow: 0 0 8px rgba(57,255,20,0.5), 0 0 16px rgba(255,0,128,0.3); border-color: rgba(57,255,20,0.6); }
+}
+.border-cyber-glitch {
+  animation: border-cyber-glitch 1.5s steps(5) infinite;
+}
+
+/* Diamond Frost — icy blue/white shimmer with crystalline glint */
+@keyframes border-diamond-frost {
+  0%   { box-shadow: 0 0 10px rgba(186,230,253,0.5), 0 0 24px rgba(255,255,255,0.2); border-color: rgba(186,230,253,0.6); }
+  25%  { box-shadow: 0 0 16px rgba(255,255,255,0.6), 0 0 32px rgba(147,197,253,0.3); border-color: rgba(255,255,255,0.7); }
+  50%  { box-shadow: 0 0 20px rgba(186,230,253,0.7), 0 0 40px rgba(255,255,255,0.4); border-color: rgba(186,230,253,0.8); }
+  75%  { box-shadow: 0 0 14px rgba(255,255,255,0.5), 0 0 28px rgba(147,197,253,0.2); border-color: rgba(255,255,255,0.6); }
+  100% { box-shadow: 0 0 10px rgba(186,230,253,0.5), 0 0 24px rgba(255,255,255,0.2); border-color: rgba(186,230,253,0.6); }
+}
+.border-diamond-frost {
+  animation: border-diamond-frost 3s ease-in-out infinite;
+  background-image: linear-gradient(135deg, rgba(186,230,253,0.05), rgba(255,255,255,0.08), rgba(147,197,253,0.05));
+}
+
+/* Plasma Storm — purple-pink flowing plasma */
+@keyframes border-plasma-storm {
+  0%   { box-shadow: 0 0 12px rgba(168,85,247,0.5), 0 0 24px rgba(236,72,153,0.3); border-color: rgba(168,85,247,0.6); }
+  25%  { box-shadow: 0 0 18px rgba(236,72,153,0.6), 0 0 36px rgba(168,85,247,0.4); border-color: rgba(236,72,153,0.7); }
+  50%  { box-shadow: 0 0 24px rgba(168,85,247,0.7), 0 0 48px rgba(236,72,153,0.3); border-color: rgba(168,85,247,0.8); }
+  75%  { box-shadow: 0 0 16px rgba(236,72,153,0.5), 0 0 32px rgba(168,85,247,0.35); border-color: rgba(236,72,153,0.6); }
+  100% { box-shadow: 0 0 12px rgba(168,85,247,0.5), 0 0 24px rgba(236,72,153,0.3); border-color: rgba(168,85,247,0.6); }
+}
+.border-plasma-storm {
+  animation: border-plasma-storm 2.5s ease-in-out infinite;
+}
+
+/* Holographic — rotating rainbow RGB gradient */
+@keyframes border-holographic {
+  0%   { box-shadow: 0 0 12px rgba(255,0,0,0.5), 0 0 24px rgba(0,255,0,0.3); border-color: rgba(255,0,0,0.6); }
+  16%  { box-shadow: 0 0 14px rgba(255,165,0,0.5), 0 0 28px rgba(255,0,0,0.3); border-color: rgba(255,165,0,0.6); }
+  33%  { box-shadow: 0 0 16px rgba(255,255,0,0.5), 0 0 32px rgba(0,255,0,0.3); border-color: rgba(255,255,0,0.6); }
+  50%  { box-shadow: 0 0 18px rgba(0,255,0,0.5), 0 0 36px rgba(0,0,255,0.3); border-color: rgba(0,255,0,0.6); }
+  66%  { box-shadow: 0 0 16px rgba(0,0,255,0.5), 0 0 32px rgba(128,0,255,0.3); border-color: rgba(0,0,255,0.6); }
+  83%  { box-shadow: 0 0 14px rgba(128,0,255,0.5), 0 0 28px rgba(255,0,0,0.3); border-color: rgba(128,0,255,0.6); }
+  100% { box-shadow: 0 0 12px rgba(255,0,0,0.5), 0 0 24px rgba(0,255,0,0.3); border-color: rgba(255,0,0,0.6); }
+}
+.border-holographic {
+  animation: border-holographic 4s linear infinite;
+}
+
+/* ── Midgame Avatar Borders ───────────────────────────────────────────────── */
+
+/* Toxic Venom — pulsing toxic green glow */
+@keyframes border-toxic-venom {
+  0%, 100% { box-shadow: 0 0 10px rgba(74,222,128,0.5), 0 0 20px rgba(34,197,94,0.3); border-color: rgba(74,222,128,0.6); }
+  50% { box-shadow: 0 0 20px rgba(74,222,128,0.8), 0 0 40px rgba(34,197,94,0.5); border-color: rgba(74,222,128,0.9); }
+}
+.border-toxic-venom {
+  animation: border-toxic-venom 2s ease-in-out infinite;
+}
+
+/* Bloody Crimson — heartbeat pulse effect */
+@keyframes border-bloody-crimson {
+  0%   { box-shadow: 0 0 8px rgba(185,28,28,0.4), 0 0 16px rgba(220,38,38,0.2); border-color: rgba(185,28,28,0.5); }
+  15%  { box-shadow: 0 0 18px rgba(220,38,38,0.7), 0 0 36px rgba(185,28,28,0.4); border-color: rgba(220,38,38,0.8); }
+  30%  { box-shadow: 0 0 10px rgba(185,28,28,0.5), 0 0 20px rgba(220,38,38,0.25); border-color: rgba(185,28,28,0.6); }
+  45%  { box-shadow: 0 0 16px rgba(220,38,38,0.6), 0 0 32px rgba(185,28,28,0.35); border-color: rgba(220,38,38,0.7); }
+  60%  { box-shadow: 0 0 8px rgba(185,28,28,0.4), 0 0 16px rgba(220,38,38,0.2); border-color: rgba(185,28,28,0.5); }
+  100% { box-shadow: 0 0 8px rgba(185,28,28,0.4), 0 0 16px rgba(220,38,38,0.2); border-color: rgba(185,28,28,0.5); }
+}
+.border-bloody-crimson {
+  animation: border-bloody-crimson 1.2s ease-in-out infinite;
+}
+
+/* Golden Leaves — warm gold shimmer with subtle drift */
+@keyframes border-golden-leaves {
+  0%   { box-shadow: 0 0 10px rgba(234,179,8,0.4), 0 0 20px rgba(217,119,6,0.2); border-color: rgba(234,179,8,0.5); }
+  33%  { box-shadow: 0 0 16px rgba(217,119,6,0.5), 0 0 28px rgba(234,179,8,0.3); border-color: rgba(217,119,6,0.6); }
+  66%  { box-shadow: 0 0 14px rgba(234,179,8,0.6), 0 0 24px rgba(245,158,11,0.35); border-color: rgba(234,179,8,0.7); }
+  100% { box-shadow: 0 0 10px rgba(234,179,8,0.4), 0 0 20px rgba(217,119,6,0.2); border-color: rgba(234,179,8,0.5); }
+}
+.border-golden-leaves {
+  animation: border-golden-leaves 3s ease-in-out infinite;
+}
+
+/* Void Abyss — deep purple-black cosmic pulse */
+@keyframes border-void-abyss {
+  0%, 100% { box-shadow: 0 0 12px rgba(88,28,135,0.5), 0 0 24px rgba(30,0,60,0.4), inset 0 0 8px rgba(88,28,135,0.2); border-color: rgba(88,28,135,0.6); }
+  50% { box-shadow: 0 0 24px rgba(126,34,206,0.7), 0 0 48px rgba(30,0,60,0.5), inset 0 0 16px rgba(126,34,206,0.3); border-color: rgba(126,34,206,0.8); }
+}
+.border-void-abyss {
+  animation: border-void-abyss 3s ease-in-out infinite;
+}
+
+/* Electric Shock — sharp blue-white lightning flashes */
+@keyframes border-electric-shock {
+  0%   { box-shadow: 0 0 8px rgba(147,197,253,0.4), 0 0 16px rgba(255,255,255,0.2); border-color: rgba(147,197,253,0.5); }
+  10%  { box-shadow: 0 0 24px rgba(255,255,255,0.9), 0 0 48px rgba(96,165,250,0.6); border-color: rgba(255,255,255,0.9); }
+  20%  { box-shadow: 0 0 6px rgba(147,197,253,0.3), 0 0 12px rgba(255,255,255,0.15); border-color: rgba(147,197,253,0.4); }
+  55%  { box-shadow: 0 0 8px rgba(147,197,253,0.4), 0 0 16px rgba(255,255,255,0.2); border-color: rgba(147,197,253,0.5); }
+  65%  { box-shadow: 0 0 20px rgba(96,165,250,0.8), 0 0 40px rgba(255,255,255,0.5); border-color: rgba(96,165,250,0.8); }
+  75%  { box-shadow: 0 0 8px rgba(147,197,253,0.4), 0 0 16px rgba(255,255,255,0.2); border-color: rgba(147,197,253,0.5); }
+  100% { box-shadow: 0 0 8px rgba(147,197,253,0.4), 0 0 16px rgba(255,255,255,0.2); border-color: rgba(147,197,253,0.5); }
+}
+.border-electric-shock {
+  animation: border-electric-shock 2s ease-in-out infinite;
+}

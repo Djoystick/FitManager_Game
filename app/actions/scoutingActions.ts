@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { triggerScoutingAchievements } from '@/app/services/achievementService';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -143,6 +144,9 @@ export async function signYouthIntake(intakeId: string): Promise<ScoutResult> {
 
     // Delete intake
     await supabaseAdmin.from('youth_intakes').delete().eq('id', intakeId);
+
+    // Track youth promotion achievement
+    await triggerScoutingAchievements(teamData.id);
 
     revalidatePath('/academy');
     revalidatePath('/squad');

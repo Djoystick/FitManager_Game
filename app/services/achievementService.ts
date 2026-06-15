@@ -52,6 +52,21 @@ export const ACHIEVEMENTS: Record<string, AchievementConfig> = {
 
   // SECRETS
   'LUCKY_NUMBER': { id: 'LUCKY_NUMBER', name: 'Джекпот', description: 'Иметь 77,777 FC на балансе', icon: '🎰', rewardFC: 7777, rewardTON: 0 },
+
+  // HARDCORE / ENDGAME
+  'STREAK_10': { id: 'STREAK_10', name: 'Неостановимый', description: 'Выиграть 10 матчей подряд', icon: '🔥', rewardFC: 2500, rewardTON: 0 },
+  'GOAL_MACHINE': { id: 'GOAL_MACHINE', name: 'Машина голов', description: 'Забить 100 голов за все время', icon: '⚽', rewardFC: 1500, rewardTON: 0 },
+  'MARKET_WHALE': { id: 'MARKET_WHALE', name: 'Кит рынка', description: 'Купить игрока за 50,000+ FC', icon: '🐋', rewardFC: 5000, rewardTON: 0 },
+  'YOUTH_PROMOTER': { id: 'YOUTH_PROMOTER', name: 'Продюсер', description: 'Перевести 5 игроков из академии', icon: '🎓', rewardFC: 1000, rewardTON: 0 },
+  'MILLIONAIRE': { id: 'MILLIONAIRE', name: 'Миллионер', description: 'Накопить 1,000,000 FC', icon: '💰', rewardFC: 15000, rewardTON: 0.5 },
+
+  // MIDGAME
+  'STREAK_5': { id: 'STREAK_5', name: 'На волне', description: 'Выиграть 5 матчей подряд', icon: '🌊', rewardFC: 800, rewardTON: 0 },
+  'DEFENSIVE_WALL': { id: 'DEFENSIVE_WALL', name: 'Кирпичная стена', description: 'Отыграть 5 матчей "на ноль"', icon: '🧱', rewardFC: 800, rewardTON: 0 },
+  'GOAL_MACHINE_50': { id: 'GOAL_MACHINE_50', name: 'Острие атаки', description: 'Забить 50 мячей за все время', icon: '🎯', rewardFC: 500, rewardTON: 0 },
+  'ACADEMY_STAR_3': { id: 'ACADEMY_STAR_3', name: 'Молодая кровь', description: 'Перевести 3 игроков из академии', icon: '🌟', rewardFC: 500, rewardTON: 0 },
+  'MARKET_REGULAR': { id: 'MARKET_REGULAR', name: 'Завсегдатай рынка', description: 'Купить 5 игроков', icon: '🛒', rewardFC: 300, rewardTON: 0 },
+  'STADIUM_LVL_3': { id: 'STADIUM_LVL_3', name: 'Любимец публики', description: 'Прокачать стадион до 3 уровня', icon: '🏟️', rewardFC: 600, rewardTON: 0 },
 };
 
 /**
@@ -153,15 +168,22 @@ export async function triggerMatchAchievements(teamId: string, isWin: boolean, g
   const totalMatches = (stats.total_matches || 0) + 1;
   const wins = (stats.wins || 0) + (isWin ? 1 : 0);
   const streak = isWin ? ((stats.streak || 0) + 1) : 0;
+  const goals_scored = (stats.goals_scored || 0) + gf;
+  const clean_sheets = (stats.clean_sheets || 0) + (ga === 0 ? 1 : 0);
   
   await supabaseAdmin.from('teams').update({
-    stats: { ...stats, total_matches: totalMatches, wins, streak }
+    stats: { ...stats, total_matches: totalMatches, wins, streak, goals_scored, clean_sheets }
   }).eq('id', teamId);
 
   // Check stat thresholds
   if (wins >= 10) await checkAndUnlockAchievement(teamId, 'TEN_WINS');
   if (wins >= 100) await checkAndUnlockAchievement(teamId, 'CENTURY_WINS');
   if (streak >= 3) await checkAndUnlockAchievement(teamId, 'STREAK_3');
+  if (streak >= 5) await checkAndUnlockAchievement(teamId, 'STREAK_5');
+  if (streak >= 10) await checkAndUnlockAchievement(teamId, 'STREAK_10');
+  if (goals_scored >= 50) await checkAndUnlockAchievement(teamId, 'GOAL_MACHINE_50');
+  if (goals_scored >= 100) await checkAndUnlockAchievement(teamId, 'GOAL_MACHINE');
+  if (clean_sheets >= 5) await checkAndUnlockAchievement(teamId, 'DEFENSIVE_WALL');
 }
 
 export async function triggerInfrastructureAchievements(teamId: string) {
@@ -173,22 +195,28 @@ export async function triggerInfrastructureAchievements(teamId: string) {
   const tl = infra.training_level || 1;
 
   if (sl >= 2) await checkAndUnlockAchievement(teamId, 'STADIUM_LVL_2');
+  if (sl >= 3) await checkAndUnlockAchievement(teamId, 'STADIUM_LVL_3');
   if (sl >= 5) await checkAndUnlockAchievement(teamId, 'STADIUM_LVL_5');
   if (al >= 5) await checkAndUnlockAchievement(teamId, 'ACADEMY_LVL_5');
   if (tl >= 5) await checkAndUnlockAchievement(teamId, 'TRAINING_LVL_5');
   if (sl >= 5 && al >= 5 && tl >= 5) await checkAndUnlockAchievement(teamId, 'FULL_HOUSE');
 }
 
-export async function triggerTransferAchievements(teamId: string, type: 'buy' | 'sell') {
+export async function triggerTransferAchievements(teamId: string, type: 'buy' | 'sell', price?: number) {
   if (type === 'buy') {
     await checkAndUnlockAchievement(teamId, 'FIRST_BUY');
     
+    if (price && price >= 50000) {
+      await checkAndUnlockAchievement(teamId, 'MARKET_WHALE');
+    }
+
     // Update stats
     const { data: team } = await supabaseAdmin.from('teams').select('stats').eq('id', teamId).single();
     const stats = (team?.stats as any) || {};
     const bought = (stats.players_bought || 0) + 1;
     await supabaseAdmin.from('teams').update({ stats: { ...stats, players_bought: bought } }).eq('id', teamId);
 
+    if (bought >= 5) await checkAndUnlockAchievement(teamId, 'MARKET_REGULAR');
     if (bought >= 10) await checkAndUnlockAchievement(teamId, 'MARKET_GURU');
     await triggerTeamOvrAchievements(teamId);
   } else {
@@ -213,5 +241,35 @@ export async function triggerTeamOvrAchievements(teamId: string) {
     const avgOvr = players.reduce((sum, p) => sum + (p.ovr || 0), 0) / players.length;
     if (avgOvr >= 75) await checkAndUnlockAchievement(teamId, 'OVR_75');
     if (avgOvr >= 85) await checkAndUnlockAchievement(teamId, 'OVR_85');
+  }
+}
+
+export async function triggerScoutingAchievements(teamId: string) {
+  const { data: team } = await supabaseAdmin.from('teams').select('stats').eq('id', teamId).single();
+  const stats = (team?.stats as any) || {};
+  const youth_promoted = (stats.youth_promoted || 0) + 1;
+
+  await supabaseAdmin.from('teams').update({ stats: { ...stats, youth_promoted } }).eq('id', teamId);
+
+  if (youth_promoted >= 3) {
+    await checkAndUnlockAchievement(teamId, 'ACADEMY_STAR_3');
+  }
+  if (youth_promoted >= 5) {
+    await checkAndUnlockAchievement(teamId, 'YOUTH_PROMOTER');
+  }
+}
+
+export async function triggerBalanceAchievements(teamId: string) {
+  const { data: team } = await supabaseAdmin.from('teams').select('user_id').eq('id', teamId).single();
+  if (!team) return;
+
+  const { data: user } = await supabaseAdmin
+    .from('users')
+    .select('balance_fancoins')
+    .eq('id', team.user_id)
+    .single();
+
+  if (user && (user.balance_fancoins || 0) >= 1_000_000) {
+    await checkAndUnlockAchievement(teamId, 'MILLIONAIRE');
   }
 }

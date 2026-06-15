@@ -128,7 +128,7 @@ export async function acceptOffer(offerId: string, botReceiverId?: string) {
     // Fetch offer + sender team for post-transfer side-effects (notifications, achievements)
     const { data: offer } = await supabaseAdmin
       .from('transfer_offers')
-      .select('sender_team_id, receiver_team_id')
+      .select('sender_team_id, receiver_team_id, offered_fc')
       .eq('id', offerId)
       .single();
     if (!offer) return { success: false, error: 'Offer not found' };
@@ -172,7 +172,7 @@ export async function acceptOffer(offerId: string, botReceiverId?: string) {
     }
 
     // Achievements
-    await triggerTransferAchievements(offer.sender_team_id, 'buy');
+    await triggerTransferAchievements(offer.sender_team_id, 'buy', offer.offered_fc);
     await triggerTransferAchievements(receiverTeam.id, 'sell');
 
     return { success: true };

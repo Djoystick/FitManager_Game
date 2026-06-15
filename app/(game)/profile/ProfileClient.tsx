@@ -260,7 +260,16 @@ export default function ProfileClient({
               <div className={`w-14 h-14 rounded-full p-[2px] ${
                 activeBorderState === 'neon-cyan' ? 'border-neon-cyan border-2' :
                 activeBorderState === 'gold-glow' ? 'border-gold-glow border-2' :
+                activeBorderState === 'toxic-venom' ? 'border-toxic-venom border-2' :
+                activeBorderState === 'bloody-crimson' ? 'border-bloody-crimson border-2' :
                 activeBorderState === 'fire' ? 'border-fire border-2' :
+                activeBorderState === 'golden-leaves' ? 'border-golden-leaves border-2' :
+                activeBorderState === 'cyber-glitch' ? 'border-cyber-glitch border-2' :
+                activeBorderState === 'void-abyss' ? 'border-void-abyss border-2' :
+                activeBorderState === 'diamond-frost' ? 'border-diamond-frost border-2' :
+                activeBorderState === 'electric-shock' ? 'border-electric-shock border-2' :
+                activeBorderState === 'plasma-storm' ? 'border-plasma-storm border-2' :
+                activeBorderState === 'holographic' ? 'border-holographic border-2' :
                 'border border-gray-600/40'
               }`}>
                 <div className="w-full h-full hex-clip flex items-center justify-center overflow-hidden violet-glow-pulse"
