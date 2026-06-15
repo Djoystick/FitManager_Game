@@ -49,22 +49,37 @@ export async function GET(req: NextRequest) {
     }
 
     // ── Execute Form Decay ────────────────────────────────────────────────────
-    // Calls the apply_form_decay() SQL function (migration 00039).
-    // Returns: { decayed, maintained, skipped, run_at }
+    // Optimistic lock: write the new timestamp BEFORE calling the RPC.
+    // If the RPC fails, roll back the timestamp so the next cron run can retry.
+    const newTimestamp = new Date().toISOString();
+    const oldTimestamp = config?.value ?? null;
+
+    const { error: lockErr } = await supabaseAdmin
+      .from('system_config')
+      .upsert(
+        { key: 'last_form_decay', value: newTimestamp },
+        { onConflict: 'key' }
+      );
+
+    if (lockErr) {
+      throw new Error(`Failed to set optimistic lock: ${lockErr.message}`);
+    }
+
     const { data: result, error: rpcError } = await supabaseAdmin
       .rpc('apply_form_decay');
 
     if (rpcError) {
+      // Rollback: restore the old timestamp so the next cron can retry
+      if (oldTimestamp) {
+        await supabaseAdmin
+          .from('system_config')
+          .upsert(
+            { key: 'last_form_decay', value: oldTimestamp },
+            { onConflict: 'key' }
+          );
+      }
       throw new Error(`apply_form_decay RPC failed: ${rpcError.message}`);
     }
-
-    // ── Update last_form_decay timestamp ─────────────────────────────────────
-    await supabaseAdmin
-      .from('system_config')
-      .upsert(
-        { key: 'last_form_decay', value: new Date().toISOString() },
-        { onConflict: 'key' }
-      );
 
     const summary = result as {
       decayed:    number;

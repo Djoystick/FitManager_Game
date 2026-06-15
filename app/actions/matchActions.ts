@@ -900,12 +900,11 @@ export async function resolveMatch(
           .maybeSingle();
 
         if (standings?.wins && standings.wins > 0 && standings.wins % 10 === 0) {
-          // Award 1000 FC
-          const { data: userData } = await supabaseAdmin.from('users').select('balance_fancoins').eq('id', team.user_id).maybeSingle();
-          await supabaseAdmin
-            .from('users')
-            .update({ balance_fancoins: (userData?.balance_fancoins ?? 0) + 1000 })
-            .eq('id', team.user_id);
+          // Award 1000 FC via atomic RPC
+          await supabaseAdmin.rpc('increment_fancoins', {
+            u_id: team.user_id,
+            amount: 1000,
+          });
 
           // Add trophy
           await supabaseAdmin.from('trophy_cabinet').insert({

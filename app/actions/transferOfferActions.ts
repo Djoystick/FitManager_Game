@@ -125,70 +125,41 @@ export async function acceptOffer(offerId: string, botReceiverId?: string) {
     }
     if (!userId) return { success: false, error: 'Unauthorized' };
 
-    const { data: offer } = await supabaseAdmin.from('transfer_offers').select('*').eq('id', offerId).single();
+    // Fetch offer + sender team for post-transfer side-effects (notifications, achievements)
+    const { data: offer } = await supabaseAdmin
+      .from('transfer_offers')
+      .select('sender_team_id, receiver_team_id')
+      .eq('id', offerId)
+      .single();
     if (!offer) return { success: false, error: 'Offer not found' };
-    if (offer.status !== 'pending') return { success: false, error: 'Offer is not pending' };
 
-    const { data: receiverTeam } = await supabaseAdmin.from('teams').select('id').eq('user_id', userId).single();
-    if (!receiverTeam || offer.receiver_team_id !== receiverTeam.id) {
-      return { success: false, error: 'Unauthorized to accept this offer' };
-    }
+    const [{ data: receiverTeam }, { data: senderTeam }] = await Promise.all([
+      supabaseAdmin.from('teams').select('id').eq('user_id', userId).single(),
+      supabaseAdmin.from('teams').select('user_id').eq('id', offer.sender_team_id).single(),
+    ]);
+    if (!receiverTeam) return { success: false, error: 'Unauthorized to accept this offer' };
 
-    const { data: senderTeam } = await supabaseAdmin.from('teams').select('user_id').eq('id', offer.sender_team_id).single();
-    if (!senderTeam) return { success: false, error: 'Sender team not found' };
-
-    // Validate sender FC
-    const { data: senderUser } = await supabaseAdmin.from('users').select('balance_fancoins').eq('id', senderTeam.user_id).single();
-    if ((senderUser?.balance_fancoins || 0) < offer.offered_fc) {
-      return { success: false, error: 'Sender does not have enough FanCoins anymore' };
-    }
-
-    // Validate target player still in receiver team
-    const { data: targetPlayer } = await supabaseAdmin.from('players').select('team_id').eq('id', offer.target_player_id).single();
-    if (targetPlayer?.team_id !== receiverTeam.id) {
-      return { success: false, error: 'Target player is no longer in your team' };
-    }
-
-    // Validate offered player if any
-    if (offer.offered_player_id) {
-      const { data: offeredPlayer } = await supabaseAdmin.from('players').select('team_id').eq('id', offer.offered_player_id).single();
-      if (offeredPlayer?.team_id !== offer.sender_team_id) {
-        return { success: false, error: 'Offered player is no longer in sender team' };
-      }
-    }
-
-    // Deduct FC from sender
-    if (offer.offered_fc > 0) {
-      const { error: deductErr } = await supabaseAdmin.rpc('deduct_fancoins', {
-        user_id: senderTeam.user_id,
-        amount: offer.offered_fc,
+    // Delegate all validation + money movement + player swaps to atomic SQL RPC
+    const { data: rpcResult, error: rpcError } = await supabaseAdmin
+      .rpc('accept_transfer_offer', {
+        p_offer_id: offerId,
+        p_receiver_id: userId,
       });
-      if (deductErr) return { success: false, error: 'Failed to process FanCoins payment' };
 
-      // Add FC to receiver
-      await supabaseAdmin.rpc('increment_fancoins', { u_id: userId, amount: offer.offered_fc });
+    if (rpcError) {
+      return { success: false, error: rpcError.message };
     }
 
-    // Transfer players
-    await supabaseAdmin.from('players').update({ team_id: offer.sender_team_id, lineup_status: 'bench', lineup_slot: null }).eq('id', offer.target_player_id);
-    if (offer.offered_player_id) {
-      await supabaseAdmin.from('players').update({ team_id: receiverTeam.id, lineup_status: 'bench', lineup_slot: null }).eq('id', offer.offered_player_id);
+    // RPC returns JSONB — check for success field
+    const result = typeof rpcResult === 'string' ? JSON.parse(rpcResult) : rpcResult;
+    if (!result?.success) {
+      return { success: false, error: result?.error || 'Transfer failed' };
     }
 
-    // Mark offer accepted
-    await supabaseAdmin.from('transfer_offers').update({ status: 'accepted' }).eq('id', offerId);
+    // ── Post-transfer side-effects (non-critical, run only after successful RPC) ──
 
-    // Reject other pending offers for target player
-    await supabaseAdmin.from('transfer_offers').update({ status: 'rejected' }).eq('target_player_id', offer.target_player_id).eq('status', 'pending');
-
-    // Reject other pending offers for offered player if any
-    if (offer.offered_player_id) {
-      await supabaseAdmin.from('transfer_offers').update({ status: 'rejected' }).eq('target_player_id', offer.offered_player_id).eq('status', 'pending');
-      await supabaseAdmin.from('transfer_offers').update({ status: 'rejected' }).eq('offered_player_id', offer.offered_player_id).eq('status', 'pending');
-    }
-
-    // Notifications
-    if (!botReceiverId) {
+    // Notification to sender
+    if (!botReceiverId && senderTeam?.user_id) {
       await supabaseAdmin.from('personal_notifications').insert({
         user_id: senderTeam.user_id,
         type: 'transfer',
@@ -200,6 +171,7 @@ export async function acceptOffer(offerId: string, botReceiverId?: string) {
       });
     }
 
+    // Achievements
     await triggerTransferAchievements(offer.sender_team_id, 'buy');
     await triggerTransferAchievements(receiverTeam.id, 'sell');
 

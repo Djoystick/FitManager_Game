@@ -158,7 +158,19 @@ export async function GET(request: Request) {
 
         // Activate and generate schedule
         const startTime = new Date(Date.now()).toISOString();
-        await supabaseAdmin.from('league_instances').update({ status: 'active', start_time: startTime }).eq('id', instance.id);
+        // ── E-4 FIX: CAS lock — only transition if still 'filling' ──────────
+        // Prevents duplicate bot generation when cron fires twice concurrently.
+        const { data: casResult, error: casError } = await supabaseAdmin
+          .from('league_instances')
+          .update({ status: 'active', start_time: startTime })
+          .eq('id', instance.id)
+          .eq('status', 'filling')
+          .select('id');
+
+        if (casError || !casResult || casResult.length === 0) {
+          console.log(`[CRON AutoFill] Instance ${instance.id} — CAS lock failed (already activated by another process). Skipping.`);
+          continue;
+        }
 
         // ── L2 FIX: Only generate schedule if none exists yet ────────────────
         // Prevents duplicate match rows when autofill is called multiple times
@@ -178,7 +190,18 @@ export async function GET(request: Request) {
       } else if (currentCount >= targetCount) {
         // Just in case it's full but status didn't update
         const startTime = new Date(Date.now()).toISOString();
-        await supabaseAdmin.from('league_instances').update({ status: 'active', start_time: startTime }).eq('id', instance.id);
+        // ── E-4 FIX: CAS lock — only transition if still 'filling' ──────────
+        const { data: casResult2 } = await supabaseAdmin
+          .from('league_instances')
+          .update({ status: 'active', start_time: startTime })
+          .eq('id', instance.id)
+          .eq('status', 'filling')
+          .select('id');
+
+        if (!casResult2 || casResult2.length === 0) {
+          console.log(`[CRON AutoFill] Instance ${instance.id} — already active. Skipping schedule.`);
+          continue;
+        }
         
         const { count: existingMatches } = await supabaseAdmin
           .from('league_matches')

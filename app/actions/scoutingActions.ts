@@ -111,8 +111,13 @@ export async function signYouthIntake(intakeId: string): Promise<ScoutResult> {
     const cost = 2000;
     if (!user || (user.balance_fancoins || 0) < cost) return { success: false, error: `Need ${cost} FC to sign youth.` };
 
-    // Deduct FC
-    await supabaseAdmin.from('users').update({ balance_fancoins: (user.balance_fancoins || 0) - cost }).eq('id', tgUserId);
+    // Deduct FC via atomic RPC
+    const { error: deductErr } = await supabaseAdmin.rpc('deduct_fancoins', {
+      user_id: tgUserId,
+      amount: cost,
+    });
+
+    if (deductErr) return { success: false, error: 'Insufficient FanCoins or deduction failed' };
 
     // Insert player
     const { data: newPlayer, error } = await supabaseAdmin.from('players').insert({
@@ -131,7 +136,8 @@ export async function signYouthIntake(intakeId: string): Promise<ScoutResult> {
     }).select('*').single();
 
     if (error) {
-       await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins }).eq('id', tgUserId);
+       // Refund on failure
+       await supabaseAdmin.rpc('increment_fancoins', { u_id: tgUserId, amount: cost });
        return { success: false, error: 'Failed to sign' };
     }
 

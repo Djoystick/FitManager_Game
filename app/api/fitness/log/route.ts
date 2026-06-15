@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
 import { verifySession } from '@/lib/session';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export interface FitnessLogRequest {
   activityType: string;
@@ -114,26 +120,12 @@ export async function POST(req: Request) {
       throw new Error(`Failed to insert fitness log: ${logError.message}`);
     }
 
-    // 4. Credit SP to user via direct update (no column reference to balance_tp)
-    const { data: user, error: userFetchErr } = await supabase
-      .from('users')
-      .select('sweat_points')
-      .eq('id', userId)
-      .single();
-
-    if (userFetchErr || !user) {
-      throw new Error('User not found while crediting SP');
-    }
-
-    const newSpBalance = (user.sweat_points || 0) + earnedSp;
-
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({ sweat_points: newSpBalance })
-      .eq('id', userId);
+    // 4. Credit SP to user via atomic RPC
+    const { data: newSpBalance, error: updateError } = await supabaseAdmin
+      .rpc('increment_sweat_points', { u_id: userId, amount: earnedSp });
 
     if (updateError) {
-      throw new Error(`Failed to update Sweat Points balance: ${updateError.message}`);
+      throw new Error(`Failed to credit Sweat Points: ${updateError.message}`);
     }
 
     return NextResponse.json({

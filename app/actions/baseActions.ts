@@ -43,16 +43,6 @@ export async function healPlayer(playerId: string) {
     const cookieStore = await cookies();
     const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
-    // 1. Check user's SP balance
-    const { data: user, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('sweat_points')
-      .eq('id', userId)
-      .single();
-
-    if (userError || !user) {
-      return { success: false, error: 'User not found' };
-    }
 
     const { data: team } = await supabaseAdmin
       .from('teams')
@@ -78,50 +68,39 @@ export async function healPlayer(playerId: string) {
       return { success: false, error: 'Player is already fully healthy' };
     }
 
-    // 2. Calculate SP Cost (1 missing stamina = 1 SP) with Medical Center discount
+    // Calculate SP Cost (1 missing stamina = 1 SP) with Medical Center discount
     const baseSpCost = Math.max(0, 100 - currentStamina);
 
-    // P1-1 FIX: Fetch Medical Center level for discount
     const { data: infra } = await supabaseAdmin
       .from('infrastructure')
       .select('medical_center_level')
       .eq('team_id', team.id)
       .maybeSingle();
     const medLevel = infra?.medical_center_level ?? 1;
-    // Level 1: 0%, Level 2: 10%, Level 3+: 20%
     const discount = Math.min(0.20, Math.max(0, (medLevel - 1) * 0.10));
     const spCost = Math.floor(baseSpCost * (1 - discount));
 
-    if (user.sweat_points < spCost) {
-      return { success: false, error: 'Not enough Sweat Points' };
+    // Deduct SP via atomic RPC
+    const { data: newBalance, error: deductError } = await supabaseAdmin
+      .rpc('deduct_sweat_points', { u_id: userId, amount: spCost });
+
+    if (deductError) {
+      return { success: false, error: 'Not enough Sweat Points or deduction failed' };
     }
 
-    // 3. Deduct Sweat Points (atomic with WHERE guard to prevent race condition)
-    const newSPBalance = user.sweat_points - spCost;
-    const { data: updatedUser, error: deductError } = await supabaseAdmin
-      .from('users')
-      .update({ sweat_points: newSPBalance })
-      .eq('id', userId)
-      .gte('sweat_points', spCost) // WHERE guard: prevent double-spend
-      .select('sweat_points')
-      .single();
-
-    if (deductError || !updatedUser) {
-      return { success: false, error: 'Failed to deduct Sweat Points (insufficient balance or race condition)' };
-    }
-
-    // 4. Heal Player (restore stamina + clear injury)
+    // Heal Player (restore stamina + clear injury)
     const { error: healError } = await supabaseAdmin
       .from('players')
       .update({ is_injured: false, injury_matches_left: 0, stamina: 100 })
       .eq('id', playerId);
 
     if (healError) {
-      await supabaseAdmin.from('users').update({ sweat_points: user.sweat_points }).eq('id', userId);
+      // Refund on failure
+      await supabaseAdmin.rpc('increment_sweat_points', { u_id: userId, amount: spCost });
       throw healError;
     }
 
-    return { success: true, new_balance: newSPBalance, message: 'Player successfully healed.' };
+    return { success: true, new_balance: newBalance, message: 'Player successfully healed.' };
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to heal player' };
   }
@@ -464,13 +443,6 @@ export async function healAllPlayers(): Promise<{
     const cookieStore = await cookies();
     const userId = (await verifySession());
     if (!userId) return { success: false, error: 'Unauthorized' };
-    const { data: user, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('sweat_points')
-      .eq('id', userId)
-      .single();
-
-    if (userError || !user) return { success: false, error: 'User not found' };
 
     const { data: team } = await supabaseAdmin
       .from('teams')
@@ -488,10 +460,10 @@ export async function healAllPlayers(): Promise<{
       .or('stamina.lt.100,is_injured.eq.true');
 
     if (!needsHeal || needsHeal.length === 0) {
-      return { success: true, playersHealed: 0, new_balance: user.sweat_points };
+      return { success: true, playersHealed: 0, new_balance: 0 };
     }
 
-    // P1-1 FIX: Fetch Medical Center level for discount
+    // Fetch Medical Center level for discount
     const { data: infra } = await supabaseAdmin
       .from('infrastructure')
       .select('medical_center_level')
@@ -506,21 +478,16 @@ export async function healAllPlayers(): Promise<{
       totalCost += Math.floor(baseCost * (1 - discount));
     });
 
-    if (user.sweat_points < totalCost) {
+    // Deduct SP via atomic RPC
+    const { data: newBalance, error: deductErr } = await supabaseAdmin
+      .rpc('deduct_sweat_points', { u_id: userId, amount: totalCost });
+
+    if (deductErr) {
       return {
         success: false,
         error: `Not enough Sweat Points. Need ${totalCost} SP to heal ${needsHeal.length} players.`,
       };
     }
-
-    const newBalance = user.sweat_points - totalCost;
-
-    const { error: deductErr } = await supabaseAdmin
-      .from('users')
-      .update({ sweat_points: newBalance })
-      .eq('id', userId);
-
-    if (deductErr) throw deductErr;
 
     const ids = needsHeal.map(p => p.id);
     const { error: healErr } = await supabaseAdmin
@@ -529,7 +496,8 @@ export async function healAllPlayers(): Promise<{
       .in('id', ids);
 
     if (healErr) {
-      await supabaseAdmin.from('users').update({ sweat_points: user.sweat_points }).eq('id', userId);
+      // Refund on failure
+      await supabaseAdmin.rpc('increment_sweat_points', { u_id: userId, amount: totalCost });
       throw healErr;
     }
 

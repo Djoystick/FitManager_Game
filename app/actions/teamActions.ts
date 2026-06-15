@@ -274,19 +274,6 @@ export async function renamePlayerAction(playerId: string, newName: string) {
 
     if (playerErr || !player) return { success: false, error: 'Player not found or not owned by you.' };
 
-    const { data: user, error: userErr } = await supabaseAdmin
-      .from('users')
-      .select('balance_fancoins')
-      .eq('id', userId)
-      .single();
-
-    if (userErr || !user) return { success: false, error: 'User not found' };
-
-    const RENAME_COST = 1000;
-    if ((user.balance_fancoins || 0) < RENAME_COST) {
-      return { success: false, error: `Insufficient FanCoins. Need ${RENAME_COST} FC.` };
-    }
-
     // 2. Check for unique name globally
     const { data: existingName } = await supabaseAdmin
       .from('players')
@@ -298,14 +285,14 @@ export async function renamePlayerAction(playerId: string, newName: string) {
       return { success: false, error: 'This name is already taken by another player globally.' };
     }
 
-    // 3. Deduct FC
-    const newBalance = (user.balance_fancoins || 0) - RENAME_COST;
-    const { error: deductErr } = await supabaseAdmin
-      .from('users')
-      .update({ balance_fancoins: newBalance })
-      .eq('id', userId);
+    // 3. Deduct FC via atomic RPC
+    const RENAME_COST = 1000;
+    const { error: deductErr } = await supabaseAdmin.rpc('deduct_fancoins', {
+      user_id: userId,
+      amount: RENAME_COST,
+    });
 
-    if (deductErr) return { success: false, error: 'Failed to deduct FanCoins' };
+    if (deductErr) return { success: false, error: 'Insufficient FanCoins or deduction failed' };
 
     // 4. Update Name
     const { error: updateErr } = await supabaseAdmin
@@ -314,8 +301,8 @@ export async function renamePlayerAction(playerId: string, newName: string) {
       .eq('id', playerId);
 
     if (updateErr) {
-      // Refund
-      await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins }).eq('id', userId);
+      // Refund on failure
+      await supabaseAdmin.rpc('increment_fancoins', { u_id: userId, amount: RENAME_COST });
       return { success: false, error: 'Failed to rename player' };
     }
 
@@ -341,21 +328,14 @@ export async function renameTeamAction(newName: string) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // 1. Check user balance
-    const { data: user } = await supabaseAdmin.from('users').select('balance_fancoins').eq('id', userId).single();
-    if (!user || user.balance_fancoins < 1000) {
-      return { success: false, error: 'error_insufficient_fc' };
-    }
-
-    // 2. Deduct 1000 FC
-    const { error: deductError } = await supabaseAdmin.rpc('decrement_fancoins', {
+    // 1. Deduct 1000 FC via atomic RPC
+    const { error: deductError } = await supabaseAdmin.rpc('deduct_fancoins', {
       user_id: userId,
-      amount: 1000
+      amount: 1000,
     });
 
     if (deductError) {
-      // Fallback if rpc doesn't exist
-      await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins - 1000 }).eq('id', userId);
+      return { success: false, error: 'error_insufficient_fc' };
     }
 
     // 3. Update team name
@@ -381,21 +361,14 @@ export async function changeLogoAction(logoUrl: string) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // 1. Check user balance
-    const { data: user } = await supabaseAdmin.from('users').select('balance_fancoins').eq('id', userId).single();
-    if (!user || user.balance_fancoins < 500) {
-      return { success: false, error: 'error_insufficient_fc' };
-    }
-
-    // 2. Deduct 500 FC
-    const { error: deductError } = await supabaseAdmin.rpc('decrement_fancoins', {
+    // 1. Deduct 500 FC via atomic RPC
+    const { error: deductError } = await supabaseAdmin.rpc('deduct_fancoins', {
       user_id: userId,
-      amount: 500
+      amount: 500,
     });
 
     if (deductError) {
-      // Fallback
-      await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins - 500 }).eq('id', userId);
+      return { success: false, error: 'error_insufficient_fc' };
     }
 
     // 3. Update team logo
@@ -547,18 +520,15 @@ export async function quickSellPlayer(playerId: string) {
       return { success: false, error: 'Failed to delete player' };
     }
 
-    // 5. Add FanCoins to user
+    // 5. Add FanCoins to user via atomic RPC
     const { error: incrementError } = await supabaseAdmin.rpc('increment_fancoins', {
-      user_id: userId,
-      amount: payout
+      u_id: userId,
+      amount: payout,
     });
 
-    // Fallback if RPC fails
     if (incrementError) {
-      const { data: user } = await supabaseAdmin.from('users').select('balance_fancoins').eq('id', userId).single();
-      if (user) {
-        await supabaseAdmin.from('users').update({ balance_fancoins: user.balance_fancoins + payout }).eq('id', userId);
-      }
+      // Player already deleted — log but can't roll back easily
+      console.error('[quickSellPlayer] Failed to credit FC after delete:', incrementError);
     }
 
     return { success: true, payout };

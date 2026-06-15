@@ -113,9 +113,13 @@ interface AttackContext {
 // =============================================================================
 
 /** Guard against NaN/null/undefined values from DB. */
-function safeNum(val: unknown, fallback = 50): number {
+function safeNum(val: unknown, fallback = 1): number {
   const n = Number(val);
-  return isFinite(n) ? n : fallback;
+  if (!isFinite(n)) {
+    console.warn('[matchEngine] safeNum fallback triggered for stat:', val);
+    return fallback;
+  }
+  return n;
 }
 
 /**
@@ -216,8 +220,8 @@ function weightedPick<T extends { id: string; stats: MatchPlayerStats; stamina: 
       id: 'synthetic_fallback',
       name: 'Unknown',
       position: 'MID',
-      stats: { pace: 50, shooting: 50, passing: 50, dribbling: 50, defending: 50, physical: 50 },
-      stamina: 50,
+      stats: { pace: 1, shooting: 1, passing: 1, dribbling: 1, defending: 1, physical: 1 },
+      stamina: 1,
       traits: [],
     } as unknown as T;
   }
@@ -786,6 +790,8 @@ function simulatePenaltyShootout(
   });
 
   while (round < maxRounds || homeScore === awayScore) {
+    // E-10 FIX: hard limit to prevent infinite loop (e.g. both GKs save 100%)
+    if (round > 30) break;
     const isSuddenDeath = round >= maxRounds;
     const homeTaker = homeShooters[round % homeShooters.length] ?? homeShooters[0];
     const awayTaker = awayShooters[round % awayShooters.length] ?? awayShooters[0];

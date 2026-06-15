@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
 import { verifySession } from '@/lib/session';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export interface MarketListRequest {
   playerId: string;
@@ -74,44 +80,21 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4. Economic Verification & Burn (Simulated Transaction)
-    // Fetch user FanCoin balance
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('balance_fancoins')
-      .eq('id', userId)
-      .single();
+    // 4. Economic Verification & Burn via atomic RPC
+    const { error: deductError } = await supabaseAdmin.rpc('deduct_fancoins', {
+      user_id: userId,
+      amount: LISTING_FEE_FANCOINS,
+    });
 
-    if (userError || !user) {
+    if (deductError) {
       return NextResponse.json(
-        { error: 'User not found during economic validation' },
-        { status: 404 }
-      );
-    }
-
-    const currentBalance = Number(user.balance_fancoins) || 0;
-
-    if (currentBalance < LISTING_FEE_FANCOINS) {
-      return NextResponse.json(
-        { error: `Insufficient FanCoins. Required: ${LISTING_FEE_FANCOINS}, Balance: ${currentBalance}` },
+        { error: `Insufficient FanCoins. Required listing fee: ${LISTING_FEE_FANCOINS} FC` },
         { status: 400 }
       );
     }
 
-    const newBalance = currentBalance - LISTING_FEE_FANCOINS;
-
-    // Deduct coins preemptively (if market insert fails, we refund via catch block)
-    const { error: deductError } = await supabase
-      .from('users')
-      .update({ balance_fancoins: newBalance })
-      .eq('id', userId);
-
-    if (deductError) {
-      throw new Error(`Failed to deduct FanCoins: ${deductError.message}`);
-    }
-
     // 5. Insert Market Listing
-    const { data: marketListing, error: marketError } = await supabase
+    const { data: marketListing, error: marketError } = await supabaseAdmin
       .from('transfer_market')
       .insert({
         player_id: playerId,
@@ -123,21 +106,16 @@ export async function POST(req: Request) {
       .single();
 
     if (marketError) {
-      // Manual Rollback: Refund FanCoins
+      // Rollback: Refund the listing fee
       console.error("Market insert failed, initiating rollback...", marketError);
-      await supabase
-        .from('users')
-        .update({ balance_fancoins: currentBalance })
-        .eq('id', userId);
-        
-      throw new Error(`Failed to create market listing: ${marketError.message}. FanCoins successfully refunded.`);
+      await supabaseAdmin.rpc('increment_fancoins', { u_id: userId, amount: LISTING_FEE_FANCOINS });
+      throw new Error(`Failed to create market listing: ${marketError.message}. FanCoins refunded.`);
     }
 
     // 6. Return Success
     return NextResponse.json({
       success: true,
       listing_id: marketListing.id,
-      new_balance_fancoins: newBalance,
     });
 
   } catch (error: any) {

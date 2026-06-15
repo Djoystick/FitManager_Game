@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 import { verifySession } from '@/lib/session';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export interface SubmitLineupRequest {
   teamId: string;
@@ -72,43 +78,21 @@ export async function POST(req: Request) {
 
     // 5. Verify Balance and Execute Simulated Transaction
     if (tax > 0) {
-      // Fetch user's current FanCoin wallet balance
-      const { data: user, error: userError } = await supabase
-        .from('users')
-        .select('balance_fancoins')
-        .eq('id', userId)
-        .single();
+      // Deduct tax via atomic RPC
+      const { error: deductError } = await supabaseAdmin.rpc('deduct_fancoins', {
+        user_id: userId,
+        amount: tax,
+      });
 
-      if (userError || !user) {
+      if (deductError) {
         return NextResponse.json(
-          { error: 'User not found during economic validation' },
-          { status: 404 }
-        );
-      }
-
-      const currentBalance = Number(user.balance_fancoins) || 0;
-
-      if (currentBalance < tax) {
-        return NextResponse.json(
-          { error: `Insufficient FanCoins to pay Luxury Tax. Required: ${tax}, Balance: ${currentBalance}` },
+          { error: `Insufficient FanCoins to pay Luxury Tax (required: ${tax})` },
           { status: 400 }
         );
       }
 
-      const newBalance = currentBalance - tax;
-
-      // Preemptively deduct the tax (Step 1 of atomic flow)
-      const { error: deductError } = await supabase
-        .from('users')
-        .update({ balance_fancoins: newBalance })
-        .eq('id', userId);
-
-      if (deductError) {
-        throw new Error(`Failed to process Luxury Tax deduction: ${deductError.message}`);
-      }
-
-      // Flag the team as ready (Step 2 of atomic flow)
-      const { error: readyError } = await supabase
+      // Flag the team as ready
+      const { error: readyError } = await supabaseAdmin
         .from('teams')
         .update({ is_ready_for_match: true })
         .eq('id', teamId);
@@ -116,12 +100,8 @@ export async function POST(req: Request) {
       if (readyError) {
         // Rollback: Refund the tax if marking the team fails
         console.error("Failed to mark team as ready. Initiating tax rollback...", readyError);
-        await supabase
-          .from('users')
-          .update({ balance_fancoins: currentBalance })
-          .eq('id', userId);
-          
-        throw new Error(`Failed to submit lineup state: ${readyError.message}. FanCoin tax refunded securely.`);
+        await supabaseAdmin.rpc('increment_fancoins', { u_id: userId, amount: tax });
+        throw new Error(`Failed to submit lineup state: ${readyError.message}. FanCoin tax refunded.`);
       }
 
     } else {
