@@ -10,6 +10,7 @@ import { dict } from '@/lib/dictionaries';
 import { renameTeamAction } from '@/app/actions/teamActions';
 import { getManagerObjectivesAction, type ManagerObjective } from '@/app/actions/objectivesActions';
 import { TrophyCabinetClient } from './TrophyCabinetClient';
+import { AvatarBorderPicker } from '@/components/AvatarBorderPicker';
 import {
   Edit3, FileText, AlertTriangle, Award, ChevronRight, Unlink,
   Globe, Bell, Shield, X, Target, TrendingUp, UserMinus, Star, Maximize, Minimize, Settings as SettingsIcon
@@ -67,12 +68,16 @@ export default function ProfileClient({
   isAdmin,
   initialTeamName,
   initialLogoUrl,
-  fcBalance
+  fcBalance,
+  activeBorder = 'default',
+  unlockedBorders = ['default'],
 }: {
   isAdmin?: boolean;
   initialTeamName: string;
   initialLogoUrl?: string | null;
   fcBalance: number;
+  activeBorder?: string;
+  unlockedBorders?: string[];
 }) {
   const { userId, isAuthenticated } = useContext(TelegramAuthContext);
   const { language, setLanguage }   = useContext(LanguageContext);
@@ -98,6 +103,9 @@ export default function ProfileClient({
   const [approvalRating, setApprovalRating] = useState(65);
   const [managerLevel,   setManagerLevel]   = useState(1);
   const [isFullscreen,   setIsFullscreen]   = useState(false);
+  const [activeBorderState, setActiveBorderState] = useState(activeBorder);
+  const [unlockedBordersState, setUnlockedBordersState] = useState(unlockedBorders);
+  const [isBorderLoading, setIsBorderLoading] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
@@ -147,6 +155,25 @@ export default function ProfileClient({
         toast.error(res.error === 'error_insufficient_fc' ? (t.error_insufficient_fc || 'Not enough FC') : (t.rename_error || 'Error updating avatar'));
       }
       setIsSavingAvatar(false);
+    });
+  };
+
+  const handleBorderSelect = (borderId: string) => {
+    setIsBorderLoading(true);
+    startTransition(async () => {
+      const { buyAndSelectAvatarBorder } = await import('@/app/actions/userActions');
+      const res = await buyAndSelectAvatarBorder(borderId);
+      if (res.success) {
+        setActiveBorderState(borderId);
+        if (!unlockedBordersState.includes(borderId)) {
+          setUnlockedBordersState(prev => [...prev, borderId]);
+        }
+        toast.success('Border updated!');
+        window.dispatchEvent(new Event('balanceUpdated'));
+      } else {
+        toast.error(res.error || 'Failed to update border');
+      }
+      setIsBorderLoading(false);
     });
   };
 
@@ -230,13 +257,20 @@ export default function ProfileClient({
           <div className="flex items-center gap-3">
             {/* Avatar */}
             <div className="flex-shrink-0 relative group">
-              <div className="w-14 h-14 hex-clip flex items-center justify-center overflow-hidden violet-glow-pulse"
-                   style={{ background: 'linear-gradient(135deg, rgba(147,51,234,0.4), rgba(0,240,255,0.2))' }}>
-                {logoUrl ? (
-                  <img src={logoUrl} alt="Team" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-xl font-black font-orbitron text-white">{tgUser?.first_name?.charAt(0) || '?'}</span>
-                )}
+              <div className={`w-14 h-14 rounded-full p-[2px] ${
+                activeBorderState === 'neon-cyan' ? 'border-neon-cyan border-2' :
+                activeBorderState === 'gold-glow' ? 'border-gold-glow border-2' :
+                activeBorderState === 'fire' ? 'border-fire border-2' :
+                'border border-gray-600/40'
+              }`}>
+                <div className="w-full h-full hex-clip flex items-center justify-center overflow-hidden violet-glow-pulse"
+                     style={{ background: 'linear-gradient(135deg, rgba(147,51,234,0.4), rgba(0,240,255,0.2))' }}>
+                  {logoUrl ? (
+                    <img src={logoUrl} alt="Team" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xl font-black font-orbitron text-white">{tgUser?.first_name?.charAt(0) || '?'}</span>
+                  )}
+                </div>
               </div>
               <button onClick={handleOpenAvatarModal}
                 className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#05060f] border border-violet-500/50
@@ -508,6 +542,14 @@ export default function ProfileClient({
                 </div>
               </div>
             </div>
+
+            {/* Avatar Border Picker */}
+            <AvatarBorderPicker
+              currentBorder={activeBorderState}
+              fcBalance={fcBalance}
+              unlockedBorders={unlockedBordersState}
+              onSelect={handleBorderSelect}
+            />
 
             {/* Admin link */}
             {isAdmin && (

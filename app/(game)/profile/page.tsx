@@ -19,7 +19,7 @@ export default async function ProfilePage() {
     const [{ data: userRes }, { data: teamRes }] = await Promise.all([
       supabase
         .from('users')
-        .select('telegram_id, balance_fancoins')
+        .select('telegram_id, balance_fancoins, active_border, unlocked_borders')
         .eq('id', sessionUuid)
         .single(),
       supabase
@@ -52,6 +52,8 @@ export default async function ProfilePage() {
         initialTeamName={team?.name || 'Unknown'} 
         initialLogoUrl={team?.logo_url || null}
         fcBalance={user?.balance_fancoins || 0}
+        activeBorder={user?.active_border || 'default'}
+        unlockedBorders={user?.unlocked_borders || ['default']}
       />
     </>
   );

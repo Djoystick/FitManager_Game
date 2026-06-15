@@ -6,7 +6,8 @@ import { Check, Lock, Sparkles } from 'lucide-react';
 interface AvatarBorderPickerProps {
   currentBorder: string;
   fcBalance: number;
-  onSelect: (borderId: string, cost: number) => void;
+  unlockedBorders: string[];
+  onSelect: (borderId: string) => void;
 }
 
 const BORDERS = [
@@ -44,13 +45,14 @@ const BORDERS = [
   },
 ];
 
-export function AvatarBorderPicker({ currentBorder, fcBalance, onSelect }: AvatarBorderPickerProps) {
+export function AvatarBorderPicker({ currentBorder, fcBalance, unlockedBorders, onSelect }: AvatarBorderPickerProps) {
   const [selected, setSelected] = useState(currentBorder);
 
   const handleSelect = (border: typeof BORDERS[0]) => {
-    if (border.cost > 0 && fcBalance < border.cost) return;
+    const isOwned = unlockedBorders.includes(border.id);
+    if (!isOwned && border.cost > 0 && fcBalance < border.cost) return;
     setSelected(border.id);
-    onSelect(border.id, border.cost);
+    onSelect(border.id);
   };
 
   return (
@@ -69,7 +71,8 @@ export function AvatarBorderPicker({ currentBorder, fcBalance, onSelect }: Avata
       <div className="grid grid-cols-2 gap-2">
         {BORDERS.map(border => {
           const isSelected = selected === border.id;
-          const canAfford = border.cost === 0 || fcBalance >= border.cost;
+          const isOwned = unlockedBorders.includes(border.id);
+          const canAfford = border.cost === 0 || isOwned || fcBalance >= border.cost;
 
           return (
             <button key={border.id}
@@ -95,6 +98,8 @@ export function AvatarBorderPicker({ currentBorder, fcBalance, onSelect }: Avata
                 <div className="text-[8px] font-bold mt-1">
                   {border.cost === 0 ? (
                     <span className="text-emerald-400">Free</span>
+                  ) : isOwned ? (
+                    <span className="text-violet-400">Owned</span>
                   ) : (
                     <span className={canAfford ? 'text-amber-300' : 'text-red-400'}>
                       {border.cost.toLocaleString()} FC
@@ -110,8 +115,8 @@ export function AvatarBorderPicker({ currentBorder, fcBalance, onSelect }: Avata
                 </div>
               )}
 
-              {/* Lock icon for unaffordable */}
-              {!canAfford && border.cost > 0 && (
+              {/* Lock icon for unaffordable & not owned */}
+              {!isOwned && !canAfford && border.cost > 0 && (
                 <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white/10 flex items-center justify-center">
                   <Lock size={8} className="text-gray-500" />
                 </div>
