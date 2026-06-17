@@ -27,6 +27,8 @@ function createPlayer(ovr: number, position: string, traits: string[] = []): Mat
     dribbling: Math.max(1, Math.min(99, base + jitter())),
     defending: Math.max(1, Math.min(99, base + jitter())),
     physical:  Math.max(1, Math.min(99, base + jitter())),
+    sta:       Math.max(1, Math.min(99, base + jitter())),
+    agi:       Math.max(1, Math.min(99, base + jitter())),
   };
   return {
     id: `p_${Math.random().toString(36).slice(2, 8)}`,

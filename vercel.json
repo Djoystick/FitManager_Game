@@ -3,6 +3,18 @@
     {
       "path": "/api/cron/achievements-stats",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/youth-growth",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/stamina-recovery",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/salary-deduction",
+      "schedule": "0 4 * * 1"
     }
   ]
 }

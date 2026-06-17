@@ -120,7 +120,7 @@ export async function signYouthIntake(intakeId: string): Promise<ScoutResult> {
 
     if (deductErr) return { success: false, error: 'Insufficient FanCoins or deduction failed' };
 
-    // Insert player
+    // Insert player as youth
     const { data: newPlayer, error } = await supabaseAdmin.from('players').insert({
       team_id: teamData.id,
       name: intake.name,
@@ -133,7 +133,10 @@ export async function signYouthIntake(intakeId: string): Promise<ScoutResult> {
       lineup_status: 'bench',
       stamina: 100,
       morale: 80,
-      is_nft_coach: false
+      is_nft_coach: false,
+      is_youth: true,
+      training_focus: 'balanced',
+      youth_joined_at: new Date().toISOString(),
     }).select('*').single();
 
     if (error) {
@@ -287,5 +290,82 @@ export async function getNextOpponentData(
   } catch (err: any) {
     console.error('[getNextOpponentData] Error:', err);
     return { success: false, error: err.message ?? 'Failed to fetch opponent data.' };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GRADUATE YOUTH — move player from youth roster to senior squad
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function graduateYouthAction(playerId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const userId = await verifySession();
+    if (!userId) return { success: false, error: 'Unauthorized' };
+
+    const { data: team } = await supabaseAdmin.from('teams').select('id').eq('user_id', userId).single();
+    if (!team) return { success: false, error: 'Team not found' };
+
+    const { data: player } = await supabaseAdmin
+      .from('players')
+      .select('id, is_youth, age')
+      .eq('id', playerId)
+      .eq('team_id', team.id)
+      .single();
+
+    if (!player) return { success: false, error: 'Player not found' };
+    if (!player.is_youth) return { success: false, error: 'Player is not in youth roster' };
+    if (player.age < 17) return { success: false, error: 'Player must be at least 17 years old to graduate' };
+
+    const { error } = await supabaseAdmin
+      .from('players')
+      .update({ is_youth: false, youth_joined_at: null })
+      .eq('id', playerId);
+
+    if (error) throw error;
+
+    revalidatePath('/academy');
+    revalidatePath('/squad');
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to graduate youth player' };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SET TRAINING FOCUS — change youth player's training focus
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function setTrainingFocusAction(
+  playerId: string,
+  focus: 'cardio' | 'strength' | 'ball' | 'balanced'
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const userId = await verifySession();
+    if (!userId) return { success: false, error: 'Unauthorized' };
+
+    const { data: team } = await supabaseAdmin.from('teams').select('id').eq('user_id', userId).single();
+    if (!team) return { success: false, error: 'Team not found' };
+
+    const { data: player } = await supabaseAdmin
+      .from('players')
+      .select('id, is_youth')
+      .eq('id', playerId)
+      .eq('team_id', team.id)
+      .single();
+
+    if (!player) return { success: false, error: 'Player not found' };
+    if (!player.is_youth) return { success: false, error: 'Can only set training focus for youth players' };
+
+    const { error } = await supabaseAdmin
+      .from('players')
+      .update({ training_focus: focus })
+      .eq('id', playerId);
+
+    if (error) throw error;
+
+    revalidatePath('/academy');
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to set training focus' };
   }
 }

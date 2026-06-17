@@ -353,6 +353,8 @@ export async function resolveMatch(
       dribbling: Math.max(1, Math.min(99, Number(raw?.dribbling ?? 50) || 50)),
       defending: Math.max(1, Math.min(99, Number(raw?.defending ?? 50) || 50)),
       physical:  Math.max(1, Math.min(99, Number(raw?.physical  ?? 50) || 50)),
+      sta:       Math.max(1, Math.min(99, Number(raw?.sta       ?? 50) || 50)),
+      agi:       Math.max(1, Math.min(99, Number(raw?.agi       ?? 50) || 50)),
     });
 
     const mapToMatchPlayer = (p: any): MatchPlayer => {

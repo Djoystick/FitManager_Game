@@ -4,57 +4,65 @@ import { useContext, useEffect, useState } from 'react';
 import { TelegramAuthContext } from '@/components/providers/TelegramAuthProvider';
 import { SubNavTabs } from '@/components/ui/SubNavTabs';
 import { getStaffAction, fireStaffAction, hireStaffAction, type StaffMember } from '@/app/actions/staffActions';
-import { getClubInfrastructureData } from '@/app/actions/trainingActions';
-import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserX, UserPlus, ChevronRight, Lock, Building2 } from 'lucide-react';
+import { UserX, UserPlus, ChevronRight, Star, Clock, Coins } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STAFF PAGE — Coaches & Scouts management
-// Primary SubNav: COACHES | SCOUTS
-// Secondary SubNav: FIRST TEAM | ACADEMY
+// STAFF PAGE — New system with roles, star ratings, and contracts
 // ─────────────────────────────────────────────────────────────────────────────
 
-type PrimaryTab = 'coaches' | 'scouts';
-type DepartmentTab = 'first_team' | 'academy';
+type StaffTab = 'all' | 'youth_coach' | 'head_coach' | 'medical_staff' | 'head_scout';
 
 const ROLE_LABELS: Record<StaffMember['role'], string> = {
-  head_coach:       'HEAD COACH',
-  assistant_coach:  'ASST. COACH',
-  gk_coach:         'GK COACH',
-  fitness_coach:    'FIT. COACH',
-  scout:            'SCOUT',
+  youth_coach:    'YOUTH COACH',
+  head_coach:     'HEAD COACH',
+  medical_staff:  'MEDICAL',
+  head_scout:     'HEAD SCOUT',
 };
 
 const ROLE_COLORS: Record<StaffMember['role'], string> = {
-  head_coach:       'text-cyan-300 bg-cyan-500/15 border-cyan-500/40',
-  assistant_coach:  'text-violet-300 bg-violet-500/15 border-violet-500/40',
-  gk_coach:         'text-yellow-300 bg-yellow-500/15 border-yellow-500/40',
-  fitness_coach:    'text-emerald-300 bg-emerald-500/15 border-emerald-500/40',
-  scout:            'text-orange-300 bg-orange-500/15 border-orange-500/40',
+  youth_coach:    'text-emerald-300 bg-emerald-500/15 border-emerald-500/40',
+  head_coach:     'text-cyan-300 bg-cyan-500/15 border-cyan-500/40',
+  medical_staff:  'text-pink-300 bg-pink-500/15 border-pink-500/40',
+  head_scout:     'text-orange-300 bg-orange-500/15 border-orange-500/40',
 };
 
-function AttrBar({ value, label }: { value: number; label: string }) {
-  const color = value >= 70 ? 'bg-cyan-400' : value >= 50 ? 'bg-violet-400' : 'bg-gray-600';
+const ROLE_DESCRIPTIONS: Record<StaffMember['role'], string> = {
+  youth_coach:    'Boosts youth player stat growth',
+  head_coach:     'OVR bonus in match engine',
+  medical_staff:  'Passive stamina recovery daily',
+  head_scout:     'Archetype scouting guarantee',
+};
+
+function StarRating({ rating }: { rating: number }) {
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className="text-[7px] text-gray-600 uppercase font-bold">{label}</span>
-      <div className="w-8 h-1 bg-white/5 rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full`} style={{ width: `${value}%` }} />
-      </div>
-      <span className="text-[9px] font-black font-orbitron text-white">{value}</span>
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map(i => (
+        <Star key={i} size={10} className={i <= rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-700'} />
+      ))}
     </div>
   );
 }
 
 function StaffCard({ member, onFire }: { member: StaffMember; onFire: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
-  const contractDate = new Date(member.contract_end).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
-  const overall = Math.round(
-    (member.attr_def + member.attr_pas + member.attr_sho +
-     member.attr_pac + member.attr_phy + member.attr_men + member.attr_gkp) / 7
-  );
+  const weeksLeft = member.weeks_remaining;
+  const contractLabel = `${weeksLeft}w left`;
+
+  // Compute effective bonus text based on role
+  let bonusText = '';
+  if (member.role === 'youth_coach') {
+    const staBonus = member.attr_sta > 60 ? '+1 growth/day' : '';
+    const agiBonus = member.attr_agi > 60 ? '+1 growth/day' : '';
+    bonusText = [staBonus, agiBonus].filter(Boolean).join(', ') || 'No bonus';
+  } else if (member.role === 'head_coach') {
+    bonusText = `+${member.attr_ovr_bonus}% OVR`;
+  } else if (member.role === 'medical_staff') {
+    bonusText = `+${member.attr_recovery} stamina/day`;
+  } else {
+    bonusText = 'Archetype scouting';
+  }
 
   return (
     <motion.div
@@ -68,12 +76,11 @@ function StaffCard({ member, onFire }: { member: StaffMember; onFire: (id: strin
         className="flex items-center gap-3 p-3 cursor-pointer"
         onClick={() => setExpanded(!expanded)}
       >
-        {/* Avatar circle with overall */}
-        <div className="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center
-                        bg-gradient-to-br from-violet-900/40 to-black/60 border border-violet-500/25
-                        relative overflow-hidden">
-          <span className="text-lg font-black font-orbitron text-violet-300">{overall}</span>
-          <div className="absolute bottom-0 left-0 right-0 text-[6px] text-center font-bold text-violet-500/60 pb-0.5 uppercase">OVR</div>
+        {/* Star badge */}
+        <div className="w-12 h-12 rounded-xl flex-shrink-0 flex flex-col items-center justify-center
+                        bg-gradient-to-br from-violet-900/40 to-black/60 border border-violet-500/25">
+          <StarRating rating={member.star_rating} />
+          <span className="text-[7px] text-gray-600 mt-0.5">{member.star_rating}★</span>
         </div>
 
         {/* Info */}
@@ -87,15 +94,20 @@ function StaffCard({ member, onFire }: { member: StaffMember; onFire: (id: strin
             <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full border uppercase ${ROLE_COLORS[member.role]}`}>
               {ROLE_LABELS[member.role]}
             </span>
-            <span className="text-[8px] text-gray-600">🏳 {member.nationality}</span>
-            <span className="text-[8px] text-gray-600">Age {member.age}</span>
           </div>
+          <div className="text-[8px] text-gray-600 mt-0.5">{ROLE_DESCRIPTIONS[member.role]}</div>
         </div>
 
-        {/* Contract + chevron */}
+        {/* Contract + Salary */}
         <div className="flex-shrink-0 flex flex-col items-end gap-1">
-          <span className="text-[8px] text-gray-600 uppercase tracking-wider">until {contractDate}</span>
-          <span className="text-[9px] text-emerald-400 font-bold">{member.salary_per_match} FC/match</span>
+          <div className="flex items-center gap-1">
+            <Clock size={8} className="text-gray-600" />
+            <span className="text-[8px] text-gray-600">{contractLabel}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Coins size={8} className="text-yellow-500" />
+            <span className="text-[9px] text-yellow-400 font-bold">{member.salary_per_week}/wk</span>
+          </div>
         </div>
         <ChevronRight
           size={14}
@@ -103,7 +115,7 @@ function StaffCard({ member, onFire }: { member: StaffMember; onFire: (id: strin
         />
       </div>
 
-      {/* Expanded: Attribute grid + Actions */}
+      {/* Expanded: Bonus details + Actions */}
       <AnimatePresence>
         {expanded && (
           <motion.div
@@ -114,16 +126,41 @@ function StaffCard({ member, onFire }: { member: StaffMember; onFire: (id: strin
             className="overflow-hidden"
           >
             <div className="px-3 pb-3 border-t border-white/5 pt-3">
-              {/* Attribute bars */}
-              <div className="flex justify-between mb-3">
-                <AttrBar value={member.attr_def} label="DEF" />
-                <AttrBar value={member.attr_pas} label="PAS" />
-                <AttrBar value={member.attr_sho} label="SHO" />
-                <AttrBar value={member.attr_pac} label="PAC" />
-                <AttrBar value={member.attr_phy} label="PHY" />
-                <AttrBar value={member.attr_men} label="MEN" />
-                <AttrBar value={member.attr_gkp} label="GKP" />
+              {/* Bonus info */}
+              <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+                <span className="text-[8px] text-gray-500 uppercase font-bold">Active Bonus:</span>
+                <span className="text-[9px] text-cyan-400 font-bold">{bonusText}</span>
               </div>
+
+              {/* Role-specific attributes */}
+              {member.role === 'youth_coach' && (
+                <div className="flex gap-4 mb-3">
+                  <div className="text-center">
+                    <div className="text-[7px] text-gray-600 uppercase">STA Coaching</div>
+                    <div className="text-sm font-black font-orbitron text-white">{member.attr_sta}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[7px] text-gray-600 uppercase">AGI Coaching</div>
+                    <div className="text-sm font-black font-orbitron text-white">{member.attr_agi}</div>
+                  </div>
+                </div>
+              )}
+              {member.role === 'head_coach' && (
+                <div className="flex gap-4 mb-3">
+                  <div className="text-center">
+                    <div className="text-[7px] text-gray-600 uppercase">OVR Bonus</div>
+                    <div className="text-sm font-black font-orbitron text-cyan-300">+{member.attr_ovr_bonus}%</div>
+                  </div>
+                </div>
+              )}
+              {member.role === 'medical_staff' && (
+                <div className="flex gap-4 mb-3">
+                  <div className="text-center">
+                    <div className="text-[7px] text-gray-600 uppercase">Recovery/Day</div>
+                    <div className="text-sm font-black font-orbitron text-pink-300">+{member.attr_recovery}</div>
+                  </div>
+                </div>
+              )}
 
               {/* Actions */}
               <div className="flex gap-2">
@@ -137,15 +174,6 @@ function StaffCard({ member, onFire }: { member: StaffMember; onFire: (id: strin
                   <UserX size={12} />
                   Release
                 </button>
-                <button
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl
-                             bg-white/5 border border-white/10 text-gray-400
-                             text-[9px] font-black uppercase tracking-wider
-                             hover:bg-white/10 transition-colors active:scale-95"
-                  onClick={() => import('react-hot-toast').then(m => m.toast('Скоро будет доступно!', { icon: '🔒' }))}
-                >
-                  Renew Contract
-                </button>
               </div>
             </div>
           </motion.div>
@@ -158,27 +186,15 @@ function StaffCard({ member, onFire }: { member: StaffMember; onFire: (id: strin
 export default function StaffPage() {
   const { userId, isAuthenticated } = useContext(TelegramAuthContext);
 
-  const [primaryTab,   setPrimaryTab]   = useState<PrimaryTab>('coaches');
-  const [deptTab,      setDeptTab]      = useState<DepartmentTab>('first_team');
-  const [staff,        setStaff]        = useState<StaffMember[]>([]);
-  const [isLoading,    setIsLoading]    = useState(true);
-  const [isHiring,     setIsHiring]     = useState(false);
-  const [academyLevel, setAcademyLevel] = useState<number>(1);
-
-  // Fetch academy infrastructure level to determine lock state
-  useEffect(() => {
-    if (!isAuthenticated || !userId) return;
-    getClubInfrastructureData(userId).then(res => {
-      if (res.success && res.data) setAcademyLevel(res.data.academy_level ?? 1);
-    });
-  }, [isAuthenticated, userId]);
-
-  const academyLocked = deptTab === 'academy' && academyLevel < 2;
+  const [activeTab,   setActiveTab]   = useState<StaffTab>('all');
+  const [staff,       setStaff]       = useState<StaffMember[]>([]);
+  const [isLoading,   setIsLoading]   = useState(true);
+  const [isHiring,    setIsHiring]    = useState(false);
 
   const loadStaff = async () => {
     if (!isAuthenticated) return;
     setIsLoading(true);
-    const res = await getStaffAction(deptTab);
+    const res = await getStaffAction();
     if (res.success && res.data) setStaff(res.data);
     setIsLoading(false);
   };
@@ -186,7 +202,7 @@ export default function StaffPage() {
   useEffect(() => {
     if (isAuthenticated && userId) loadStaff();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, userId, deptTab]);
+  }, [isAuthenticated, userId]);
 
   const handleFire = async (id: string) => {
     const res = await fireStaffAction(id);
@@ -200,10 +216,18 @@ export default function StaffPage() {
 
   const handleHire = async () => {
     setIsHiring(true);
-    const role = primaryTab === 'scouts' ? 'scout' : 'assistant_coach';
-    const res = await hireStaffAction(role, deptTab);
+    // Hire based on active tab, default to youth_coach
+    const roleMap: Record<string, StaffMember['role']> = {
+      all: 'youth_coach',
+      youth_coach: 'youth_coach',
+      head_coach: 'head_coach',
+      medical_staff: 'medical_staff',
+      head_scout: 'head_scout',
+    };
+    const role = roleMap[activeTab] ?? 'youth_coach';
+    const res = await hireStaffAction(role);
     if (res.success && res.data) {
-      toast.success(`${res.data.name} hired!`);
+      toast.success(`${res.data.name} hired! (${res.data.star_rating}★)`);
       setStaff(prev => [...prev, res.data!]);
     } else {
       toast.error(res.error ?? 'Failed to hire');
@@ -211,10 +235,9 @@ export default function StaffPage() {
     setIsHiring(false);
   };
 
-  // Filter by primary tab
-  const filtered = staff.filter(s =>
-    primaryTab === 'scouts' ? s.role === 'scout' : s.role !== 'scout'
-  );
+  // Filter by tab
+  const filtered = activeTab === 'all' ? staff : staff.filter(s => s.role === activeTab);
+  const totalSalary = staff.reduce((sum, s) => sum + s.salary_per_week, 0);
 
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: '#05060f' }}>
@@ -228,9 +251,9 @@ export default function StaffPage() {
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent" />
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-sm font-black font-orbitron text-white uppercase tracking-widest">Staff Management</h1>
+              <h1 className="text-sm font-black font-orbitron text-white uppercase tracking-widest">Staff</h1>
               <p className="text-[9px] text-violet-400/70 uppercase tracking-wider mt-0.5">
-                {filtered.length} member{filtered.length !== 1 ? 's' : ''} · {deptTab.replace('_', ' ')}
+                {staff.length} hired · {totalSalary} FC/week total salary
               </p>
             </div>
             <button
@@ -248,106 +271,24 @@ export default function StaffPage() {
         </div>
       </header>
 
-      {/* Primary SubNav: COACHES | SCOUTS */}
+      {/* Tab bar */}
       <div className="flex-shrink-0 py-2 relative z-10">
         <SubNavTabs
           tabs={[
-            { id: 'coaches', label: 'COACHES' },
-            { id: 'scouts',  label: 'SCOUTS'  },
+            { id: 'all',            label: 'ALL' },
+            { id: 'youth_coach',    label: 'YOUTH' },
+            { id: 'head_coach',     label: 'COACH' },
+            { id: 'medical_staff',  label: 'MEDICAL' },
+            { id: 'head_scout',     label: 'SCOUT' },
           ]}
-          active={primaryTab}
-          onChange={(id) => setPrimaryTab(id as PrimaryTab)}
+          active={activeTab}
+          onChange={(id) => setActiveTab(id as StaffTab)}
           accent="violet"
         />
       </div>
 
-      {/* Secondary SubNav: FIRST TEAM | ACADEMY */}
-      <div className="flex-shrink-0 pb-2 relative z-10">
-        <SubNavTabs
-          tabs={[
-            { id: 'first_team', label: 'FIRST TEAM' },
-            { id: 'academy',    label: 'ACADEMY'     },
-          ]}
-          active={deptTab}
-          onChange={(id) => setDeptTab(id as DepartmentTab)}
-          accent="cyan"
-        />
-      </div>
-
-      {/* Staff list + Academy lock gate */}
+      {/* Staff list */}
       <div className="flex-1 overflow-y-auto custom-scrollbar pb-28 px-3 flex flex-col gap-3 relative z-10">
-
-        {/* ── Academy Lock Overlay ─────────────────────────────────────── */}
-        <AnimatePresence>
-          {academyLocked && (
-            <motion.div
-              key="academy-lock"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-5 px-6 pb-28"
-            >
-              {/* Glassmorphism backdrop */}
-              <div className="absolute inset-0 bg-[#05060f]/88 backdrop-blur-md" />
-
-              {/* Lock card */}
-              <div className="relative z-10 flex flex-col items-center gap-5 text-center">
-                {/* Icon */}
-                <div className="w-20 h-20 rounded-3xl flex items-center justify-center
-                                bg-gradient-to-br from-violet-900/60 to-black/60
-                                border-2 border-violet-500/30
-                                shadow-[0_0_40px_rgba(147,51,234,0.25)]">
-                  <Lock className="text-violet-400" size={32} />
-                </div>
-
-                {/* Text */}
-                <div>
-                  <h2 className="text-sm font-black font-orbitron text-white uppercase tracking-widest mb-2">
-                    Academy Locked
-                  </h2>
-                  <p className="text-[9px] text-gray-500 uppercase tracking-wider max-w-[220px] leading-relaxed">
-                    Upgrade your Academy to Level 2 to unlock Academy Coaches and Academy Scouts
-                  </p>
-                </div>
-
-                {/* Level progress pips */}
-                <div className="flex items-center gap-2 px-4 py-2 rounded-xl
-                                bg-violet-500/10 border border-violet-500/20">
-                  <div className="flex gap-1.5">
-                    {[1, 2].map(i => (
-                      <div
-                        key={i}
-                        className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${
-                          i <= academyLevel
-                            ? 'bg-violet-400 border-violet-400 shadow-[0_0_8px_rgba(147,51,234,0.7)]'
-                            : 'bg-white/5 border-white/20'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-[9px] text-violet-400 font-bold font-mono">
-                    Level {academyLevel} / 2 required
-                  </span>
-                </div>
-
-                {/* CTA */}
-                <Link
-                  href="/base"
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl
-                             bg-violet-500/20 border border-violet-500/40 text-violet-300
-                             text-[10px] font-black uppercase tracking-wider
-                             hover:bg-violet-500/30 transition-all active:scale-95
-                             shadow-[0_0_16px_rgba(147,51,234,0.15)]"
-                >
-                  <Building2 size={12} />
-                  Upgrade Academy
-                </Link>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Staff list (rendered behind lock when locked) */}
         {isLoading ? (
           <div className="flex items-center justify-center h-40">
             <div className="flex gap-1.5">
@@ -362,13 +303,15 @@ export default function StaffPage() {
             <div className="w-12 h-12 rounded-full glass-card flex items-center justify-center">
               <UserPlus className="text-gray-700" size={24} />
             </div>
-            <p className="text-gray-600 text-xs uppercase tracking-widest font-bold">No staff in this department</p>
+            <p className="text-gray-600 text-xs uppercase tracking-widest font-bold">
+              {activeTab === 'all' ? 'No staff hired yet' : `No ${ROLE_LABELS[activeTab]?.toLowerCase()}s`}
+            </p>
             <button
               onClick={handleHire}
-              disabled={academyLocked}
+              disabled={isHiring}
               className="px-4 py-2 bg-cyan-500/15 border border-cyan-500/40 text-cyan-300
                          rounded-xl text-[10px] font-black uppercase tracking-wider
-                         hover:bg-cyan-500/25 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                         hover:bg-cyan-500/25 transition-colors"
             >
               Hire Now
             </button>

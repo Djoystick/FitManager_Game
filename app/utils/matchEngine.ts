@@ -45,6 +45,8 @@ export interface MatchPlayerStats {
   dribbling: number;
   defending: number;
   physical: number;
+  sta: number;
+  agi: number;
 }
 
 export interface MatchPlayer {
@@ -285,6 +287,10 @@ function drainStamina(
     else if (isMID(p.position)) base = Math.floor(base * 1.15);
 
     let finalDrain = Math.floor(base * pressingFactor * phaseMult);
+    // sta (stamina stat): reduces drain proportionally. 99 sta = -30% drain, 1 sta = 0% reduction
+    const staStat = safeNum(p.stats?.sta, 50);
+    const staReduction = 0.30 * (staStat / 99);
+    finalDrain = Math.floor(finalDrain * (1 - staReduction));
     // Engine trait: -30% drain
     if (p.traits.includes('Engine'))  finalDrain = Math.floor(finalDrain * 0.70);
     // Tireless trait: -40% drain (stacks multiplicatively with Engine)
@@ -497,12 +503,18 @@ function resolveAttack(ctx: AttackContext) {
 
   // ── PHASE 2: Penetration ───────────────────────────────────────────────────
   let atkPaceVal = safeNum(atkFwd.stats.pace) + safeNum(atkFwd.stats.dribbling);
+  // agi (agility): +15% to penetration for attacker (dribbling past defender)
+  const atkAgi = safeNum(atkFwd.stats?.agi, 50);
+  atkPaceVal *= 1 + 0.15 * (atkAgi / 99);
   if (atkFwd.traits.includes('Speedster')) atkPaceVal *= 1.15;
   // Comeback Kid: +15% to all attack stats when team is losing
   const atkTeamTrailing = score[defTeamKey] > score[attackingTeamKey];
   if (atkFwd.traits.includes('Comeback Kid') && atkTeamTrailing) atkPaceVal *= 1.15;
 
   let defDefVal = safeNum(defDef.stats.defending) + safeNum(defDef.stats.physical);
+  // agi (agility): +12% to penetration defense (interception/tackling)
+  const defAgi = safeNum(defDef.stats?.agi, 50);
+  defDefVal *= 1 + 0.12 * (defAgi / 99);
   if (defDef.traits.includes('Anchor')) defDefVal *= 1.15;
   // Enforcer: +10% to defend duels
   if (defDef.traits.includes('Enforcer')) defDefVal *= 1.10;
